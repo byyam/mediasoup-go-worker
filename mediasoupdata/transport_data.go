@@ -47,3 +47,29 @@ const (
 	SctpState_Failed     = "failed"
 	SctpState_Closed     = "closed"
 )
+
+type TransportConnectOptions struct {
+	// pipe and plain transport
+	Ip             string          `json:"ip,omitempty"`
+	Port           uint16          `json:"port,omitempty"`
+	SrtpParameters *SrtpParameters `json:"srtpParameters,omitempty"`
+
+	// plain transport
+	RtcpPort uint16 `json:"rtcpPort,omitempty"`
+
+	// webrtc transport
+	DtlsParameters *DtlsParameters `json:"dtlsParameters,omitempty"`
+}
+
+type TransportConnectData struct {
+	DtlsLocalRole DtlsRole `json:"dtlsLocalRole,omitempty"`
+}
+
+type TransportType string
+
+const (
+	TransportType_Direct TransportType = "DirectTransport"
+	TransportType_Plain  TransportType = "PlainTransport"
+	TransportType_Pipe   TransportType = "PipeTransport"
+	TransportType_Webrtc TransportType = "WebrtcTransport"
+)

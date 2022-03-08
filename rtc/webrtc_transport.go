@@ -2,6 +2,9 @@ package rtc
 
 import (
 	"encoding/json"
+	"time"
+
+	"github.com/byyam/mediasoup-go-worker/common"
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
@@ -28,12 +31,13 @@ func newWebrtcTransport(id string, options mediasoupdata.WebRtcTransportOptions)
 	var err error
 	if t.iceServer, err = newIceServer(iceServerParam{
 		iceLite: true,
-		udp4:    true,
+		tcp4:    true,
 	}); err != nil {
 		return nil, err
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
-		isClient: false,
+		role:        mediasoupdata.DtlsRole_Auto,
+		connTimeout: 30 * time.Second,
 	}); err != nil {
 		return nil, err
 	}
@@ -64,6 +68,13 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData) (resp
 
 	switch request.Method {
 	case mediasoupdata.MethodTransportConnect:
+		var options mediasoupdata.TransportConnectOptions
+		_ = json.Unmarshal(request.Data, &options)
+		data, err := t.Connect(options)
+		if data != nil {
+			response.Data, _ = json.Marshal(data)
+		}
+		response.Err = err
 
 	case mediasoupdata.MethodTransportRestartIce:
 
@@ -72,4 +83,23 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData) (resp
 	}
 
 	return
+}
+
+func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
+	if options.DtlsParameters == nil {
+		return nil, common.ErrInvalidParam
+	}
+	go func() {
+		iceConn, err := t.iceServer.GetConn()
+		if err != nil {
+			t.logger.Error("iceConn get error:%v", err)
+			return
+		}
+		if err = t.dtlsTransport.Connect(iceConn); err != nil {
+			t.logger.Error("dtls connect error:%v", err)
+			return
+		}
+	}()
+
+	return t.dtlsTransport.SetRole(options.DtlsParameters)
 }
