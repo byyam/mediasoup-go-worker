@@ -2,6 +2,12 @@ package rtc
 
 import (
 	"encoding/json"
+	"sync"
+	"sync/atomic"
+
+	"github.com/pion/rtp"
+
+	"github.com/byyam/mediasoup-go-worker/common"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/utils"
@@ -17,6 +23,13 @@ type ITransport interface {
 type Transport struct {
 	id     string
 	logger utils.Logger
+
+	mapProducers sync.Map //map[string]*Producer
+	rtpListener  *RtpListener
+
+	// handler
+	onTransportNewProducerHandler               atomic.Value
+	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
 }
 
 func (t *Transport) Close() {
@@ -46,10 +59,28 @@ func (t *Transport) FillJson() json.RawMessage {
 	return data
 }
 
-func newTransport() ITransport {
-	transport := &Transport{
-		logger: utils.NewLogger("transport"),
+type transportParam struct {
+	OnTransportNewProducer               func(producer *Producer) error
+	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
+}
+
+func (t transportParam) valid() bool {
+	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
+		return false
 	}
+	return true
+}
+
+func newTransport(param transportParam) ITransport {
+	if !param.valid() {
+		return nil
+	}
+	transport := &Transport{
+		logger:      utils.NewLogger("transport"),
+		rtpListener: newRtpListener(),
+	}
+	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
+	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
 	return transport
 }
 func (t *Transport) HandleRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
@@ -62,6 +93,13 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 	case mediasoupdata.MethodTransportClose:
 
 	case mediasoupdata.MethodTransportProduce:
+		var options mediasoupdata.ProducerOptions
+		_ = json.Unmarshal(request.Data, &options)
+		data, err := t.Produce(request.InternalData.ProducerId, options)
+		if err != nil {
+			response.Data, _ = json.Marshal(data)
+		}
+		response.Err = err
 
 	case mediasoupdata.MethodTransportConsume:
 
@@ -81,4 +119,48 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 		t.logger.Error("unknown method:%s", request.Method)
 	}
 	return
+}
+
+func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
+	if id == "" {
+		return nil, common.ErrInvalidParam
+	}
+	if _, ok := t.mapProducers.Load(id); ok {
+		return nil, common.ErrDuplicatedId
+	}
+	producer, err := newProducer(producerParam{
+		id:                          id,
+		options:                     options,
+		OnProducerRtpPacketReceived: t.OnProducerRtpPacketReceived,
+	})
+	if err != nil {
+		return nil, err
+	}
+	t.rtpListener.AddProducer(producer)
+	if handler, ok := t.onTransportNewProducerHandler.Load().(func(*Producer) error); ok && handler != nil {
+		if err := handler(producer); err != nil {
+			return nil, err
+		}
+	}
+	t.mapProducers.Store(id, producer)
+	t.logger.Debug("Producer created [producerId:%s]", id)
+	// todo
+
+	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
+}
+
+func (t *Transport) ReceiveRtpPacket(packet *rtp.Packet) {
+	// get producer from ssrc, to producer
+	producer := t.rtpListener.GetProducer(packet)
+	if producer == nil {
+		return
+	}
+
+	producer.ReceiveRtpPacket(packet)
+}
+
+func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
+	if handler, ok := t.onTransportProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
+		handler(producer, packet)
+	}
 }

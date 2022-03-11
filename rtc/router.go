@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/pion/rtp"
+
 	"github.com/byyam/mediasoup-go-worker/common"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -13,15 +15,18 @@ import (
 )
 
 type Router struct {
-	id           string
-	logger       utils.Logger
-	transportMap sync.Map
+	id                   string
+	logger               utils.Logger
+	mapTransports        sync.Map
+	mapProducerConsumers *utils.Hashmap
+	mapProducers         sync.Map
 }
 
 func NewRouter(id string) *Router {
 	return &Router{
-		id:     id,
-		logger: utils.NewLogger("router"),
+		id:                   id,
+		logger:               utils.NewLogger("router"),
+		mapProducerConsumers: utils.NewHashMap(),
 	}
 }
 
@@ -31,12 +36,18 @@ func (r *Router) HandleRequest(request workerchannel.RequestData) (response work
 	case mediasoupdata.MethodRouterCreateWebRtcTransport:
 		var options mediasoupdata.WebRtcTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
-		webrtcTransport, err := newWebrtcTransport(request.InternalData.TransportId, options)
+		webrtcTransport, err := newWebrtcTransport(request.InternalData.TransportId, webrtcTransportParam{
+			options: options,
+			transportParam: transportParam{
+				OnTransportNewProducer:               r.OnTransportNewProducer,
+				OnTransportProducerRtpPacketReceived: r.OnTransportProducerRtpPacketReceived,
+			},
+		})
 		if err != nil {
 			response.Err = common.ErrCreateWebrtcTransport
 			return
 		}
-		r.transportMap.Store(request.InternalData.TransportId, webrtcTransport)
+		r.mapTransports.Store(request.InternalData.TransportId, webrtcTransport)
 		response.Data = webrtcTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreatePlainTransport:
@@ -55,7 +66,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData) (response work
 	case mediasoupdata.MethodRouterClose:
 		r.Close()
 	default:
-		r, ok := r.transportMap.Load(request.InternalData.TransportId)
+		r, ok := r.mapTransports.Load(request.InternalData.TransportId)
 		if !ok {
 			response.Err = common.ErrTransportNotFound
 			return
@@ -67,7 +78,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData) (response work
 }
 
 func (r *Router) Close() {
-	r.transportMap.Range(func(key, value interface{}) bool {
+	r.mapTransports.Range(func(key, value interface{}) bool {
 		transport := value.(ITransport)
 		transport.Close()
 		return true
@@ -77,7 +88,7 @@ func (r *Router) Close() {
 
 func (r *Router) FillJson() json.RawMessage {
 	var transportIds []string
-	r.transportMap.Range(func(key, value interface{}) bool {
+	r.mapTransports.Range(func(key, value interface{}) bool {
 		transportIds = append(transportIds, key.(string))
 		return true
 	})
@@ -94,4 +105,29 @@ func (r *Router) FillJson() json.RawMessage {
 	data, _ := json.Marshal(&dumpData)
 	r.logger.Debug("dumpData:%+v", dumpData)
 	return data
+}
+
+func (r *Router) OnTransportNewProducer(producer *Producer) error {
+	if _, ok := r.mapProducers.Load(producer.id); ok {
+		return common.ErrProducerExist
+	}
+	r.mapProducers.Store(producer.id, producer)
+
+	return nil
+}
+
+func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
+	value, ok := r.mapProducerConsumers.Get(producer.id)
+	if !ok {
+		return
+	}
+	consumers, ok := value.(map[string]*Consumer)
+	if !ok {
+		r.logger.Error("mapProducerConsumers get consumers failed")
+		return
+	}
+	for _, c := range consumers {
+		c.SendRtpPacket(packet)
+	}
+
 }

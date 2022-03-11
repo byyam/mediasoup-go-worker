@@ -22,11 +22,19 @@ type WebrtcTransport struct {
 	dtlsTransport *dtlsTransport
 }
 
-func newWebrtcTransport(id string, options mediasoupdata.WebRtcTransportOptions) (ITransport, error) {
+type webrtcTransportParam struct {
+	options mediasoupdata.WebRtcTransportOptions
+	transportParam
+}
+
+func newWebrtcTransport(id string, param webrtcTransportParam) (ITransport, error) {
 	t := &WebrtcTransport{
-		ITransport: newTransport(),
+		ITransport: newTransport(param.transportParam),
 		id:         id,
 		logger:     utils.NewLogger("webrtc-transport"),
+	}
+	if t.ITransport == nil {
+		return nil, common.ErrInvalidParam
 	}
 	var err error
 	if t.iceServer, err = newIceServer(iceServerParam{
@@ -41,7 +49,7 @@ func newWebrtcTransport(id string, options mediasoupdata.WebRtcTransportOptions)
 	}); err != nil {
 		return nil, err
 	}
-	t.logger.Debug("options:%+v", options)
+	t.logger.Debug("options:%+v", param.options)
 	return t, nil
 }
 
@@ -71,7 +79,7 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData) (resp
 		var options mediasoupdata.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Connect(options)
-		if data != nil {
+		if err != nil {
 			response.Data, _ = json.Marshal(data)
 		}
 		response.Err = err

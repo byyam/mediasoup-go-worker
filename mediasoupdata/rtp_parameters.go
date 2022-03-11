@@ -210,6 +210,24 @@ type RtpParameters struct {
 	Rtcp RtcpParameters `json:"rtcp,omitempty"`
 }
 
+type RtpParametersType string
+
+const (
+	RtpParametersType_Simple    RtpParametersType = "simple"
+	RtpParametersType_Simulcast                   = "simulcast"
+	RtpParametersType_Svc                         = "svc"
+	RtpParametersType_Pipe                        = "pipe"
+)
+
+func (r RtpParameters) Valid() bool {
+	return true
+}
+
+func (r RtpParameters) GetType() ProducerType {
+	// todo
+	return RtpParametersType_Simple
+}
+
 /**
  * Provides information on codec settings within the RTP parameters. The list
  * of media codecs supported by mediasoup and their settings is defined in the
@@ -374,7 +392,26 @@ type RtpHeaderExtensionParameters struct {
 	 * Configuration parameters for the header extension.
 	 */
 	Parameters *RtpCodecSpecificParameters `json:"parameters,omitempty"`
+
+	Type RtpHeaderExtensionUri
 }
+
+type RtpHeaderExtensionUri uint8
+
+const (
+	UNKNOWN                RtpHeaderExtensionUri = 0
+	MID                                          = 1
+	RTP_STREAM_ID                                = 2
+	REPAIRED_RTP_STREAM_ID                       = 3
+	ABS_SEND_TIME                                = 4
+	TRANSPORT_WIDE_CC_01                         = 5
+	FRAME_MARKING_07                             = 6 // NOTE: Remove once RFC.
+	FRAME_MARKING                                = 7
+	SSRC_AUDIO_LEVEL                             = 10
+	VIDEO_ORIENTATION                            = 11
+	TOFFSET                                      = 12
+	ABS_CAPTURE_TIME                             = 13
+)
 
 /**
  * Provides information on RTCP settings within the RTP parameters.
