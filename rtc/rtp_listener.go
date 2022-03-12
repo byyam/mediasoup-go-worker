@@ -17,10 +17,16 @@ func newRtpListener() *RtpListener {
 }
 
 func (r *RtpListener) AddProducer(producer *Producer) {
-
+	for _, encoding := range producer.RtpParameters.Encodings {
+		r.ssrcTable.Store(encoding.Ssrc, producer)
+	}
+	// todo: rtx,mid,rid
 }
 
 func (r *RtpListener) GetProducer(packet *rtp.Packet) *Producer {
-
-	return nil
+	value, ok := r.ssrcTable.Load(packet.SSRC)
+	if !ok {
+		return nil
+	}
+	return value.(*Producer)
 }

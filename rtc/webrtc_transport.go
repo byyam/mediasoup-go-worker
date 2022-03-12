@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/pion/rtp"
+
 	"github.com/byyam/mediasoup-go-worker/common"
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -28,18 +30,19 @@ type webrtcTransportParam struct {
 }
 
 func newWebrtcTransport(id string, param webrtcTransportParam) (ITransport, error) {
-	t := &WebrtcTransport{
-		ITransport: newTransport(param.transportParam),
-		id:         id,
-		logger:     utils.NewLogger("webrtc-transport"),
-	}
-	if t.ITransport == nil {
-		return nil, common.ErrInvalidParam
-	}
 	var err error
+	t := &WebrtcTransport{
+		id:     id,
+		logger: utils.NewLogger("webrtc-transport"),
+	}
+	t.ITransport, err = newTransport(param.transportParam)
+	if err != nil {
+		return nil, err
+	}
 	if t.iceServer, err = newIceServer(iceServerParam{
-		iceLite: true,
-		tcp4:    true,
+		iceLite:          true,
+		tcp4:             true,
+		OnPacketReceived: t.OnRtpDataReceived,
 	}); err != nil {
 		return nil, err
 	}
@@ -110,4 +113,20 @@ func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions)
 	}()
 
 	return t.dtlsTransport.SetRole(options.DtlsParameters)
+}
+
+func (t *WebrtcTransport) OnPacketReceived(data []byte, n int) {
+	if utils.MatchSRTP(data) {
+		t.OnRtpDataReceived(data, n)
+	}
+	// todo
+}
+
+func (t *WebrtcTransport) OnRtpDataReceived(data []byte, n int) {
+	rtpPacket := &rtp.Packet{}
+	if err := rtpPacket.Unmarshal(data[:n]); err != nil {
+		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
+		return
+	}
+	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }

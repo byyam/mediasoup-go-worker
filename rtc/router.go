@@ -116,12 +116,22 @@ func (r *Router) OnTransportNewProducer(producer *Producer) error {
 	return nil
 }
 
+func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) error {
+	if _, ok := r.mapProducers.Load(producerId); !ok {
+		return common.ErrProducerNotFound
+	}
+	r.mapProducerConsumers.Store(producerId, consumer.GetId(), consumer)
+
+	return nil
+}
+
 func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
 	value, ok := r.mapProducerConsumers.Get(producer.id)
 	if !ok {
+		r.logger.Warn("no consumers to router RTP")
 		return
 	}
-	consumers, ok := value.(map[string]*Consumer)
+	consumers, ok := value.(map[string]IConsumer)
 	if !ok {
 		r.logger.Error("mapProducerConsumers get consumers failed")
 		return

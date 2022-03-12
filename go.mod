@@ -3,6 +3,7 @@ module github.com/byyam/mediasoup-go-worker
 go 1.16
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pion/dtls/v2 v2.1.3
 	github.com/pion/ice/v2 v2.2.2
 	github.com/pion/logging v0.2.2

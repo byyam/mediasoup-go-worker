@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 
 	"github.com/pion/transport/packetio"
 
@@ -36,11 +37,14 @@ type iceServer struct {
 	// remote info
 	iceConn  *iceConn
 	connDone chan struct{}
+	// handler
+	onPacketReceivedHandler atomic.Value
 }
 
 type iceServerParam struct {
-	iceLite bool
-	tcp4    bool
+	iceLite          bool
+	tcp4             bool
+	OnPacketReceived func(data []byte, len int)
 }
 
 func newIceServer(param iceServerParam) (*iceServer, error) {
@@ -56,6 +60,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 		connDone:   make(chan struct{}),
 		buffer:     packetio.NewBuffer(),
 	}
+	i.onPacketReceivedHandler.Store(param.OnPacketReceived)
 	i.buffer.SetLimitSize(maxBufferSize)
 	networkTypes := []ice.NetworkType{ice.NetworkTypeUDP4} // udp is default
 	if param.tcp4 {
@@ -87,13 +92,13 @@ func (i *iceServer) connect(networkTypes []ice.NetworkType) error {
 			return err
 		}
 		i.logger.Debug("read mux n=%d, addr=%s, err=%v", n, srcAddr.String(), err)
-		if err := i.handleInboundMsg(buf[:n], srcAddr); err != nil {
+		if err := i.handleInboundMsg(buf[:n], n, srcAddr); err != nil {
 			return err
 		}
 	}
 }
 
-func (i *iceServer) handleInboundMsg(buffer []byte, srcAddr net.Addr) error {
+func (i *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) error {
 	if stun.IsMessage(buffer) {
 		m := &stun.Message{
 			Raw: make([]byte, len(buffer)),
@@ -110,8 +115,14 @@ func (i *iceServer) handleInboundMsg(buffer []byte, srcAddr net.Addr) error {
 		}
 		return nil
 	}
-	if _, err := i.buffer.Write(buffer); err != nil {
-		i.logger.Warn("Failed to write buffer: %v", err)
+	if utils.MatchDTLS(buffer) {
+		if _, err := i.buffer.Write(buffer); err != nil {
+			i.logger.Warn("Failed to write buffer: %v", err)
+		}
+		return nil
+	}
+	if handler, ok := i.onPacketReceivedHandler.Load().(func(data []byte, len int)); ok && handler != nil {
+		handler(buffer[:n], n)
 	}
 	return nil
 }

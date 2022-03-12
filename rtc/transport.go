@@ -18,6 +18,7 @@ type ITransport interface {
 	Close()
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData) workerchannel.ResponseData
+	ReceiveRtpPacket(packet *rtp.Packet)
 }
 
 type Transport struct {
@@ -30,6 +31,7 @@ type Transport struct {
 	// handler
 	onTransportNewProducerHandler               atomic.Value
 	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
+	onTransportNewConsumerHandler               atomic.Value
 }
 
 func (t *Transport) Close() {
@@ -62,6 +64,7 @@ func (t *Transport) FillJson() json.RawMessage {
 type transportParam struct {
 	OnTransportNewProducer               func(producer *Producer) error
 	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
+	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
 }
 
 func (t transportParam) valid() bool {
@@ -71,9 +74,9 @@ func (t transportParam) valid() bool {
 	return true
 }
 
-func newTransport(param transportParam) ITransport {
+func newTransport(param transportParam) (ITransport, error) {
 	if !param.valid() {
-		return nil
+		return nil, common.ErrInvalidParam
 	}
 	transport := &Transport{
 		logger:      utils.NewLogger("transport"),
@@ -81,7 +84,8 @@ func newTransport(param transportParam) ITransport {
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
-	return transport
+	transport.onTransportNewConsumerHandler.Store(param.OnTransportNewConsumer)
+	return transport, nil
 }
 func (t *Transport) HandleRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 	t.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
@@ -102,6 +106,13 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 		response.Err = err
 
 	case mediasoupdata.MethodTransportConsume:
+		var options mediasoupdata.ConsumerOptions
+		_ = json.Unmarshal(request.Data, &options)
+		data, err := t.Consume(request.InternalData.ProducerId, request.InternalData.ConsumerId, options)
+		if err != nil {
+			response.Data, _ = json.Marshal(data)
+		}
+		response.Err = err
 
 	case mediasoupdata.MethodTransportProduceData:
 
@@ -119,6 +130,39 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 		t.logger.Error("unknown method:%s", request.Method)
 	}
 	return
+}
+
+func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
+	if producerId == "" || consumerId == "" {
+		return nil, common.ErrInvalidParam
+	}
+
+	var consumer IConsumer
+	var err error
+	switch options.Type {
+	case mediasoupdata.ConsumerType_Simple:
+		consumer, err = newSimpleConsumer(simpleConsumerParam{consumerParam{
+			id:         consumerId,
+			producerId: producerId,
+		}})
+
+	case mediasoupdata.ConsumerType_Simulcast: // todo...
+	case mediasoupdata.ConsumerType_Svc:
+	default:
+		return nil, common.ErrInvalidParam
+	}
+
+	if err != nil {
+		t.logger.Error("create consumer[%s] failed:%v", options.Type, err)
+		return nil, err
+	}
+	if handler, ok := t.onTransportNewConsumerHandler.Load().(func(consumer IConsumer, producerId string) error); ok && handler != nil {
+		if err := handler(consumer, producerId); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
 }
 
 func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {

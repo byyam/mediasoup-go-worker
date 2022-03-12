@@ -9,4 +9,5 @@ var (
 	ErrCreateWebrtcTransport = errors.New("create webrtc-transport failed")
 	ErrDuplicatedId          = errors.New("duplicated id")
 	ErrProducerExist         = errors.New("producer already exist")
+	ErrProducerNotFound      = errors.New("producer not found")
 )
