@@ -17,7 +17,7 @@ import (
 type ITransport interface {
 	Close()
 	FillJson() json.RawMessage
-	HandleRequest(request workerchannel.RequestData) workerchannel.ResponseData
+	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtp.Packet)
 }
 
@@ -87,7 +87,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportNewConsumerHandler.Store(param.OnTransportNewConsumer)
 	return transport, nil
 }
-func (t *Transport) HandleRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
+func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	t.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
 
 	switch request.Method {
@@ -104,6 +104,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 			response.Data, _ = json.Marshal(data)
 		}
 		response.Err = err
+		t.logger.Debug("%s done, data:%+v, error:%v", request.Method, data, err)
 
 	case mediasoupdata.MethodTransportConsume:
 		var options mediasoupdata.ConsumerOptions
@@ -113,6 +114,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 			response.Data, _ = json.Marshal(data)
 		}
 		response.Err = err
+		t.logger.Debug("%s done, data:%+v, error:%v", request.Method, data, err)
 
 	case mediasoupdata.MethodTransportProduceData:
 
@@ -129,7 +131,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData) (response w
 	default:
 		t.logger.Error("unknown method:%s", request.Method)
 	}
-	return
+	t.logger.Debug("response:%+v", response)
 }
 
 func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
@@ -141,10 +143,13 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	var err error
 	switch options.Type {
 	case mediasoupdata.ConsumerType_Simple:
-		consumer, err = newSimpleConsumer(simpleConsumerParam{consumerParam{
-			id:         consumerId,
-			producerId: producerId,
-		}})
+		consumer, err = newSimpleConsumer(simpleConsumerParam{
+			consumerParam: consumerParam{
+				id:         consumerId,
+				producerId: producerId,
+			},
+			OnConsumerSendRtpPacket: t.OnConsumerSendRtpPacket,
+		})
 
 	case mediasoupdata.ConsumerType_Simulcast: // todo...
 	case mediasoupdata.ConsumerType_Svc:
@@ -162,7 +167,11 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 		}
 	}
 
-	return nil, nil
+	return &mediasoupdata.ConsumerData{
+		Paused:         false,
+		ProducerPaused: false,
+		Score:          mediasoupdata.ConsumerScore{},
+	}, nil
 }
 
 func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
@@ -207,4 +216,8 @@ func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.
 	if handler, ok := t.onTransportProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
 		handler(producer, packet)
 	}
+}
+
+func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Packet) {
+
 }

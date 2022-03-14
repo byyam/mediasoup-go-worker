@@ -95,8 +95,10 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 	if ret.Err != nil {
 		c.logger.Error("response error:%v, Id=%d, Method=%s", ret.Err, reqData.Id, reqData.Method)
 		rspData.Error = ret.Err.Error()
+		rspData.Reason = ret.Err.Error()
+	} else {
+		rspData.Accepted = true
 	}
-	rspData.Accepted = true
 	rspData.Data = ret.Data
 	buf, _ := rspData.Marshal()
 	n, err := c.writeBuf(buf)

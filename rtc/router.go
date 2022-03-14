@@ -30,7 +30,7 @@ func NewRouter(id string) *Router {
 	}
 }
 
-func (r *Router) HandleRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
+func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 
 	switch request.Method {
 	case mediasoupdata.MethodRouterCreateWebRtcTransport:
@@ -41,6 +41,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData) (response work
 			transportParam: transportParam{
 				OnTransportNewProducer:               r.OnTransportNewProducer,
 				OnTransportProducerRtpPacketReceived: r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:               r.OnTransportNewConsumer,
 			},
 		})
 		if err != nil {
@@ -66,15 +67,15 @@ func (r *Router) HandleRequest(request workerchannel.RequestData) (response work
 	case mediasoupdata.MethodRouterClose:
 		r.Close()
 	default:
-		r, ok := r.mapTransports.Load(request.InternalData.TransportId)
+		t, ok := r.mapTransports.Load(request.InternalData.TransportId)
 		if !ok {
 			response.Err = common.ErrTransportNotFound
 			return
 		}
-		transport := r.(ITransport)
-		response = transport.HandleRequest(request)
+		transport := t.(ITransport)
+		transport.HandleRequest(request, response)
 	}
-	return
+	r.logger.Debug("response:%+v", response)
 }
 
 func (r *Router) Close() {
@@ -138,6 +139,11 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 	}
 	for _, c := range consumers {
 		c.SendRtpPacket(packet)
+		//switch c.GetType() {
+		//case mediasoupdata.ConsumerType_Simple:
+		//	consumer := c.(*SimpleConsumer)
+		//	consumer.SendRtpPacket(packet)
+		//}
 	}
 
 }

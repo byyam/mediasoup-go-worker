@@ -5,18 +5,18 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"time"
 
-	"github.com/byyam/mediasoup-go-worker/common"
-
 	"github.com/pion/dtls/v2"
-
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/pion/dtls/v2/pkg/crypto/fingerprint"
 	"github.com/pion/dtls/v2/pkg/crypto/selfsign"
+	"github.com/pion/srtp/v2"
 
+	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/utils"
 )
 
 type dtlsTransport struct {
@@ -112,9 +112,11 @@ func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*med
 }
 
 func (d *dtlsTransport) Connect(iceConn net.Conn) error {
+	d.state = mediasoupdata.DtlsState_Connecting
 	var err error
 	defer func() {
 		if err != nil {
+			d.state = mediasoupdata.DtlsState_Failed
 			d.logger.Error("dtls connecting failed:%v", err)
 		}
 	}()
@@ -131,5 +133,20 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
 	d.logger.Warn("dtlsConnState:%v", d.dtlsConnState)
+	d.state = mediasoupdata.DtlsState_Connected
 	return nil
+}
+
+func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
+	srtpConfig := &srtp.Config{
+		Profile: srtp.ProtectionProfileAes128CmHmacSha1_80,
+	}
+	var isClient bool
+	if d.role == mediasoupdata.DtlsRole_Client {
+		isClient = true
+	}
+	if err := srtpConfig.ExtractSessionKeysFromDTLS(&d.dtlsConnState, isClient); err != nil {
+		return nil, fmt.Errorf("errDtlsKeyExtractionFailed: %v", err)
+	}
+	return srtpConfig, nil
 }

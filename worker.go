@@ -60,8 +60,9 @@ func (w *Worker) OnChannelRequest(request workerchannel.RequestData) (response w
 			return
 		}
 		router := r.(*rtc.Router)
-		response = router.HandleRequest(request)
+		router.HandleRequest(request, &response)
 	}
+	w.logger.Debug("response:%+v", response)
 	return
 }
 

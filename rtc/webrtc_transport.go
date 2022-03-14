@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/pion/srtp/v2"
+
 	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/common"
@@ -21,7 +23,9 @@ type WebrtcTransport struct {
 
 	iceServer *iceServer
 
-	dtlsTransport *dtlsTransport
+	dtlsTransport          *dtlsTransport
+	decryptCtx, encryptCtx *srtp.Context
+	connected              bool
 }
 
 type webrtcTransportParam struct {
@@ -74,7 +78,7 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 	return data
 }
 
-func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
+func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	t.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
 
 	switch request.Method {
@@ -90,10 +94,8 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData) (resp
 	case mediasoupdata.MethodTransportRestartIce:
 
 	default:
-		t.ITransport.HandleRequest(request)
+		t.ITransport.HandleRequest(request, response)
 	}
-
-	return
 }
 
 func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
@@ -110,23 +112,57 @@ func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions)
 			t.logger.Error("dtls connect error:%v", err)
 			return
 		}
+		srtpConfig, err := t.dtlsTransport.GetSRTPConfig()
+		if err != nil {
+			t.logger.Error("get srtp config error:%v", err)
+			return
+		}
+		t.decryptCtx, err = srtp.CreateContext(srtpConfig.Keys.RemoteMasterKey, srtpConfig.Keys.RemoteMasterSalt, srtpConfig.Profile)
+		if err != nil {
+			t.logger.Error("get srtp remote/decrypt context error:%v", err)
+			return
+		}
+		t.encryptCtx, err = srtp.CreateContext(srtpConfig.Keys.RemoteMasterKey, srtpConfig.Keys.RemoteMasterSalt, srtpConfig.Profile)
+		if err != nil {
+			t.logger.Error("get srtp local/encrypt context error:%v", err)
+			return
+		}
+		t.connected = true
 	}()
 
 	return t.dtlsTransport.SetRole(options.DtlsParameters)
 }
 
-func (t *WebrtcTransport) OnPacketReceived(data []byte, n int) {
+func (t *WebrtcTransport) OnPacketReceived(data []byte) {
+	if !t.connected {
+		t.logger.Warn("webrtc not connected, ignore received packet")
+		return
+	}
 	if utils.MatchSRTP(data) {
-		t.OnRtpDataReceived(data, n)
+		t.OnRtpDataReceived(data)
 	}
 	// todo
 }
 
-func (t *WebrtcTransport) OnRtpDataReceived(data []byte, n int) {
+func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
+	decryptHeader := &rtp.Header{}
+	decryptInput := make([]byte, len(rawData))
+	actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
+	if err != nil {
+		t.logger.Error("DecryptRTP failed:%v", err)
+		return
+	}
+
 	rtpPacket := &rtp.Packet{}
-	if err := rtpPacket.Unmarshal(data[:n]); err != nil {
+	if err := rtpPacket.Unmarshal(actualDecrypted); err != nil {
 		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
 		return
 	}
+	t.logger.Debug("rtp header%+v", rtpPacket.Header)
+
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
+}
+
+func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
+
 }
