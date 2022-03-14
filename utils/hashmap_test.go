@@ -1,6 +1,8 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+)
 
 type Person struct {
 	Age  int
@@ -61,5 +63,29 @@ func TestNewHashMap(t *testing.T) {
 	value, ok = hashmap.Load("p1", "c1")
 	if ok {
 		t.Fatal("id2 should not be load")
+	}
+}
+
+func TestHashMapGet(t *testing.T) {
+	hashmap := NewHashMap()
+	// case1
+	hashmap.Store("p", "c1", &Person{
+		Age:  10,
+		Name: "hello",
+	})
+	hashmap.Store("p", "c2", &Person{
+		Age:  12,
+		Name: "world",
+	})
+	value, ok := hashmap.Get("p")
+	if !ok {
+		t.Fatal("get failed")
+	}
+	r, ok := value.(map[interface{}]interface{})
+	if !ok {
+		t.Fatal("get value failed")
+	}
+	for k, v := range r {
+		t.Logf("k:%s, v:%+v", k.(string), v.(*Person))
 	}
 }

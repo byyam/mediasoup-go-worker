@@ -100,21 +100,19 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Produce(request.InternalData.ProducerId, options)
-		if err != nil {
+		if err == nil {
 			response.Data, _ = json.Marshal(data)
 		}
 		response.Err = err
-		t.logger.Debug("%s done, data:%+v, error:%v", request.Method, data, err)
 
 	case mediasoupdata.MethodTransportConsume:
 		var options mediasoupdata.ConsumerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Consume(request.InternalData.ProducerId, request.InternalData.ConsumerId, options)
-		if err != nil {
+		if err == nil {
 			response.Data, _ = json.Marshal(data)
 		}
 		response.Err = err
-		t.logger.Debug("%s done, data:%+v, error:%v", request.Method, data, err)
 
 	case mediasoupdata.MethodTransportProduceData:
 
@@ -131,7 +129,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	default:
 		t.logger.Error("unknown method:%s", request.Method)
 	}
-	t.logger.Debug("response:%+v", response)
+	t.logger.Debug("method:%s, response:%s", request.Method, response)
 }
 
 func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
@@ -167,6 +165,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 		}
 	}
 
+	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s", producerId, consumerId, options.Type)
 	return &mediasoupdata.ConsumerData{
 		Paused:         false,
 		ProducerPaused: false,
@@ -196,7 +195,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		}
 	}
 	t.mapProducers.Store(id, producer)
-	t.logger.Debug("Producer created [producerId:%s]", id)
+	t.logger.Debug("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// todo
 
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil

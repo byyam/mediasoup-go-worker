@@ -1,6 +1,9 @@
 package workerchannel
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type InternalData struct {
 	RouterId       string `json:"routerId,omitempty"`
@@ -25,4 +28,8 @@ type RequestData struct {
 type ResponseData struct {
 	Err  error
 	Data json.RawMessage
+}
+
+func (d ResponseData) String() string {
+	return fmt.Sprintf("Err:%v,Data:%s", d.Err, string(d.Data))
 }

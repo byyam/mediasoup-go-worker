@@ -75,7 +75,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		transport := t.(ITransport)
 		transport.HandleRequest(request, response)
 	}
-	r.logger.Debug("response:%+v", response)
+	r.logger.Debug("method:%s, response:%s", request.Method, response)
 }
 
 func (r *Router) Close() {
@@ -122,6 +122,7 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 		return common.ErrProducerNotFound
 	}
 	r.mapProducerConsumers.Store(producerId, consumer.GetId(), consumer)
+	r.logger.Debug("OnTransportNewConsumer store mapProducerConsumers, producerId:%s, consumerId:%s", producerId, consumer.GetId())
 
 	return nil
 }
@@ -132,18 +133,12 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 		r.logger.Warn("no consumers to router RTP")
 		return
 	}
-	consumers, ok := value.(map[string]IConsumer)
+	consumersMap, ok := value.(map[interface{}]interface{})
 	if !ok {
 		r.logger.Error("mapProducerConsumers get consumers failed")
 		return
 	}
-	for _, c := range consumers {
-		c.SendRtpPacket(packet)
-		//switch c.GetType() {
-		//case mediasoupdata.ConsumerType_Simple:
-		//	consumer := c.(*SimpleConsumer)
-		//	consumer.SendRtpPacket(packet)
-		//}
+	for _, v := range consumersMap {
+		v.(IConsumer).SendRtpPacket(packet)
 	}
-
 }

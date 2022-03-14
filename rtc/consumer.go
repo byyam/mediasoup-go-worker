@@ -66,8 +66,9 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	}
 
 	c := &Consumer{
-		Id:     param.id,
-		logger: utils.NewLogger("consumer"),
+		Id:           param.id,
+		logger:       utils.NewLogger("consumer"),
+		consumerType: typ,
 	}
 
 	return c, nil
