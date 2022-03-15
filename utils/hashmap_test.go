@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -88,4 +90,47 @@ func TestHashMapGet(t *testing.T) {
 	for k, v := range r {
 		t.Logf("k:%s, v:%+v", k.(string), v.(*Person))
 	}
+}
+
+func TestJson(t *testing.T) {
+	type Person struct {
+		Age int64 `json:"age"`
+	}
+	p := &Person{Age: 18528326348443648}
+	data, _ := json.Marshal(p)
+	t.Logf("p:%s", string(data))
+
+	var q map[string]interface{}
+	// wrong
+	_ = json.Unmarshal(data, &q)
+	// correct
+	//d := json.NewDecoder(bytes.NewReader(data))
+	//d.UseNumber()
+	//_ = d.Decode(&q)
+	t.Logf("q:%+v", q["age"])
+
+	var ret Person
+	_ = InterfaceToStruct(q, &ret)
+	t.Logf("ret:%+v", ret)
+}
+
+func TestJsonString(t *testing.T) {
+	var test interface{}
+	// str := `{"id":18502511176978432, "name":"golang"}`
+	str := `{"id":18528326348443648, "name":"golang"}`
+	err := json.Unmarshal([]byte(str), &test)
+	if err != nil {
+		fmt.Println(err)
+	}
+	m := test.(map[string]interface{})
+	fmt.Printf("type:%T, value:%v\n", m["id"], m["id"])
+}
+
+func InterfaceToStruct(i interface{}, dst interface{}) error {
+	data, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(data, dst)
+	return err
 }

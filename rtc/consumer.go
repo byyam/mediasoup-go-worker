@@ -17,13 +17,15 @@ type IConsumer interface {
 	Close()
 	FillJson() json.RawMessage
 	GetType() mediasoupdata.ConsumerType
+	GetRtpParameters() mediasoupdata.RtpParameters
 	SendRtpPacket(packet *rtp.Packet)
 }
 
 type Consumer struct {
-	Id           string
-	ProducerId   string
-	consumerType mediasoupdata.ConsumerType
+	Id            string
+	ProducerId    string
+	consumerType  mediasoupdata.ConsumerType
+	rtpParameters mediasoupdata.RtpParameters
 
 	logger utils.Logger
 }
@@ -35,6 +37,10 @@ func (c *Consumer) SendRtpPacket(packet *rtp.Packet) {
 
 func (c *Consumer) GetType() mediasoupdata.ConsumerType {
 	return c.consumerType
+}
+
+func (c *Consumer) GetRtpParameters() mediasoupdata.RtpParameters {
+	return c.rtpParameters
 }
 
 func (c *Consumer) GetId() string {
@@ -52,8 +58,9 @@ func (c *Consumer) FillJson() json.RawMessage {
 }
 
 type consumerParam struct {
-	id         string
-	producerId string
+	id            string
+	producerId    string
+	rtpParameters mediasoupdata.RtpParameters
 }
 
 func (c consumerParam) valid() bool {
@@ -66,9 +73,10 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	}
 
 	c := &Consumer{
-		Id:           param.id,
-		logger:       utils.NewLogger("consumer"),
-		consumerType: typ,
+		Id:            param.id,
+		logger:        utils.NewLogger("consumer"),
+		consumerType:  typ,
+		rtpParameters: param.rtpParameters,
 	}
 
 	return c, nil

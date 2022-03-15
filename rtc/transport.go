@@ -32,6 +32,7 @@ type Transport struct {
 	onTransportNewProducerHandler               atomic.Value
 	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
 	onTransportNewConsumerHandler               atomic.Value
+	sendRtpPacketFunc                           func(packet *rtp.Packet)
 }
 
 func (t *Transport) Close() {
@@ -65,10 +66,14 @@ type transportParam struct {
 	OnTransportNewProducer               func(producer *Producer) error
 	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
 	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
+	SendRtpPacketFunc                    func(packet *rtp.Packet) // call webrtcTransport
 }
 
 func (t transportParam) valid() bool {
 	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
+		return false
+	}
+	if t.SendRtpPacketFunc == nil {
 		return false
 	}
 	return true
@@ -85,6 +90,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
 	transport.onTransportNewConsumerHandler.Store(param.OnTransportNewConsumer)
+	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	return transport, nil
 }
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -143,8 +149,9 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	case mediasoupdata.ConsumerType_Simple:
 		consumer, err = newSimpleConsumer(simpleConsumerParam{
 			consumerParam: consumerParam{
-				id:         consumerId,
-				producerId: producerId,
+				id:            consumerId,
+				producerId:    producerId,
+				rtpParameters: options.RtpParameters,
 			},
 			OnConsumerSendRtpPacket: t.OnConsumerSendRtpPacket,
 		})
@@ -218,5 +225,6 @@ func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.
 }
 
 func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Packet) {
-
+	t.logger.Debug("OnConsumerSendRtpPacket:%+v", packet.Header)
+	t.sendRtpPacketFunc(packet)
 }

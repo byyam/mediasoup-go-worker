@@ -39,6 +39,7 @@ func newWebrtcTransport(id string, param webrtcTransportParam) (ITransport, erro
 		id:     id,
 		logger: utils.NewLogger("webrtc-transport"),
 	}
+	param.SendRtpPacketFunc = t.SendRtpPacket
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
 		return nil, err
@@ -122,7 +123,7 @@ func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions)
 			t.logger.Error("get srtp remote/decrypt context error:%v", err)
 			return
 		}
-		t.encryptCtx, err = srtp.CreateContext(srtpConfig.Keys.RemoteMasterKey, srtpConfig.Keys.RemoteMasterSalt, srtpConfig.Profile)
+		t.encryptCtx, err = srtp.CreateContext(srtpConfig.Keys.LocalMasterKey, srtpConfig.Keys.LocalMasterSalt, srtpConfig.Profile)
 		if err != nil {
 			t.logger.Error("get srtp local/encrypt context error:%v", err)
 			return
@@ -164,5 +165,19 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 }
 
 func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
-
+	if !t.connected {
+		t.logger.Warn("webrtc not connected, ignore received packet")
+		return
+	}
+	t.logger.Debug("SendRtpPacket:%+v", packet.Header)
+	decryptedRaw, err := packet.Marshal()
+	if err != nil {
+		t.logger.Error("rtpPacket.Marshal error:%v", err)
+		return
+	}
+	encrypted, err := t.encryptCtx.EncryptRTP(nil, decryptedRaw, &packet.Header)
+	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
+		t.logger.Error("write EncryptRTP error:%v", err)
+		return
+	}
 }
