@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/byyam/mediasoup-go-worker/utils"
+
 	"github.com/byyam/mediasoup-go-worker/conf"
 
 	"github.com/pion/ice/v2"
@@ -13,6 +15,10 @@ import (
 
 const (
 	ReceiveMTU = 8192
+)
+
+var (
+	logger = utils.NewLogger("mediasoup-worker")
 )
 
 var (
@@ -25,7 +31,9 @@ var (
 func InitGlobal() {
 	var err error
 	//UdpAddr = &net.UDPAddr{Port: int(conf.Settings.RtcStaticPort)}
-	UdpAddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, conf.Settings.RtcStaticPort))
+	addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, conf.Settings.RtcStaticPort)
+	logger.Info("binding udp:%s", addr)
+	UdpAddr, err = net.ResolveUDPAddr("udp", addr)
 	UdpConn, err = net.ListenUDP("udp", UdpAddr)
 	if err != nil {
 		panic(err)

@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	logger = utils.NewLogger("example")
+	logger = utils.NewLogger("mediasoup-worker")
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	channel := workerchannel.NewChannel(ConsumerChannelFd, ProducerChannelFd)
 	payloadChannel := workerchannel.NewPayloadChannel(PayloadConsumerChannelFd, PayloadProducerChannelFd)
 
-	w := mediasoup_go_worker.NewWorker(channel, payloadChannel)
+	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
 	w.Start()
 
 	// block here

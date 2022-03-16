@@ -3,7 +3,7 @@ package wsconn
 import (
 	"testing"
 
-	"github.com/byyam/mediasoup-go-worker/example/internal/signal"
+	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
 )
 
 func TestWsClient_Conn(t *testing.T) {
@@ -20,10 +20,10 @@ func TestWsClient_Conn(t *testing.T) {
 }
 
 func TestWsClient_Request(t *testing.T) {
-	req := signal.UnPublishRequest{StreamId: 123}
+	req := isignal.UnPublishRequest{StreamId: 123}
 	rsp, err := NewWsClient(WsClientOpt{
 		Path: "echo",
-	}).Request(signal.MethodUnPublish, req)
+	}).Request(isignal.MethodUnPublish, req)
 	if err != nil {
 		t.Fatal("request unpublish error", err)
 	}

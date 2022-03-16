@@ -49,7 +49,7 @@ func (w *WsServer) Start() {
 			w.logger.Error("read:%v", err)
 			return
 		}
-		w.logger.Info("recv: %s", message)
+		w.logger.Info("recv req: %s", message)
 		req := protoo.Message{}
 		d := json.NewDecoder(bytes.NewReader(message))
 		d.UseNumber()
@@ -57,12 +57,27 @@ func (w *WsServer) Start() {
 			w.logger.Error("unmarshal request error%v", err)
 			continue
 		}
+		var rsp *protoo.Message
 		fn := w.Handlers[req.Method]
-		rsp := fn(req)
+		if fn == nil {
+			rsp = w.unsupportedRequest(req)
+		} else {
+			rsp = fn(req)
+		}
+		w.logger.Info("send rsp: %s", rsp)
 		err = w.Conn.WriteMessage(mt, rsp.Marshal())
 		if err != nil {
 			w.logger.Error("write:%v", err)
 			continue
 		}
 	}
+}
+
+func (w *WsServer) unsupportedRequest(req protoo.Message) *protoo.Message {
+	w.logger.Warn("unsupported method:%s", req.Method)
+	rsp := protoo.CreateErrorResponse(req, &protoo.Error{
+		ErrorCode:   0,
+		ErrorReason: "unsupported method",
+	})
+	return &rsp
 }

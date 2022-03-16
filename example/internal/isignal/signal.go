@@ -1,4 +1,4 @@
-package signal
+package isignal
 
 import "github.com/byyam/mediasoup-go-worker/mediasoupdata"
 

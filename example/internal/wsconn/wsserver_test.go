@@ -8,7 +8,7 @@ import (
 
 	"github.com/jiyeyuran/go-protoo"
 
-	"github.com/byyam/mediasoup-go-worker/example/internal/signal"
+	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
 
 	"github.com/gorilla/websocket"
 )
@@ -37,9 +37,9 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		PongWait:     1 * time.Minute,
 		Conn:         c,
 		Handlers: map[string]func(protoo.Message) *protoo.Message{
-			signal.MethodUnPublish: func(req protoo.Message) *protoo.Message {
-				log.Printf("handle %s", signal.MethodUnPublish)
-				rspData := signal.PublishResponse{
+			isignal.MethodPublish: func(req protoo.Message) *protoo.Message {
+				log.Printf("handle %s", isignal.MethodUnPublish)
+				rspData := isignal.PublishResponse{
 					TransportId: "demoId",
 				}
 				rsp := protoo.CreateSuccessResponse(req, rspData)

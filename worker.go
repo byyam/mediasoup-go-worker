@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/byyam/mediasoup-go-worker/global"
-
 	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/rtc"
@@ -13,31 +11,13 @@ import (
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
-type Worker struct {
-	pid            int
-	channel        *workerchannel.Channel
-	payloadChannel *workerchannel.PayloadChannel
-	logger         utils.Logger
-	routerMap      sync.Map
+type WorkerBase struct {
+	pid       int
+	logger    utils.Logger
+	routerMap sync.Map
 }
 
-func NewWorker(channel *workerchannel.Channel, payloadChannel *workerchannel.PayloadChannel) *Worker {
-	w := &Worker{
-		pid:            global.Pid,
-		channel:        channel,
-		payloadChannel: payloadChannel,
-		logger:         utils.NewLogger("worker"),
-	}
-	w.channel.OnRequest(w.OnChannelRequest)
-	return w
-}
-
-func (w *Worker) Start() {
-	global.InitGlobal()
-	w.channel.Event(w.pid, "running")
-}
-
-func (w *Worker) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
+func (w *WorkerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
 	w.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
 
@@ -66,7 +46,7 @@ func (w *Worker) OnChannelRequest(request workerchannel.RequestData) (response w
 	return
 }
 
-func (w *Worker) Stop() {
+func (w *WorkerBase) Stop() {
 	w.routerMap.Range(func(key, value interface{}) bool {
 		router := value.(*rtc.Router)
 		router.Close()
@@ -75,7 +55,7 @@ func (w *Worker) Stop() {
 	w.logger.Warn("pid:%d is killed", w.pid)
 }
 
-func (w *Worker) FillJson() json.RawMessage {
+func (w *WorkerBase) FillJson() json.RawMessage {
 	var routerIds []string
 	w.routerMap.Range(func(key, value interface{}) bool {
 		routerIds = append(routerIds, key.(string))
@@ -90,7 +70,7 @@ func (w *Worker) FillJson() json.RawMessage {
 	return data
 }
 
-func (w *Worker) FillJsonResourceUsage() json.RawMessage {
+func (w *WorkerBase) FillJsonResourceUsage() json.RawMessage {
 	// todo
 	ruData := mediasoupdata.WorkerResourceUsage{
 		RU_Utime:    0,
