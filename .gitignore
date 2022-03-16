@@ -21,3 +21,4 @@ vendor/
 # Vscode files
 .vscode
 
+*/mediasoup-worker

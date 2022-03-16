@@ -10,8 +10,12 @@ import (
 )
 
 const (
+	// TraceLevel defines trace log level.
+	TraceLevel = zerolog.TraceLevel
 	// DebugLevel defines debug log level.
 	DebugLevel = zerolog.DebugLevel
+	// InfoLevel defines info log level.
+	InfoLevel = zerolog.InfoLevel
 	// WarnLevel defines warn log level.
 	WarnLevel = zerolog.WarnLevel
 	// ErrorLevel defines error log level.
@@ -53,7 +57,9 @@ var (
 )
 
 type Logger interface {
+	Trace(format string, v ...interface{})
 	Debug(format string, v ...interface{})
+	Info(format string, v ...interface{})
 	Warn(format string, v ...interface{})
 	Error(format string, v ...interface{})
 }
@@ -75,8 +81,16 @@ func newDefaultLogger(scope string) Logger {
 	}
 }
 
+func (l defaultLogger) Trace(format string, v ...interface{}) {
+	l.logger.Trace().Msgf(format, v...)
+}
+
 func (l defaultLogger) Debug(format string, v ...interface{}) {
 	l.logger.Debug().Msgf(format, v...)
+}
+
+func (l defaultLogger) Info(format string, v ...interface{}) {
+	l.logger.Info().Msgf(format, v...)
 }
 
 func (l defaultLogger) Warn(format string, v ...interface{}) {
