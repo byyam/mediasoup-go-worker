@@ -20,9 +20,13 @@ func (i *InternalData) Unmarshal(data json.RawMessage) error {
 }
 
 type RequestData struct {
-	Method       string
-	InternalData InternalData
-	Data         json.RawMessage
+	Method   string
+	Internal InternalData
+	Data     json.RawMessage
+}
+
+func (d RequestData) String() string {
+	return fmt.Sprintf("Method:%s,Internal:%+v,Data:%s", d.Method, d.Internal, string(d.Data))
 }
 
 type ResponseData struct {

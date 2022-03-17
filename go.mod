@@ -4,7 +4,9 @@ go 1.16
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/imdario/mergo v0.3.12
 	github.com/jiyeyuran/go-protoo v1.0.4
 	github.com/pion/dtls/v2 v2.1.3
 	github.com/pion/ice/v2 v2.2.2

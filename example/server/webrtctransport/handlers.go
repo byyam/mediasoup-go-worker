@@ -19,17 +19,23 @@ func NewHandler(worker *mediasoup_go_worker.SimpleWorker) *Handler {
 	}
 }
 
-func (h *Handler) PublishHandler(req protoo.Message) *protoo.Message {
-	rspData := isignal.PublishResponse{
-		TransportId: "demoId",
+func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
+	var data interface{}
+	var err *protoo.Error
+	switch req.Method {
+	case isignal.MethodPublish:
+		data, err = h.publishHandler(req)
+	case isignal.MethodSubscribe:
+		data, err = h.subscribeHandler(req)
+	default:
+		err = ErrUnknownMethod
 	}
-	rsp := protoo.CreateSuccessResponse(req, rspData)
-	return &rsp
-}
-
-func (h *Handler) UnPublishHandler(req protoo.Message) *protoo.Message {
-	h.worker.FillJson()
-	rspData := isignal.UnPublishResponse{}
-	rsp := protoo.CreateSuccessResponse(req, rspData)
-	return &rsp
+	// create response protoo message
+	if err != nil {
+		rsp := protoo.CreateErrorResponse(req, err)
+		return &rsp
+	} else {
+		rsp := protoo.CreateSuccessResponse(req, data)
+		return &rsp
+	}
 }

@@ -7,14 +7,14 @@ import (
 )
 
 type MediasoupWorker struct {
-	WorkerBase
+	workerBase
 	channel        *workerchannel.Channel
 	payloadChannel *workerchannel.PayloadChannel
 }
 
 func NewMediasoupWorker(channel *workerchannel.Channel, payloadChannel *workerchannel.PayloadChannel) *MediasoupWorker {
 	w := &MediasoupWorker{
-		WorkerBase: WorkerBase{
+		workerBase: workerBase{
 			pid:    global.Pid,
 			logger: utils.NewLogger("worker"),
 		},

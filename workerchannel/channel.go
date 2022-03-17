@@ -84,9 +84,9 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 		var internal InternalData
 		_ = internal.Unmarshal(reqData.Internal)
 		ret = handler(RequestData{
-			Method:       reqData.Method,
-			InternalData: internal,
-			Data:         reqData.Data,
+			Method:   reqData.Method,
+			Internal: internal,
+			Data:     reqData.Data,
 		})
 	} else {
 		rspData.Error = "OnRequestHandler not register"

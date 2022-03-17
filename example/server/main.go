@@ -8,15 +8,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
+
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/conf"
-	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
 	"github.com/byyam/mediasoup-go-worker/example/internal/wsconn"
 	"github.com/byyam/mediasoup-go-worker/example/server/webrtctransport"
 	"github.com/byyam/mediasoup-go-worker/global"
 	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/gorilla/websocket"
-	"github.com/jiyeyuran/go-protoo"
 )
 
 var (
@@ -32,6 +32,9 @@ func main() {
 	conf.InitCli()
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
+	if err := workerapi.CreateRouter(worker, webrtctransport.GetRouterId(worker)); err != nil {
+		panic(err)
+	}
 	// block here
 	listenSignal()
 	worker.Stop()
@@ -49,15 +52,15 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	h := webrtctransport.NewHandler(worker)
-	s := wsconn.NewWsServer(wsconn.WsServerOpt{
-		PingInterval: 10 * time.Second,
-		PongWait:     1 * time.Minute,
-		Conn:         c,
-		Handlers: map[string]func(protoo.Message) *protoo.Message{
-			isignal.MethodPublish:   h.PublishHandler,
-			isignal.MethodUnPublish: h.UnPublishHandler,
-		},
+	s, err := wsconn.NewWsServer(wsconn.WsServerOpt{
+		PingInterval:   10 * time.Second,
+		PongWait:       1 * time.Minute,
+		Conn:           c,
+		RequestHandler: h.HandleProtooMessage,
 	})
+	if err != nil {
+		panic(err)
+	}
 	s.Start()
 }
 

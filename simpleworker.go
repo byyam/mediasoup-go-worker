@@ -6,12 +6,12 @@ import (
 )
 
 type SimpleWorker struct {
-	WorkerBase
+	workerBase
 }
 
 func NewSimpleWorker() *SimpleWorker {
 	w := &SimpleWorker{
-		WorkerBase: WorkerBase{
+		workerBase: workerBase{
 			pid:    global.Pid,
 			logger: utils.NewLogger("worker"),
 		},

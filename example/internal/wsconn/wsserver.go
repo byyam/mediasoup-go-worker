@@ -3,6 +3,7 @@ package wsconn
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jiyeyuran/go-protoo"
@@ -18,24 +19,32 @@ type WsServer struct {
 }
 
 type WsServerOpt struct {
-	PingInterval time.Duration
-	PongWait     time.Duration
-	Conn         *websocket.Conn
-	Handlers     map[string]func(protoo.Message) *protoo.Message
+	PingInterval   time.Duration
+	PongWait       time.Duration
+	Conn           *websocket.Conn
+	RequestHandler func(message protoo.Message) *protoo.Message
 }
 
-func NewWsServer(opt WsServerOpt) *WsServer {
+func (w WsServerOpt) valid() bool {
+	if w.RequestHandler == nil {
+		return false
+	}
+	return true
+}
+
+func NewWsServer(opt WsServerOpt) (*WsServer, error) {
+	if !opt.valid() {
+		return nil, errors.New("input param invalid")
+	}
 	w := &WsServer{
 		WsServerOpt: opt,
 		logger:      utils.NewLogger("websocket-server"),
 	}
-
 	w.Conn.SetPongHandler(func(appData string) error {
 		_ = w.Conn.SetReadDeadline(time.Now().Add(w.PongWait))
 		return nil
 	})
-
-	return w
+	return w, nil
 }
 
 func (w *WsServer) Start() {
@@ -58,12 +67,10 @@ func (w *WsServer) Start() {
 			continue
 		}
 		var rsp *protoo.Message
-		fn := w.Handlers[req.Method]
-		if fn == nil {
-			rsp = w.unsupportedRequest(req)
-		} else {
-			rsp = fn(req)
+		if req.Request {
+			rsp = w.RequestHandler(req)
 		}
+
 		w.logger.Info("send rsp: %s", rsp)
 		err = w.Conn.WriteMessage(mt, rsp.Marshal())
 		if err != nil {
@@ -71,13 +78,4 @@ func (w *WsServer) Start() {
 			continue
 		}
 	}
-}
-
-func (w *WsServer) unsupportedRequest(req protoo.Message) *protoo.Message {
-	w.logger.Warn("unsupported method:%s", req.Method)
-	rsp := protoo.CreateErrorResponse(req, &protoo.Error{
-		ErrorCode:   0,
-		ErrorReason: "unsupported method",
-	})
-	return &rsp
 }

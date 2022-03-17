@@ -39,10 +39,15 @@ func (t *Transport) Close() {
 }
 
 func (t *Transport) FillJson() json.RawMessage {
+	var producerIds []string
+	t.mapProducers.Range(func(key, value interface{}) bool {
+		producerIds = append(producerIds, key.(string))
+		return true
+	})
 	dumpData := mediasoupdata.TransportDump{
 		Id:                      t.id,
 		Direct:                  false,
-		ProducerIds:             nil,
+		ProducerIds:             producerIds,
 		ConsumerIds:             nil,
 		MapSsrcConsumerId:       nil,
 		MapRtxSsrcConsumerId:    nil,
@@ -94,30 +99,29 @@ func newTransport(param transportParam) (ITransport, error) {
 	return transport, nil
 }
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	t.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
+	defer func() {
+		t.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+	}()
 
 	switch request.Method {
 
 	case mediasoupdata.MethodTransportDump:
+		response.Data = t.FillJson()
 
 	case mediasoupdata.MethodTransportClose:
 
 	case mediasoupdata.MethodTransportProduce:
 		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Produce(request.InternalData.ProducerId, options)
-		if err == nil {
-			response.Data, _ = json.Marshal(data)
-		}
+		data, err := t.Produce(request.Internal.ProducerId, options)
+		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
 	case mediasoupdata.MethodTransportConsume:
 		var options mediasoupdata.ConsumerOptions
 		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Consume(request.InternalData.ProducerId, request.InternalData.ConsumerId, options)
-		if err == nil {
-			response.Data, _ = json.Marshal(data)
-		}
+		data, err := t.Consume(request.Internal.ProducerId, request.Internal.ConsumerId, options)
+		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
 	case mediasoupdata.MethodTransportProduceData:
@@ -132,10 +136,19 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 
 	case mediasoupdata.MethodTransportGetStats:
 
+	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
+		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
+		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
+		if !ok {
+			response.Err = common.ErrProducerNotFound
+			return
+		}
+		producer := value.(*Producer)
+		producer.HandleRequest(request, response)
+
 	default:
 		t.logger.Error("unknown method:%s", request.Method)
 	}
-	t.logger.Debug("method:%s, response:%s", request.Method, response)
 }
 
 func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {

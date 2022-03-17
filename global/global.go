@@ -43,4 +43,19 @@ func InitGlobal() {
 		Logger:  loggerFactory.NewLogger("udpMux"),
 		UDPConn: UdpConn,
 	})
+	// set log level
+	switch conf.Settings.LogLevel {
+	case "trace":
+		utils.DefaultLevel = utils.TraceLevel
+	case "debug":
+		utils.DefaultLevel = utils.DebugLevel
+	case "info":
+		utils.DefaultLevel = utils.InfoLevel
+	case "warn":
+		utils.DefaultLevel = utils.WarnLevel
+	case "error":
+		utils.DefaultLevel = utils.ErrorLevel
+	default:
+		panic("unknown log level")
+	}
 }

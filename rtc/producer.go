@@ -1,8 +1,11 @@
 package rtc
 
 import (
+	"encoding/json"
 	"sync"
 	"sync/atomic"
+
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/pion/rtp"
 
@@ -44,6 +47,7 @@ func (r *RtpEncodingMapping) copy(encoding mediasoupdata.RtpMappingEncoding) {
 type RtpMapping struct {
 	codecs    sync.Map
 	encodings []RtpEncodingMapping
+	raw       mediasoupdata.RtpMapping
 }
 
 type producerParam struct {
@@ -88,10 +92,40 @@ func (p *Producer) initRtpMapping(rtpMapping mediasoupdata.RtpMapping) {
 		e.copy(encoding)
 		p.rtpMapping.encodings = append(p.rtpMapping.encodings, e)
 	}
+	p.rtpMapping.raw = rtpMapping
 }
 
 func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) {
 	if handler, ok := p.onProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
 		handler(p, packet)
 	}
+}
+
+func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
+	defer func() {
+		p.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+	}()
+
+	switch request.Method {
+	case mediasoupdata.MethodProducerDump:
+		response.Data = p.FillJson()
+	}
+
+}
+
+func (p *Producer) FillJson() json.RawMessage {
+	dumpData := mediasoupdata.ProducerDump{
+		Id:              p.id,
+		Kind:            string(p.Kind),
+		Type:            string(p.Type),
+		RtpParameters:   p.RtpParameters,
+		RtpMapping:      p.rtpMapping.raw,
+		Encodings:       mediasoupdata.RtpMappingEncoding{},
+		RtpStreams:      nil,
+		Paused:          p.Paused,
+		TraceEventTypes: "",
+	}
+	data, _ := json.Marshal(&dumpData)
+	p.logger.Debug("dumpData:%+v", dumpData)
+	return data
 }

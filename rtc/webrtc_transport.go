@@ -80,16 +80,14 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 }
 
 func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	t.logger.Debug("method=%s,internal=%+v", request.Method, request.InternalData)
+	t.logger.Debug("method=%s,internal=%+v", request.Method, request.Internal)
 
 	switch request.Method {
 	case mediasoupdata.MethodTransportConnect:
 		var options mediasoupdata.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Connect(options)
-		if err != nil {
-			response.Data, _ = json.Marshal(data)
-		}
+		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
 	case mediasoupdata.MethodTransportRestartIce:
@@ -159,7 +157,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
 		return
 	}
-	t.logger.Debug("rtp header%+v", rtpPacket.Header)
+	t.logger.Trace("OnRtpDataReceived header%+v", rtpPacket.Header)
 
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }
@@ -169,7 +167,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
 		t.logger.Warn("webrtc not connected, ignore received packet")
 		return
 	}
-	t.logger.Debug("SendRtpPacket:%+v", packet.Header)
+	t.logger.Trace("SendRtpPacket:%+v", packet.Header)
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
 		t.logger.Error("rtpPacket.Marshal error:%v", err)

@@ -31,12 +31,15 @@ func NewRouter(id string) *Router {
 }
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
+	defer func() {
+		r.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+	}()
 
 	switch request.Method {
 	case mediasoupdata.MethodRouterCreateWebRtcTransport:
 		var options mediasoupdata.WebRtcTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
-		webrtcTransport, err := newWebrtcTransport(request.InternalData.TransportId, webrtcTransportParam{
+		webrtcTransport, err := newWebrtcTransport(request.Internal.TransportId, webrtcTransportParam{
 			options: options,
 			transportParam: transportParam{
 				OnTransportNewProducer:               r.OnTransportNewProducer,
@@ -48,7 +51,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			response.Err = common.ErrCreateWebrtcTransport
 			return
 		}
-		r.mapTransports.Store(request.InternalData.TransportId, webrtcTransport)
+		r.mapTransports.Store(request.Internal.TransportId, webrtcTransport)
 		response.Data = webrtcTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreatePlainTransport:
@@ -67,7 +70,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case mediasoupdata.MethodRouterClose:
 		r.Close()
 	default:
-		t, ok := r.mapTransports.Load(request.InternalData.TransportId)
+		t, ok := r.mapTransports.Load(request.Internal.TransportId)
 		if !ok {
 			response.Err = common.ErrTransportNotFound
 			return
@@ -75,7 +78,6 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		transport := t.(ITransport)
 		transport.HandleRequest(request, response)
 	}
-	r.logger.Debug("method:%s, response:%s", request.Method, response)
 }
 
 func (r *Router) Close() {
@@ -130,7 +132,7 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
 	value, ok := r.mapProducerConsumers.Get(producer.id)
 	if !ok {
-		r.logger.Warn("no consumers to router RTP")
+		r.logger.Trace("no consumers to router RTP")
 		return
 	}
 	consumersMap, ok := value.(map[interface{}]interface{})

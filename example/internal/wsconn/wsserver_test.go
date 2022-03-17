@@ -32,19 +32,17 @@ func echo(w http.ResponseWriter, r *http.Request) {
 		_ = c.Close()
 	}()
 
-	s := NewWsServer(WsServerOpt{
+	s, _ := NewWsServer(WsServerOpt{
 		PingInterval: 10 * time.Second,
 		PongWait:     1 * time.Minute,
 		Conn:         c,
-		Handlers: map[string]func(protoo.Message) *protoo.Message{
-			isignal.MethodPublish: func(req protoo.Message) *protoo.Message {
-				log.Printf("handle %s", isignal.MethodUnPublish)
-				rspData := isignal.PublishResponse{
-					TransportId: "demoId",
-				}
-				rsp := protoo.CreateSuccessResponse(req, rspData)
-				return &rsp
-			},
+		RequestHandler: func(message protoo.Message) *protoo.Message {
+			log.Printf("handle %s", isignal.MethodUnPublish)
+			rspData := isignal.PublishResponse{
+				TransportId: "demoId",
+			}
+			rsp := protoo.CreateSuccessResponse(message, rspData)
+			return &rsp
 		},
 	})
 	s.Start()
