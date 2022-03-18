@@ -1,4 +1,4 @@
-package config
+package democonf
 
 import (
 	"github.com/byyam/mediasoup-go-worker/h264"

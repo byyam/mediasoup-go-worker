@@ -43,7 +43,7 @@ func MatchSRTPOrSRTCP(b []byte) bool {
 	return MatchRange(128, 191, b)
 }
 
-func isRTCP(buf []byte) bool {
+func IsRTCP(buf []byte) bool {
 	// Not long enough to determine RTP/RTCP
 	if len(buf) < 4 {
 		return false
@@ -53,10 +53,10 @@ func isRTCP(buf []byte) bool {
 
 // MatchSRTP is a MatchFunc that only matches SRTP and not SRTCP
 func MatchSRTP(buf []byte) bool {
-	return MatchSRTPOrSRTCP(buf) && !isRTCP(buf)
+	return MatchSRTPOrSRTCP(buf) && !IsRTCP(buf)
 }
 
 // MatchSRTCP is a MatchFunc that only matches SRTCP and not SRTP
 func MatchSRTCP(buf []byte) bool {
-	return MatchSRTPOrSRTCP(buf) && isRTCP(buf)
+	return MatchSRTPOrSRTCP(buf) && IsRTCP(buf)
 }

@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/rtc"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 

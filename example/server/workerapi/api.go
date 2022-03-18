@@ -3,7 +3,7 @@ package workerapi
 import (
 	"encoding/json"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -112,6 +112,14 @@ func TransportConsume(w *mediasoup_go_worker.SimpleWorker, param ParamTransportC
 	return &rspData, nil
 }
 
+func ProducerClose(w *mediasoup_go_worker.SimpleWorker, internal workerchannel.InternalData) error {
+	_, err := request(w, mediasoupdata.MethodProducerClose, internal)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func ProducerDump(w *mediasoup_go_worker.SimpleWorker, internal workerchannel.InternalData) (*mediasoupdata.ProducerDump, error) {
 	rsp, err := request(w, mediasoupdata.MethodProducerDump, internal)
 	if err != nil {
@@ -146,4 +154,12 @@ func TransportDump(w *mediasoup_go_worker.SimpleWorker, internal workerchannel.I
 		return nil, err
 	}
 	return &rspData, nil
+}
+
+func ConsumerClose(w *mediasoup_go_worker.SimpleWorker, internal workerchannel.InternalData) error {
+	_, err := request(w, mediasoupdata.MethodConsumerClose, internal)
+	if err != nil {
+		return err
+	}
+	return nil
 }

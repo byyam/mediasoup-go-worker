@@ -5,12 +5,16 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
+	"github.com/pion/rtcp"
+
 	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/common"
 
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -19,6 +23,7 @@ type ITransport interface {
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtp.Packet)
+	ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet)
 }
 
 type Transport struct {
@@ -26,12 +31,15 @@ type Transport struct {
 	logger utils.Logger
 
 	mapProducers sync.Map //map[string]*Producer
+	mapConsumers sync.Map
 	rtpListener  *RtpListener
 
 	// handler
 	onTransportNewProducerHandler               atomic.Value
+	onTransportProducerClosedHandler            func(producerId string)
 	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
-	onTransportNewConsumerHandler               atomic.Value
+	onTransportNewConsumerHandler               func(consumer IConsumer, producerId string) error
+	onTransportConsumerClosedHandler            func(producerId, consumerId string)
 	sendRtpPacketFunc                           func(packet *rtp.Packet)
 }
 
@@ -68,13 +76,19 @@ func (t *Transport) FillJson() json.RawMessage {
 }
 
 type transportParam struct {
+	Id                                   string
 	OnTransportNewProducer               func(producer *Producer) error
+	OnTransportProducerClosed            func(producerId string)
 	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
 	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
+	OnTransportConsumerClosed            func(consumerId, producerId string)
 	SendRtpPacketFunc                    func(packet *rtp.Packet) // call webrtcTransport
 }
 
 func (t transportParam) valid() bool {
+	if t.Id == "" {
+		return false
+	}
 	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
 		return false
 	}
@@ -89,12 +103,15 @@ func newTransport(param transportParam) (ITransport, error) {
 		return nil, common.ErrInvalidParam
 	}
 	transport := &Transport{
+		id:          param.Id,
 		logger:      utils.NewLogger("transport"),
 		rtpListener: newRtpListener(),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
+	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
 	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
-	transport.onTransportNewConsumerHandler.Store(param.OnTransportNewConsumer)
+	transport.onTransportNewConsumerHandler = param.OnTransportNewConsumer
+	transport.onTransportConsumerClosedHandler = param.OnTransportConsumerClosed
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	return transport, nil
 }
@@ -136,6 +153,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 
 	case mediasoupdata.MethodTransportGetStats:
 
+	// producer
 	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
 		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
@@ -145,6 +163,28 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		}
 		producer := value.(*Producer)
 		producer.HandleRequest(request, response)
+
+	case mediasoupdata.MethodProducerClose:
+		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
+		if !ok {
+			response.Err = common.ErrProducerNotFound
+			return
+		}
+		producer := value.(*Producer)
+		producer.Close()
+		t.mapProducers.Delete(request.Internal.ProducerId)
+		t.onTransportProducerClosedHandler(producer.id)
+
+	case mediasoupdata.MethodConsumerClose:
+		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
+		if !ok {
+			response.Err = common.ErrConsumerNotFound
+			return
+		}
+		consumer := value.(IConsumer)
+		consumer.Close()
+		t.mapConsumers.Delete(request.Internal.ConsumerId)
+		t.onTransportConsumerClosedHandler(request.Internal.ProducerId, consumer.GetId())
 
 	default:
 		t.logger.Error("unknown method:%s", request.Method)
@@ -179,12 +219,11 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 		t.logger.Error("create consumer[%s] failed:%v", options.Type, err)
 		return nil, err
 	}
-	if handler, ok := t.onTransportNewConsumerHandler.Load().(func(consumer IConsumer, producerId string) error); ok && handler != nil {
-		if err := handler(consumer, producerId); err != nil {
-			return nil, err
-		}
+	if err := t.onTransportNewConsumerHandler(consumer, producerId); err != nil {
+		return nil, err
 	}
 
+	t.mapConsumers.Store(consumerId, consumer)
 	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s", producerId, consumerId, options.Type)
 	return &mediasoupdata.ConsumerData{
 		Paused:         false,
@@ -225,6 +264,7 @@ func (t *Transport) ReceiveRtpPacket(packet *rtp.Packet) {
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
+		monitor.RtpRecvCount(monitor.ActionSsrcNotFound)
 		return
 	}
 
@@ -238,6 +278,42 @@ func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.
 }
 
 func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Packet) {
-	t.logger.Debug("OnConsumerSendRtpPacket:%+v", packet.Header)
+	t.logger.Trace("OnConsumerSendRtpPacket:%+v", packet.Header)
 	t.sendRtpPacketFunc(packet)
+}
+
+func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
+	//c := rtcp.CompoundPacket(packets)
+	//if c.Validate() == nil {
+	//	t.logger.Debug("ReceiveRtcpPacket:%+v", c.String())
+	//}
+	for _, packet := range packets {
+		t.HandleRtcpPacket(header, &packet)
+	}
+}
+
+func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet *rtcp.Packet) {
+	t.logger.Trace("HandleRtcpPacket[%s]:%+v", header.Type, packet)
+	switch (*packet).(type) {
+	case *rtcp.SenderReport:
+		pkg := (*packet).(*rtcp.SenderReport)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.ReceiverReport:
+		pkg := (*packet).(*rtcp.ReceiverReport)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.SourceDescription:
+		pkg := (*packet).(*rtcp.SourceDescription)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.Goodbye:
+		pkg := (*packet).(*rtcp.Goodbye)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.FullIntraRequest:
+		pkg := (*packet).(*rtcp.FullIntraRequest)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.PictureLossIndication:
+		pkg := (*packet).(*rtcp.PictureLossIndication)
+		t.logger.Debug("%s", pkg.String())
+	default:
+		t.logger.Warn("unknown rtcp type:%s", header.Type)
+	}
 }

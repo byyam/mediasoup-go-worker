@@ -14,8 +14,8 @@ import (
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/example/internal/wsconn"
 	"github.com/byyam/mediasoup-go-worker/example/server/webrtctransport"
-	"github.com/byyam/mediasoup-go-worker/global"
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/global"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/gorilla/websocket"
 )
 

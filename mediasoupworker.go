@@ -1,8 +1,8 @@
 package mediasoup_go_worker
 
 import (
-	"github.com/byyam/mediasoup-go-worker/global"
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/global"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/pion/rtp"
 )
 
@@ -41,5 +41,9 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
 	if handler, ok := c.onConsumerSendRtpPacketHandler.Load().(func(consumer IConsumer, packet *rtp.Packet)); ok && handler != nil {
 		handler(c.IConsumer, packet)
 	}
-	// c.logger.Debug("SendRtpPacket:%+v", packet.Header)
+	c.logger.Trace("SendRtpPacket:%+v", packet.Header)
+}
+
+func (c *SimpleConsumer) Close() {
+	c.logger.Info("%s closed", c.GetId())
 }

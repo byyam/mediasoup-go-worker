@@ -10,8 +10,8 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/utils"
 )
 
 type Producer struct {
@@ -128,4 +128,8 @@ func (p *Producer) FillJson() json.RawMessage {
 	data, _ := json.Marshal(&dumpData)
 	p.logger.Debug("dumpData:%+v", dumpData)
 	return data
+}
+
+func (p *Producer) Close() {
+	p.logger.Info("producer:%s closed", p.id)
 }

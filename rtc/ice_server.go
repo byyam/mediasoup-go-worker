@@ -7,16 +7,18 @@ import (
 	"net"
 	"sync/atomic"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
 	"github.com/pion/transport/packetio"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 
 	"github.com/pion/stun"
 
-	"github.com/byyam/mediasoup-go-worker/global"
+	"github.com/byyam/mediasoup-go-worker/internal/global"
 
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/utils"
 
 	"github.com/pion/ice/v2"
 )
@@ -100,6 +102,7 @@ func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 
 func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) error {
 	if stun.IsMessage(buffer) {
+		monitor.IceCount(monitor.DirectionTypeRecv, monitor.PacketStun)
 		m := &stun.Message{
 			Raw: make([]byte, len(buffer)),
 		}
@@ -116,6 +119,7 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 		return nil
 	}
 	if utils.MatchDTLS(buffer) {
+		monitor.IceCount(monitor.DirectionTypeRecv, monitor.PacketDtls)
 		if _, err := d.buffer.Write(buffer); err != nil {
 			d.logger.Warn("Failed to write buffer: %v", err)
 		}

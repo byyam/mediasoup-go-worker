@@ -9,7 +9,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/common"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
 
 type IConsumer interface {
@@ -48,8 +48,7 @@ func (c *Consumer) GetId() string {
 }
 
 func (c *Consumer) Close() {
-	//TODO implement me
-	panic("implement me")
+	c.logger.Info("%s closed", c.Id)
 }
 
 func (c *Consumer) FillJson() json.RawMessage {

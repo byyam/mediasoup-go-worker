@@ -15,8 +15,8 @@ import (
 	"github.com/pion/srtp/v2"
 
 	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/utils"
 )
 
 type dtlsTransport struct {
@@ -132,7 +132,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 		}
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
-	d.logger.Warn("dtlsConnState:%v", d.dtlsConnState)
+	d.logger.Info("dtlsConnState:%v", d.dtlsConnState)
 	d.state = mediasoupdata.DtlsState_Connected
 	return nil
 }

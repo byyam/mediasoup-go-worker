@@ -3,6 +3,8 @@ package rtc
 import (
 	"net"
 	"time"
+
+	"github.com/byyam/mediasoup-go-worker/monitor"
 )
 
 type iceConn struct {
@@ -48,6 +50,7 @@ func newIceConn(remoteAddr net.Addr, agent *iceServer) *iceConn {
 }
 
 func (c *iceConn) Write(p []byte) (int, error) {
+	monitor.IceCount(monitor.DirectionTypeSend, monitor.PacketAll)
 	return c.agent.udpConn.WriteTo(p, c.remoteAddr)
 }
 

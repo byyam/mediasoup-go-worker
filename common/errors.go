@@ -10,4 +10,5 @@ var (
 	ErrDuplicatedId          = errors.New("duplicated id")
 	ErrProducerExist         = errors.New("producer already exist")
 	ErrProducerNotFound      = errors.New("producer not found")
+	ErrConsumerNotFound      = errors.New("consumer not found")
 )

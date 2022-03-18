@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	"github.com/gorilla/websocket"
 	"github.com/jiyeyuran/go-protoo"

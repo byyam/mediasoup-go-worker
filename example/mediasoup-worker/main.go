@@ -5,13 +5,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/byyam/mediasoup-go-worker/global"
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
+	"github.com/byyam/mediasoup-go-worker/internal/global"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -33,7 +35,8 @@ func main() {
 	}
 
 	conf.InitCli()
-	logger.Debug("argv:%+v", conf.Settings)
+	logger.Info("argv:%+v", conf.Settings)
+	monitor.InitPrometheus()
 
 	channel := workerchannel.NewChannel(ConsumerChannelFd, ProducerChannelFd)
 	payloadChannel := workerchannel.NewPayloadChannel(PayloadConsumerChannelFd, PayloadProducerChannelFd)

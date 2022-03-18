@@ -10,7 +10,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -39,12 +39,15 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case mediasoupdata.MethodRouterCreateWebRtcTransport:
 		var options mediasoupdata.WebRtcTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
-		webrtcTransport, err := newWebrtcTransport(request.Internal.TransportId, webrtcTransportParam{
+		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
 			options: options,
 			transportParam: transportParam{
+				Id:                                   request.Internal.TransportId,
 				OnTransportNewProducer:               r.OnTransportNewProducer,
+				OnTransportProducerClosed:            r.OnTransportProducerClosed,
 				OnTransportProducerRtpPacketReceived: r.OnTransportProducerRtpPacketReceived,
 				OnTransportNewConsumer:               r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:            r.OnTransportConsumerClosed,
 			},
 		})
 		if err != nil {
@@ -119,6 +122,25 @@ func (r *Router) OnTransportNewProducer(producer *Producer) error {
 	return nil
 }
 
+func (r *Router) OnTransportProducerClosed(producerId string) {
+	// close consumers
+	value, ok := r.mapProducerConsumers.Get(producerId)
+	if !ok {
+		return
+	}
+	consumersMap, ok := value.(map[interface{}]interface{})
+	if !ok {
+		r.logger.Error("mapProducerConsumers get consumers failed")
+		return
+	}
+	for _, v := range consumersMap {
+		v.(IConsumer).Close()
+	}
+	// clear producer in map
+	r.mapProducers.Delete(producerId)
+	r.mapProducerConsumers.Erase(producerId)
+}
+
 func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) error {
 	if _, ok := r.mapProducers.Load(producerId); !ok {
 		return common.ErrProducerNotFound
@@ -127,6 +149,15 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 	r.logger.Debug("OnTransportNewConsumer store mapProducerConsumers, producerId:%s, consumerId:%s", producerId, consumer.GetId())
 
 	return nil
+}
+
+func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
+	v, ok := r.mapProducerConsumers.Load(producerId, consumerId)
+	if !ok {
+		r.logger.Error("consumer not found[producerId:%s][consumerId:%s]", producerId, consumerId)
+		return
+	}
+	v.(IConsumer).Close()
 }
 
 func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {

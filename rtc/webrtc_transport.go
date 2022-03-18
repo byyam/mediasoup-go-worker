@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
+	"github.com/pion/rtcp"
+
 	"github.com/pion/srtp/v2"
 
 	"github.com/pion/rtp"
@@ -12,8 +16,8 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/utils"
 )
 
 type WebrtcTransport struct {
@@ -33,10 +37,10 @@ type webrtcTransportParam struct {
 	transportParam
 }
 
-func newWebrtcTransport(id string, param webrtcTransportParam) (ITransport, error) {
+func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	var err error
 	t := &WebrtcTransport{
-		id:     id,
+		id:     param.Id,
 		logger: utils.NewLogger("webrtc-transport"),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
@@ -47,7 +51,7 @@ func newWebrtcTransport(id string, param webrtcTransportParam) (ITransport, erro
 	if t.iceServer, err = newIceServer(iceServerParam{
 		iceLite:          true,
 		tcp4:             true,
-		OnPacketReceived: t.OnRtpDataReceived,
+		OnPacketReceived: t.OnPacketReceived,
 	}); err != nil {
 		return nil, err
 	}
@@ -137,10 +141,36 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 		t.logger.Warn("webrtc not connected, ignore received packet")
 		return
 	}
-	if utils.MatchSRTP(data) {
-		t.OnRtpDataReceived(data)
+	if utils.MatchSRTPOrSRTCP(data) {
+		if !utils.IsRTCP(data) {
+			monitor.RtpRecvCount(monitor.ActionReceive)
+			t.OnRtpDataReceived(data) // RTP
+		} else {
+			monitor.RtcpRecvCount(monitor.ActionReceive)
+			t.OnRtcpDataReceived(data) // RTCP
+		}
+	} else {
+		t.logger.Warn("ignoring received packet of unknown type")
 	}
-	// todo
+}
+
+func (t *WebrtcTransport) OnRtcpDataReceived(rawData []byte) {
+	decryptHeader := &rtcp.Header{}
+	decryptInput := make([]byte, len(rawData))
+	actualDecrypted, err := t.decryptCtx.DecryptRTCP(decryptInput, rawData, decryptHeader)
+	if err != nil {
+		monitor.RtcpRecvCount(monitor.ActionDecryptFailed)
+		t.logger.Error("DecryptRTCP failed:%v", err)
+		return
+	}
+
+	packets, err := rtcp.Unmarshal(actualDecrypted)
+	if err != nil {
+		monitor.RtcpRecvCount(monitor.ActionUnmarshalFailed)
+		t.logger.Error("rtcp.Unmarshal failed:%v", err)
+		return
+	}
+	t.ITransport.ReceiveRtcpPacket(decryptHeader, packets)
 }
 
 func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
@@ -148,12 +178,14 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 	decryptInput := make([]byte, len(rawData))
 	actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
 	if err != nil {
+		monitor.RtpRecvCount(monitor.ActionDecryptFailed)
 		t.logger.Error("DecryptRTP failed:%v", err)
 		return
 	}
 
 	rtpPacket := &rtp.Packet{}
 	if err := rtpPacket.Unmarshal(actualDecrypted); err != nil {
+		monitor.RtpRecvCount(monitor.ActionUnmarshalFailed)
 		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
 		return
 	}

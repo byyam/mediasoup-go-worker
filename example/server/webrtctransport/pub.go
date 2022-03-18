@@ -3,9 +3,11 @@ package webrtctransport
 import (
 	"encoding/json"
 
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
+
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
-	"github.com/byyam/mediasoup-go-worker/example/server/config"
+	"github.com/byyam/mediasoup-go-worker/example/server/democonf"
 	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/google/uuid"
@@ -18,12 +20,12 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 		Ip:          conf.Settings.RtcListenIp,
 		AnnouncedIp: conf.Settings.RtcListenIp,
 	}
-	webrtcTransportOptions := config.WebrtcTransportOptions
+	webrtcTransportOptions := democonf.WebrtcTransportOptions
 	webrtcTransportOptions.ListenIps = append(webrtcTransportOptions.ListenIps, listenIp)
 	transportData, err := workerapi.CreateWebRtcTransport(h.worker, workerapi.ParamCreateWebRtcTransport{
 		RouterId:    GetRouterId(h.worker),
 		TransportId: transportId,
-		Options:     config.WebrtcTransportOptions,
+		Options:     democonf.WebrtcTransportOptions,
 	})
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 		return nil, ServerError(err)
 	}
 	// produce
-	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(config.RouterOptions.MediaCodecs)
+	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(democonf.RouterOptions.MediaCodecs)
 	if err != nil {
 		h.logger.Error("GenerateRouterRtpCapabilities failed:%+v", err)
 		return nil, ServerError(err)
@@ -98,6 +100,23 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 	}, nil
 }
 
-func (h *Handler) unPublishHandler(req protoo.Message) (interface{}, *protoo.Error) {
+func (h *Handler) unPublishHandler(message protoo.Message) (interface{}, *protoo.Error) {
+	var req isignal.UnPublishRequest
+	if err := json.Unmarshal(message.Data, &req); err != nil {
+		return nil, ServerError(err)
+	}
+	// get producer data
+	transportData, producerData, err := h.findProducer(GetProducerId(req.StreamId))
+	if err != nil {
+		return nil, ServerError(err)
+	}
+
+	if err := workerapi.ProducerClose(h.worker, workerchannel.InternalData{
+		RouterId:    GetRouterId(h.worker),
+		TransportId: transportData.Id,
+		ProducerId:  producerData.Id,
+	}); err != nil {
+		return nil, ServerError(err)
+	}
 	return nil, nil
 }

@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
+
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/urfave/cli/v2"
 )
@@ -46,5 +48,20 @@ func InitCli() {
 	err := app.Run(os.Args)
 	if err != nil {
 		panic(err)
+	}
+	// set log level
+	switch Settings.LogLevel {
+	case "trace":
+		utils.DefaultLevel = utils.TraceLevel
+	case "debug":
+		utils.DefaultLevel = utils.DebugLevel
+	case "info":
+		utils.DefaultLevel = utils.InfoLevel
+	case "warn":
+		utils.DefaultLevel = utils.WarnLevel
+	case "error":
+		utils.DefaultLevel = utils.ErrorLevel
+	default:
+		panic("unknown log level")
 	}
 }
