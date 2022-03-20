@@ -19,15 +19,27 @@ type IConsumer interface {
 	GetType() mediasoupdata.ConsumerType
 	GetRtpParameters() mediasoupdata.RtpParameters
 	SendRtpPacket(packet *rtp.Packet)
+	ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32)
+	GetMediaSsrcs() []uint32
+	GetKind() mediasoupdata.MediaKind
+	GetConsumableRtpEncodings() []mediasoupdata.RtpEncodingParameters
 }
 
 type Consumer struct {
-	Id            string
-	ProducerId    string
-	consumerType  mediasoupdata.ConsumerType
-	rtpParameters mediasoupdata.RtpParameters
+	Id         string
+	ProducerId string
+	Kind       mediasoupdata.MediaKind
+	mediaSsrcs []uint32
+
+	consumerType           mediasoupdata.ConsumerType
+	rtpParameters          mediasoupdata.RtpParameters
+	consumableRtpEncodings []mediasoupdata.RtpEncodingParameters
 
 	logger utils.Logger
+}
+
+func (c *Consumer) GetKind() mediasoupdata.MediaKind {
+	return c.Kind
 }
 
 func (c *Consumer) SendRtpPacket(packet *rtp.Packet) {
@@ -41,6 +53,10 @@ func (c *Consumer) GetType() mediasoupdata.ConsumerType {
 
 func (c *Consumer) GetRtpParameters() mediasoupdata.RtpParameters {
 	return c.rtpParameters
+}
+
+func (c *Consumer) GetConsumableRtpEncodings() []mediasoupdata.RtpEncodingParameters {
+	return c.consumableRtpEncodings
 }
 
 func (c *Consumer) GetId() string {
@@ -57,12 +73,20 @@ func (c *Consumer) FillJson() json.RawMessage {
 }
 
 type consumerParam struct {
-	id            string
-	producerId    string
-	rtpParameters mediasoupdata.RtpParameters
+	id                     string
+	producerId             string
+	kind                   mediasoupdata.MediaKind
+	rtpParameters          mediasoupdata.RtpParameters
+	consumableRtpEncodings []mediasoupdata.RtpEncodingParameters
 }
 
 func (c consumerParam) valid() bool {
+	if len(c.consumableRtpEncodings) == 0 {
+		return false
+	}
+	if !c.rtpParameters.Valid() {
+		return false
+	}
 	return true
 }
 
@@ -72,11 +96,25 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	}
 
 	c := &Consumer{
-		Id:            param.id,
-		logger:        utils.NewLogger("consumer"),
-		consumerType:  typ,
-		rtpParameters: param.rtpParameters,
+		Id:                     param.id,
+		logger:                 utils.NewLogger("consumer"),
+		consumerType:           typ,
+		Kind:                   param.kind,
+		rtpParameters:          param.rtpParameters,
+		consumableRtpEncodings: param.consumableRtpEncodings,
+	}
+	for _, encoding := range c.rtpParameters.Encodings {
+		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
 	}
 
 	return c, nil
+}
+
+func (c *Consumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Consumer) GetMediaSsrcs() []uint32 {
+	return c.mediaSsrcs
 }

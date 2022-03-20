@@ -14,12 +14,14 @@ type SimpleConsumer struct {
 	logger utils.Logger
 
 	// handler
-	onConsumerSendRtpPacketHandler atomic.Value
+	onConsumerSendRtpPacketHandler     atomic.Value
+	onConsumerKeyFrameRequestedHandler func(consumer IConsumer, mappedSsrc uint32)
 }
 
 type simpleConsumerParam struct {
 	consumerParam
-	OnConsumerSendRtpPacket func(consumer IConsumer, packet *rtp.Packet)
+	OnConsumerSendRtpPacket     func(consumer IConsumer, packet *rtp.Packet)
+	OnConsumerKeyFrameRequested func(consumer IConsumer, mappedSsrc uint32)
 }
 
 func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
@@ -29,6 +31,7 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	}
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
 	c.onConsumerSendRtpPacketHandler.Store(param.OnConsumerSendRtpPacket)
+	c.onConsumerKeyFrameRequestedHandler = param.OnConsumerKeyFrameRequested
 	if err != nil {
 		return nil, err
 	}
@@ -46,4 +49,17 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
 
 func (c *SimpleConsumer) Close() {
 	c.logger.Info("%s closed", c.GetId())
+}
+
+func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
+	// todo: trace emit
+	c.RequestKeyFrame()
+}
+
+func (c *SimpleConsumer) RequestKeyFrame() {
+	if c.GetKind() != mediasoupdata.MediaKind_Video {
+		return
+	}
+	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
+	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, mappedSsrc)
 }

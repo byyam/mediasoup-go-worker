@@ -1,17 +1,17 @@
 package rtc
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"sync"
 	"sync/atomic"
 
-	"github.com/byyam/mediasoup-go-worker/workerchannel"
-
-	"github.com/pion/rtp"
-
 	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
+	"github.com/pion/rtp"
 )
 
 type Producer struct {
@@ -95,7 +95,35 @@ func (p *Producer) initRtpMapping(rtpMapping mediasoupdata.RtpMapping) {
 	p.rtpMapping.raw = rtpMapping
 }
 
+// todo: other codecs
+func isKeyFrame(data []byte) bool {
+	const (
+		typeSTAPA       = 24
+		typeSPS         = 7
+		naluTypeBitmask = 0x1F
+	)
+
+	var word uint32
+
+	payload := bytes.NewReader(data)
+	if err := binary.Read(payload, binary.BigEndian, &word); err != nil {
+		return false
+	}
+
+	naluType := (word >> 24) & naluTypeBitmask
+	if naluType == typeSTAPA && word&naluTypeBitmask == typeSPS {
+		return true
+	} else if naluType == typeSPS {
+		return true
+	}
+
+	return false
+}
+
 func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) {
+	if p.Kind == mediasoupdata.MediaKind_Video && isKeyFrame(packet.Payload) {
+		p.logger.Debug("isKeyFrame")
+	}
 	if handler, ok := p.onProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
 		handler(p, packet)
 	}
@@ -132,4 +160,8 @@ func (p *Producer) FillJson() json.RawMessage {
 
 func (p *Producer) Close() {
 	p.logger.Info("producer:%s closed", p.id)
+}
+
+func (p *Producer) RequestKeyFrame(ssrc uint32) {
+	p.logger.Debug("RequestKeyFrame:%d", ssrc)
 }

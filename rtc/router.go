@@ -20,6 +20,7 @@ type Router struct {
 	mapTransports        sync.Map
 	mapProducerConsumers *utils.Hashmap
 	mapProducers         sync.Map
+	mapConsumerProducer  sync.Map
 }
 
 func NewRouter(id string) *Router {
@@ -48,6 +49,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 				OnTransportProducerRtpPacketReceived: r.OnTransportProducerRtpPacketReceived,
 				OnTransportNewConsumer:               r.OnTransportNewConsumer,
 				OnTransportConsumerClosed:            r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested: r.OnTransportConsumerKeyFrameRequested,
 			},
 		})
 		if err != nil {
@@ -146,12 +148,14 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 		return common.ErrProducerNotFound
 	}
 	r.mapProducerConsumers.Store(producerId, consumer.GetId(), consumer)
+	r.mapConsumerProducer.Store(consumer.GetId(), producerId)
 	r.logger.Debug("OnTransportNewConsumer store mapProducerConsumers, producerId:%s, consumerId:%s", producerId, consumer.GetId())
 
 	return nil
 }
 
 func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
+	r.mapConsumerProducer.Delete(consumerId)
 	v, ok := r.mapProducerConsumers.Load(producerId, consumerId)
 	if !ok {
 		r.logger.Error("consumer not found[producerId:%s][consumerId:%s]", producerId, consumerId)
@@ -174,4 +178,19 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 	for _, v := range consumersMap {
 		v.(IConsumer).SendRtpPacket(packet)
 	}
+}
+
+func (r *Router) OnTransportConsumerKeyFrameRequested(consumerId string, mappedSsrc uint32) {
+	v, ok := r.mapConsumerProducer.Load(consumerId)
+	if !ok {
+		r.logger.Error("OnTransportConsumerKeyFrameRequested producer not found,consumerId:%s", consumerId)
+		return
+	}
+	producerId := v.(string)
+	v, ok = r.mapProducers.Load(producerId)
+	if !ok {
+		r.logger.Error("OnTransportConsumerKeyFrameRequested producerId not found:%s", producerId)
+		return
+	}
+	v.(*Producer).RequestKeyFrame(mappedSsrc)
 }

@@ -220,6 +220,12 @@ const (
 )
 
 func (r RtpParameters) Valid() bool {
+	if len(r.Encodings) == 0 {
+		return false
+	}
+	if len(r.Codecs) == 0 {
+		return false
+	}
 	return true
 }
 

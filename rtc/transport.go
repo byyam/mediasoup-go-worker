@@ -30,9 +30,10 @@ type Transport struct {
 	id     string
 	logger utils.Logger
 
-	mapProducers sync.Map //map[string]*Producer
-	mapConsumers sync.Map
-	rtpListener  *RtpListener
+	mapProducers    sync.Map //map[string]*Producer
+	mapConsumers    sync.Map
+	mapSsrcConsumer sync.Map
+	rtpListener     *RtpListener
 
 	// handler
 	onTransportNewProducerHandler               atomic.Value
@@ -40,7 +41,10 @@ type Transport struct {
 	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
 	onTransportNewConsumerHandler               func(consumer IConsumer, producerId string) error
 	onTransportConsumerClosedHandler            func(producerId, consumerId string)
-	sendRtpPacketFunc                           func(packet *rtp.Packet)
+	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
+
+	// transport base call sons
+	sendRtpPacketFunc func(packet *rtp.Packet)
 }
 
 func (t *Transport) Close() {
@@ -82,6 +86,7 @@ type transportParam struct {
 	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
 	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
 	OnTransportConsumerClosed            func(consumerId, producerId string)
+	OnTransportConsumerKeyFrameRequested func(consumerId string, mappedSsrc uint32)
 	SendRtpPacketFunc                    func(packet *rtp.Packet) // call webrtcTransport
 }
 
@@ -112,6 +117,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
 	transport.onTransportNewConsumerHandler = param.OnTransportNewConsumer
 	transport.onTransportConsumerClosedHandler = param.OnTransportConsumerClosed
+	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	return transport, nil
 }
@@ -184,6 +190,9 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		consumer := value.(IConsumer)
 		consumer.Close()
 		t.mapConsumers.Delete(request.Internal.ConsumerId)
+		for _, ssrc := range consumer.GetMediaSsrcs() {
+			t.mapSsrcConsumer.Delete(ssrc)
+		}
 		t.onTransportConsumerClosedHandler(request.Internal.ProducerId, consumer.GetId())
 
 	default:
@@ -202,11 +211,14 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	case mediasoupdata.ConsumerType_Simple:
 		consumer, err = newSimpleConsumer(simpleConsumerParam{
 			consumerParam: consumerParam{
-				id:            consumerId,
-				producerId:    producerId,
-				rtpParameters: options.RtpParameters,
+				id:                     consumerId,
+				producerId:             producerId,
+				kind:                   options.Kind,
+				rtpParameters:          options.RtpParameters,
+				consumableRtpEncodings: options.ConsumableRtpEncodings,
 			},
-			OnConsumerSendRtpPacket: t.OnConsumerSendRtpPacket,
+			OnConsumerSendRtpPacket:     t.OnConsumerSendRtpPacket,
+			OnConsumerKeyFrameRequested: t.OnConsumerKeyFrameRequested,
 		})
 
 	case mediasoupdata.ConsumerType_Simulcast: // todo...
@@ -224,7 +236,10 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	}
 
 	t.mapConsumers.Store(consumerId, consumer)
-	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s", producerId, consumerId, options.Type)
+	for _, ssrc := range consumer.GetMediaSsrcs() {
+		t.mapSsrcConsumer.Store(ssrc, consumer)
+	}
+	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s,ssrc:%v", producerId, consumerId, options.Type, consumer.GetMediaSsrcs())
 	return &mediasoupdata.ConsumerData{
 		Paused:         false,
 		ProducerPaused: false,
@@ -283,37 +298,53 @@ func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Pack
 }
 
 func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
-	//c := rtcp.CompoundPacket(packets)
-	//if c.Validate() == nil {
-	//	t.logger.Debug("ReceiveRtcpPacket:%+v", c.String())
-	//}
+	c := rtcp.CompoundPacket(packets)
+	t.logger.Info("ReceiveRtcpPacket:\n%+v\nheader:%+v\nCompoundPacket:%v", c.String(), header, c.Validate())
 	for _, packet := range packets {
-		t.HandleRtcpPacket(header, &packet)
+		t.HandleRtcpPacket(header, packet)
 	}
 }
 
-func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet *rtcp.Packet) {
-	t.logger.Trace("HandleRtcpPacket[%s]:%+v", header.Type, packet)
-	switch (*packet).(type) {
+func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
+	t.logger.Debug("HandleRtcpPacket:%v", packet.DestinationSSRC())
+	switch packet.(type) {
 	case *rtcp.SenderReport:
-		pkg := (*packet).(*rtcp.SenderReport)
+		pkg := packet.(*rtcp.SenderReport)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.ReceiverReport:
-		pkg := (*packet).(*rtcp.ReceiverReport)
+		pkg := packet.(*rtcp.ReceiverReport)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.SourceDescription:
-		pkg := (*packet).(*rtcp.SourceDescription)
+		pkg := packet.(*rtcp.SourceDescription)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.Goodbye:
-		pkg := (*packet).(*rtcp.Goodbye)
+		pkg := packet.(*rtcp.Goodbye)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.FullIntraRequest:
-		pkg := (*packet).(*rtcp.FullIntraRequest)
+		pkg := packet.(*rtcp.FullIntraRequest)
+		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.PictureLossIndication:
-		pkg := (*packet).(*rtcp.PictureLossIndication)
+		pkg := packet.(*rtcp.PictureLossIndication)
+		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
+		t.logger.Debug("%s", pkg.String())
+	case *rtcp.ReceiverEstimatedMaximumBitrate:
+		pkg := packet.(*rtcp.ReceiverEstimatedMaximumBitrate)
 		t.logger.Debug("%s", pkg.String())
 	default:
-		t.logger.Warn("unknown rtcp type:%s", header.Type)
+		t.logger.Warn("unknown rtcp header:%+v", header)
 	}
+}
+
+func (t *Transport) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
+	v, ok := t.mapSsrcConsumer.Load(ssrc)
+	if !ok {
+		return
+	}
+	consumer := v.(IConsumer)
+	consumer.ReceiveKeyFrameRequest(feedbackFormat, ssrc)
+}
+
+func (t *Transport) OnConsumerKeyFrameRequested(consumer IConsumer, mappedSsrc uint32) {
+	t.onTransportConsumerKeyFrameRequestedHandler(consumer.GetId(), mappedSsrc)
 }
