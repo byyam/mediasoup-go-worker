@@ -36,7 +36,14 @@ type ProducerOptions struct {
 }
 
 func (o ProducerOptions) Valid() bool {
+	if o.Kind != MediaKind_Audio && o.Kind != MediaKind_Video {
+		return false
+	}
 	if !o.RtpMapping.Valid() || !o.RtpParameters.Valid() {
+		return false
+	}
+	if len(o.RtpMapping.Encodings) != len(o.RtpParameters.Encodings) {
+		logger.Error("rtpParameters.encodings size does not match rtpMapping.encodings size")
 		return false
 	}
 	return true

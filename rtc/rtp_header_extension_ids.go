@@ -24,7 +24,37 @@ func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderE
 		if r.Mid == 0 && ext.Type == mediasoupdata.MID {
 			r.Mid = uint8(ext.Id)
 		}
-		// todo
+		if r.Rid == 0 && ext.Type == mediasoupdata.RTP_STREAM_ID {
+			r.Rid = uint8(ext.Id)
+		}
+		if r.RRid == 0 && ext.Type == mediasoupdata.REPAIRED_RTP_STREAM_ID {
+			r.RRid = uint8(ext.Id)
+		}
+		if r.AbsSendTime == 0 && ext.Type == mediasoupdata.ABS_SEND_TIME {
+			r.AbsSendTime = uint8(ext.Id)
+		}
+		if r.TransportWideCc01 == 0 && ext.Type == mediasoupdata.TRANSPORT_WIDE_CC_01 {
+			r.TransportWideCc01 = uint8(ext.Id)
+		}
+		// NOTE: Remove this once framemarking draft becomes RFC.
+		if r.FrameMarking07 == 0 && ext.Type == mediasoupdata.FRAME_MARKING_07 {
+			r.FrameMarking07 = uint8(ext.Id)
+		}
+		if r.FrameMarking == 0 && ext.Type == mediasoupdata.FRAME_MARKING {
+			r.FrameMarking = uint8(ext.Id)
+		}
+		if r.SsrcAudioLevel == 0 && ext.Type == mediasoupdata.SSRC_AUDIO_LEVEL {
+			r.SsrcAudioLevel = uint8(ext.Id)
+		}
+		if r.VideoOrientation == 0 && ext.Type == mediasoupdata.VIDEO_ORIENTATION {
+			r.VideoOrientation = uint8(ext.Id)
+		}
+		if r.TOffset == 0 && ext.Type == mediasoupdata.TOFFSET {
+			r.TOffset = uint8(ext.Id)
+		}
+		if r.AbsCaptureTime == 0 && ext.Type == mediasoupdata.ABS_CAPTURE_TIME {
+			r.AbsCaptureTime = uint8(ext.Id)
+		}
 	}
 
 	for _, ext := range headerExtensions {

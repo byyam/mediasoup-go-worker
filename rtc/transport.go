@@ -44,7 +44,8 @@ type Transport struct {
 	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
 
 	// transport base call sons
-	sendRtpPacketFunc func(packet *rtp.Packet)
+	sendRtpPacketFunc  func(packet *rtp.Packet)
+	sendRtcpPacketFunc func(header *rtcp.Header, packet rtcp.Packet)
 }
 
 func (t *Transport) Close() {
@@ -87,7 +88,9 @@ type transportParam struct {
 	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
 	OnTransportConsumerClosed            func(consumerId, producerId string)
 	OnTransportConsumerKeyFrameRequested func(consumerId string, mappedSsrc uint32)
-	SendRtpPacketFunc                    func(packet *rtp.Packet) // call webrtcTransport
+	// call webrtcTransport
+	SendRtpPacketFunc  func(packet *rtp.Packet)
+	SendRtcpPacketFunc func(header *rtcp.Header, packet rtcp.Packet)
 }
 
 func (t transportParam) valid() bool {
@@ -119,6 +122,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportConsumerClosedHandler = param.OnTransportConsumerClosed
 	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
+	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
 	return transport, nil
 }
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -258,6 +262,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		id:                          id,
 		options:                     options,
 		OnProducerRtpPacketReceived: t.OnProducerRtpPacketReceived,
+		OnProducerSendRtcpPacket:    t.OnProducerSendRtcpPacket,
 	})
 	if err != nil {
 		return nil, err
@@ -290,6 +295,10 @@ func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.
 	if handler, ok := t.onTransportProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
 		handler(producer, packet)
 	}
+}
+
+func (t *Transport) OnProducerSendRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
+	t.sendRtcpPacketFunc(header, packet)
 }
 
 func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Packet) {

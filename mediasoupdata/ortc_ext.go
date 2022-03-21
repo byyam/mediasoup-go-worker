@@ -714,7 +714,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 				encoding.Rtx = nil
 			}
 
-			consumerParams.Encodings = append(consumerParams.Encodings, encoding)
+			consumerParams.Encodings = append(consumerParams.Encodings, &encoding)
 		}
 
 		return
@@ -763,7 +763,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 	}
 
 	// Set a single encoding for the Consumer.
-	consumerParams.Encodings = append(consumerParams.Encodings, consumerEncoding)
+	consumerParams.Encodings = append(consumerParams.Encodings, &consumerEncoding)
 
 	// Copy verbatim.
 	consumerParams.Rtcp = consumableParams.Rtcp
@@ -820,7 +820,7 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 			encoding.Rtx = nil
 		}
 
-		consumerParams.Encodings = append(consumerParams.Encodings, encoding)
+		consumerParams.Encodings = append(consumerParams.Encodings, &encoding)
 	}
 
 	return

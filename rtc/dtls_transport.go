@@ -132,8 +132,8 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 		}
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
-	d.logger.Info("dtlsConnState:%v", d.dtlsConnState)
 	d.state = mediasoupdata.DtlsState_Connected
+	d.logger.Info("DtlsState_Connected")
 	return nil
 }
 

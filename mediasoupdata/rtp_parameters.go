@@ -1,6 +1,7 @@
 package mediasoupdata
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/byyam/mediasoup-go-worker/h264"
@@ -79,7 +80,7 @@ type RtpCodecCapability struct {
 	 * The int of channels supported (e.g. two for stereo). Just for audio.
 	 * Default 1.
 	 */
-	Channels int `json:"channels,omitempty"`
+	Channels uint8 `json:"channels,omitempty"`
 
 	/**
 	 * Codec specific parameters. Some parameters (such as 'packetization-mode'
@@ -202,12 +203,87 @@ type RtpParameters struct {
 	/**
 	 * Transmitted RTP streams and their settings.
 	 */
-	Encodings []RtpEncodingParameters `json:"encodings,omitempty"`
+	Encodings []*RtpEncodingParameters `json:"encodings,omitempty"`
 
 	/**
 	 * Parameters used for RTCP.
 	 */
 	Rtcp RtcpParameters `json:"rtcp,omitempty"`
+
+	HasRtcp bool `json:"-"`
+}
+
+func (r *RtpParameters) Init() error {
+	if !r.Valid() {
+		return errors.New("valid check failed")
+	}
+	for _, codec := range r.Codecs {
+		if err := codec.Init(); err != nil {
+			return err
+		}
+	}
+
+	if r.Rtcp.Cname != "" {
+		r.HasRtcp = true
+	}
+	// Validate RTP parameters.
+	r.validateCodecs()
+	if err := r.validateEncodings(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RtpParameters) validateCodecs() {
+	// todo
+}
+
+func (r *RtpParameters) validateEncodings() error {
+	firstMediaPayloadType := uint8(0)
+	{
+		var exist bool
+		for _, codec := range r.Codecs {
+			if codec.RtpCodecMimeType.IsMediaCodec() {
+				firstMediaPayloadType = codec.PayloadType
+				exist = true
+			}
+		}
+		if !exist {
+			return errors.New("no media codecs found")
+		}
+	}
+
+	// Iterate all the encodings, set the first payloadType in all of them with
+	// codecPayloadType unset, and check that others point to a media codec.
+	//
+	// Also, don't allow multiple SVC spatial layers into an encoding if there
+	// are more than one encoding (simulcast).
+	for _, encoding := range r.Encodings {
+		if encoding.SpatialLayers > 1 && len(r.Encodings) > 1 {
+			return errors.New("cannot use both simulcast and encodings with multiple SVC spatial layers")
+		}
+
+		if !encoding.HasCodecPayloadType {
+			encoding.CodecPayloadType = firstMediaPayloadType
+			encoding.HasCodecPayloadType = true
+		} else {
+			var exist bool
+			for _, codec := range r.Codecs {
+				if codec.PayloadType == encoding.CodecPayloadType {
+					// Must be a media codec.
+					if codec.RtpCodecMimeType.IsMediaCodec() {
+						exist = true
+						break
+					}
+					return errors.New("invalid codecPayloadType")
+				}
+			}
+			if !exist {
+				return errors.New("unknown codecPayloadType")
+			}
+		}
+	}
+	return nil
 }
 
 type RtpParametersType string
@@ -220,10 +296,12 @@ const (
 )
 
 func (r RtpParameters) Valid() bool {
-	if len(r.Encodings) == 0 {
+	// encodings are mandatory.
+	if r.Encodings == nil || len(r.Encodings) == 0 {
 		return false
 	}
-	if len(r.Codecs) == 0 {
+	// codecs are mandatory.
+	if r.Codecs == nil || len(r.Codecs) == 0 {
 		return false
 	}
 	return true
@@ -232,6 +310,21 @@ func (r RtpParameters) Valid() bool {
 func (r RtpParameters) GetType() ProducerType {
 	// todo
 	return RtpParametersType_Simple
+}
+
+func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
+	payloadType := encoding.CodecPayloadType
+	for _, codec := range r.Codecs {
+		if codec.PayloadType == payloadType {
+			return codec
+		}
+	}
+	panic("no valid codec payload type for the given encoding")
+}
+
+func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
+	// todo
+	return nil
 }
 
 /**
@@ -259,7 +352,7 @@ type RtpCodecParameters struct {
 	 * The int of channels supported (e.g. two for stereo). Just for audio.
 	 * Default 1.
 	 */
-	Channels int `json:"channels,omitempty"`
+	Channels uint8 `json:"channels,omitempty"`
 
 	/**
 	 * Codec-specific parameters available for signaling. Some parameters (such
@@ -272,6 +365,35 @@ type RtpCodecParameters struct {
 	 * Transport layer and codec-specific feedback messages for this codec.
 	 */
 	RtcpFeedback []RtcpFeedback `json:"rtcpFeedback,omitempty"`
+
+	RtpCodecMimeType RtpCodecMimeType `json:"-"`
+}
+
+func (r *RtpCodecParameters) Init() error {
+	if err := r.RtpCodecMimeType.SetMimeType(r.MimeType); err != nil {
+		return err
+	}
+	if r.PayloadType <= 0 {
+		return errors.New("missing payloadType")
+	}
+	if r.ClockRate <= 0 {
+		return errors.New("missing clockRate")
+	}
+
+	if err := r.CheckCodec(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *RtpCodecParameters) CheckCodec() error {
+	switch r.RtpCodecMimeType.SubType {
+	case MimeSubTypeRTX:
+		if r.Parameters.Apt <= 0 {
+			return errors.New("missing apt parameter in RTX codec")
+		}
+	}
+	return nil
 }
 
 func (r RtpCodecParameters) isRtxCodec() bool {
@@ -336,7 +458,8 @@ type RtpEncodingParameters struct {
 	 * Codec payload type this encoding affects. If unset, first media codec is
 	 * chosen.
 	 */
-	CodecPayloadType byte `json:"codecPayloadType,omitempty"`
+	CodecPayloadType    byte `json:"codecPayloadType,omitempty"`
+	HasCodecPayloadType bool `json:"-"`
 
 	/**
 	 * RTX stream information. It must contain a numeric ssrc field indicating
@@ -363,6 +486,9 @@ type RtpEncodingParameters struct {
 	 */
 	ScaleResolutionDownBy int `json:"scaleResolutionDownBy,omitempty"`
 	MaxBitrate            int `json:"maxBitrate,omitempty"`
+
+	SpatialLayers  uint8 `json:"-"` // default 1
+	TemporalLayers uint8 `json:"-"` // default 1
 }
 
 // RtpEncodingRtx represents the associated RTX stream for RTP stream.

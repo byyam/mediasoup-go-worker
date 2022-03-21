@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/kr/pretty"
+
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
 	"github.com/pion/rtcp"
@@ -44,6 +46,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 		logger: utils.NewLogger("webrtc-transport"),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
+	param.SendRtcpPacketFunc = t.SendRtcpPacket
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
 		return nil, err
@@ -61,7 +64,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}); err != nil {
 		return nil, err
 	}
-	t.logger.Debug("options:%+v", param.options)
+	t.logger.Debug("newWebrtcTransport options:%# v", pretty.Formatter(param.options))
 	return t, nil
 }
 
@@ -196,7 +199,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 
 func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
 	if !t.connected {
-		t.logger.Warn("webrtc not connected, ignore received packet")
+		t.logger.Warn("webrtc not connected, ignore send rtp packet")
 		return
 	}
 	t.logger.Trace("SendRtpPacket:%+v", packet.Header)
@@ -208,6 +211,24 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
 	encrypted, err := t.encryptCtx.EncryptRTP(nil, decryptedRaw, &packet.Header)
 	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
 		t.logger.Error("write EncryptRTP error:%v", err)
+		return
+	}
+}
+
+func (t *WebrtcTransport) SendRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
+	if !t.connected {
+		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
+		return
+	}
+	t.logger.Debug("SendRtcpPacket")
+	decryptedRaw, err := packet.Marshal()
+	if err != nil {
+		t.logger.Error("rtcpPacket.Marshal error:%v", err)
+		return
+	}
+	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, header)
+	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
+		t.logger.Error("write EncryptRTCP error:%v", err)
 		return
 	}
 }
