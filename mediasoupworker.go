@@ -16,7 +16,7 @@ func NewMediasoupWorker(channel *workerchannel.Channel, payloadChannel *workerch
 	w := &MediasoupWorker{
 		workerBase: workerBase{
 			pid:    global.Pid,
-			logger: utils.NewLogger("worker"),
+			logger: utils.NewLogger("worker", global.Pid),
 		},
 		channel:        channel,
 		payloadChannel: payloadChannel,

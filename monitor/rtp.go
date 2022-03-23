@@ -13,6 +13,6 @@ var (
 	}, []string{"action"})
 )
 
-func RtpRecvCount(action ActionType) {
+func RtpRecvCount(action TraceType) {
 	rtpRecvCount.WithLabelValues(string(action)).Inc()
 }

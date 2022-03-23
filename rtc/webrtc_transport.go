@@ -43,7 +43,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	var err error
 	t := &WebrtcTransport{
 		id:     param.Id,
-		logger: utils.NewLogger("webrtc-transport"),
+		logger: utils.NewLogger("webrtc-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
@@ -146,10 +146,10 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 	}
 	if utils.MatchSRTPOrSRTCP(data) {
 		if !utils.IsRTCP(data) {
-			monitor.RtpRecvCount(monitor.ActionReceive)
+			monitor.RtpRecvCount(monitor.TraceReceive)
 			t.OnRtpDataReceived(data) // RTP
 		} else {
-			monitor.RtcpRecvCount(monitor.ActionReceive)
+			monitor.RtcpRecvCount(monitor.TraceReceive)
 			t.OnRtcpDataReceived(data) // RTCP
 		}
 	} else {
@@ -162,17 +162,18 @@ func (t *WebrtcTransport) OnRtcpDataReceived(rawData []byte) {
 	decryptInput := make([]byte, len(rawData))
 	actualDecrypted, err := t.decryptCtx.DecryptRTCP(decryptInput, rawData, decryptHeader)
 	if err != nil {
-		monitor.RtcpRecvCount(monitor.ActionDecryptFailed)
+		monitor.RtcpRecvCount(monitor.TraceDecryptFailed)
 		t.logger.Error("DecryptRTCP failed:%v", err)
 		return
 	}
 
 	packets, err := rtcp.Unmarshal(actualDecrypted)
 	if err != nil {
-		monitor.RtcpRecvCount(monitor.ActionUnmarshalFailed)
+		monitor.RtcpRecvCount(monitor.TraceUnmarshalFailed)
 		t.logger.Error("rtcp.Unmarshal failed:%v", err)
 		return
 	}
+	monitor.RtcpRecvCount(monitor.TraceReceive)
 	t.ITransport.ReceiveRtcpPacket(decryptHeader, packets)
 }
 
@@ -181,14 +182,14 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 	decryptInput := make([]byte, len(rawData))
 	actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
 	if err != nil {
-		monitor.RtpRecvCount(monitor.ActionDecryptFailed)
+		monitor.RtpRecvCount(monitor.TraceDecryptFailed)
 		t.logger.Error("DecryptRTP failed:%v", err)
 		return
 	}
 
 	rtpPacket := &rtp.Packet{}
 	if err := rtpPacket.Unmarshal(actualDecrypted); err != nil {
-		monitor.RtpRecvCount(monitor.ActionUnmarshalFailed)
+		monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
 		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
 		return
 	}
@@ -215,7 +216,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
 	}
 }
 
-func (t *WebrtcTransport) SendRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
+func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 	if !t.connected {
 		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
 		return
@@ -224,11 +225,14 @@ func (t *WebrtcTransport) SendRtcpPacket(header *rtcp.Header, packet rtcp.Packet
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
 		t.logger.Error("rtcpPacket.Marshal error:%v", err)
+		monitor.RtcpSendCount(monitor.TraceMarshalFailed)
 		return
 	}
-	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, header)
+	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, nil)
 	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
 		t.logger.Error("write EncryptRTCP error:%v", err)
+		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
 		return
 	}
+	monitor.RtcpSendCount(monitor.TraceSend)
 }

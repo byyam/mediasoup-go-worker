@@ -69,7 +69,7 @@ type RtpCodecCapability struct {
 	/**
 	 * The preferred RTP payload type.
 	 */
-	PreferredPayloadType byte `json:"preferredPayloadType,omitempty"`
+	PreferredPayloadType uint8 `json:"preferredPayloadType,omitempty"`
 
 	/**
 	 * Codec clock rate expressed in Hertz.
@@ -259,6 +259,12 @@ func (r *RtpParameters) validateEncodings() error {
 	// Also, don't allow multiple SVC spatial layers into an encoding if there
 	// are more than one encoding (simulcast).
 	for _, encoding := range r.Encodings {
+		if encoding.SpatialLayers == 0 {
+			encoding.SpatialLayers = 1
+		}
+		if encoding.TemporalLayers == 0 {
+			encoding.TemporalLayers = 1
+		}
 		if encoding.SpatialLayers > 1 && len(r.Encodings) > 1 {
 			return errors.New("cannot use both simulcast and encodings with multiple SVC spatial layers")
 		}
@@ -341,7 +347,7 @@ type RtpCodecParameters struct {
 	/**
 	 * The value that goes in the RTP Payload Type Field. Must be unique.
 	 */
-	PayloadType byte `json:"payloadType"`
+	PayloadType uint8 `json:"payloadType"`
 
 	/**
 	 * Codec clock rate expressed in Hertz.

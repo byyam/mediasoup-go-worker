@@ -1,4 +1,72 @@
 package rtc
 
+import (
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/google/uuid"
+	"github.com/pion/rtp"
+)
+
+type ParamRtpStream struct {
+	EncodingIdx    int
+	Ssrc           uint32
+	PayloadType    uint8
+	MimeType       mediasoupdata.RtpCodecMimeType
+	ClockRate      int
+	Rid            string
+	Cname          string
+	RtxSsrc        uint32
+	RtxPayloadType uint8
+	UseNack        bool
+	UsePli         bool
+	UseFir         bool
+	UseInBandFec   bool
+	UseDtx         bool
+	SpatialLayers  uint8
+	TemporalLayers uint8
+}
+
 type RtpStream struct {
+	id        string
+	rtxStream *RtxStream
+	params    *ParamRtpStream
+}
+
+func newRtpStream(param *ParamRtpStream) *RtpStream {
+	return &RtpStream{
+		id:     uuid.New().String(),
+		params: param,
+	}
+}
+
+func (r *RtpStream) HasRtx() bool {
+	if r.rtxStream != nil {
+		return true
+	}
+	return false
+}
+
+func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
+	r.params.RtxPayloadType = payloadType
+	r.params.RtxSsrc = ssrc
+
+	if r.HasRtx() {
+		// todo
+	}
+}
+
+func (r *RtpStream) GetId() string {
+	return r.id
+}
+
+func (r *RtpStream) GetSsrc() uint32 {
+	return r.params.Ssrc
+}
+
+func (r *RtpStream) GetRtxSsrc() uint32 {
+	return r.params.RtxSsrc
+}
+
+func (r *RtpStream) ReceivePacket(packet *rtp.Packet) bool {
+
+	return true
 }

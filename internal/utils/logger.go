@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -68,12 +70,23 @@ type defaultLogger struct {
 	logger zerolog.Logger
 }
 
-func newDefaultLogger(scope string) Logger {
+func newDefaultLogger(scope string, ids ...interface{}) Logger {
 
 	context := zerolog.New(NewLoggerWriter()).With().Timestamp()
 
+	var caller string
+	if len(ids) > 0 {
+		var scopeIds []string
+		for _, id := range ids {
+			scopeIds = append(scopeIds, fmt.Sprintf("%v", id))
+		}
+		idsStr := strings.Join(scopeIds, "|")
+		caller = fmt.Sprintf("%s[%s]", scope, idsStr)
+	} else {
+		caller = scope
+	}
 	if len(scope) > 0 {
-		context = context.Str(zerolog.CallerFieldName, scope)
+		context = context.Str(zerolog.CallerFieldName, caller)
 	}
 
 	return &defaultLogger{

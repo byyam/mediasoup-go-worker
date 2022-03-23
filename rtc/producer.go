@@ -8,12 +8,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
+	"github.com/kr/pretty"
+
 	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/rtc/rtc_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
-	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 )
@@ -34,20 +37,30 @@ type Producer struct {
 	mapMappedSsrcSsrc      sync.Map
 	mapSsrcRtpStream       sync.Map
 	mapRtxSsrcRtpStream    sync.Map
+	mapRtpStreamMappedSsrc sync.Map
 
 	keyFrameRequestManager *KeyFrameRequestManager
 	maxRtcpInterval        time.Duration
 
 	// handler
-	onProducerRtpPacketReceivedHandler atomic.Value
-	onProducerSendRtcpPacketHandler    func(header *rtcp.Header, packet rtcp.Packet)
+	onProducerRtpPacketReceivedHandler     atomic.Value
+	onProducerSendRtcpPacketHandler        func(packet rtcp.Packet)
+	onTransportProducerNewRtpStreamHandler func(producerId string, rtpStream *RtpStreamRecv, mappedSsrc uint32)
 }
+
+type ReceiveRtpPacketResult int
+
+const (
+	ReceiveRtpPacketResultDISCARDED ReceiveRtpPacketResult = iota
+	ReceiveRtpPacketResultMEDIA
+	ReceiveRtpPacketResultRETRANSMISSION
+)
 
 type producerParam struct {
 	id                          string
 	options                     mediasoupdata.ProducerOptions
 	OnProducerRtpPacketReceived func(*Producer, *rtp.Packet)
-	OnProducerSendRtcpPacket    func(header *rtcp.Header, packet rtcp.Packet)
+	OnProducerSendRtcpPacket    func(packet rtcp.Packet)
 }
 
 func newProducer(param producerParam) (*Producer, error) {
@@ -56,27 +69,28 @@ func newProducer(param producerParam) (*Producer, error) {
 	}
 	p := &Producer{
 		id:     param.id,
-		logger: utils.NewLogger("producer"),
+		logger: utils.NewLogger("producer", param.id),
 
 		Kind:          param.options.Kind,
 		RtpParameters: param.options.RtpParameters,
 		Type:          param.options.RtpParameters.GetType(),
 		Paused:        param.options.Paused,
 
-		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, 0),
-		rtpStreamScores:        make([]uint8, 0),
+		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.options.RtpParameters.Encodings)),
+		rtpStreamScores:        make([]uint8, len(param.options.RtpParameters.Encodings)),
 	}
 	p.onProducerRtpPacketReceivedHandler.Store(param.OnProducerRtpPacketReceived)
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
 
-	p.logger.Info("input param for producer[%s]: %# v", param.id, pretty.Formatter(param.options))
+	p.logger.Info("input param for producer: %# v", pretty.Formatter(param.options))
 
 	// init producer with param
 	if err := p.init(param); err != nil {
 		return nil, err
 	}
 
-	p.logger.Info("init param for producer[%s]: %# v", param.id, pretty.Formatter(p.RtpParameters))
+	p.logger.Info("init param for producer: %# v", pretty.Formatter(p.RtpParameters))
+	p.logger.Info("init param for producer: %# v", pretty.Formatter(p.rtpMapping))
 	return p, nil
 }
 
@@ -95,7 +109,10 @@ func (p *Producer) init(param producerParam) error {
 		p.maxRtcpInterval = rtc_rtcp.MaxAudioIntervalMs
 	} else {
 		p.maxRtcpInterval = rtc_rtcp.MaxVideoIntervalMs
-		p.keyFrameRequestManager = NewKeyFrameRequestManager(param.options.KeyFrameRequestDelay)
+		p.keyFrameRequestManager = NewKeyFrameRequestManager(&KeyFrameRequestManagerParam{
+			keyFrameRequestDelay: param.options.KeyFrameRequestDelay,
+			onKeyFrameNeeded:     p.OnKeyFrameNeeded,
+		})
 	}
 	return nil
 }
@@ -131,7 +148,7 @@ func isKeyFrame(data []byte) bool {
 	return false
 }
 
-func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) {
+func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacketResult) {
 	if p.Kind == mediasoupdata.MediaKind_Video && isKeyFrame(packet.Payload) {
 		p.logger.Debug("isKeyFrame")
 	}
@@ -139,22 +156,41 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) {
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
 		p.logger.Warn("no stream found for received packet [ssrc:%d]", packet.SSRC)
-		return
+		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
+		return ReceiveRtpPacketResultDISCARDED
 	}
 	// Pre-process the packet.
 	p.PreProcessRtpPacket(packet)
 
 	if rtpStream.GetSsrc() == packet.SSRC { // Media packet.
-
+		result = ReceiveRtpPacketResultMEDIA
+		if !rtpStream.ReceivePacket(packet) { // Process the packet.
+			// todo
+			monitor.RtpRecvCount(monitor.TraceRtpStreamRecvFailed)
+			return
+		}
 	} else if rtpStream.GetRtxSsrc() == packet.SSRC { // RTX packet.
-
+		result = ReceiveRtpPacketResultRETRANSMISSION
+		if !rtpStream.ReceiveRtxPacket(packet) {
+			monitor.RtpRecvCount(monitor.TraceRtpRtxStreamRecvFailed)
+			return
+		}
 	} else { // Should not happen.
 		panic("found stream does not match received packet")
 	}
 
+	// If paused stop here.
+	if p.Paused {
+		return
+	}
+
+	// Post-process the packet.
+	p.PostProcessRtpPacket(packet)
+
 	if handler, ok := p.onProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
 		handler(p, packet)
 	}
+	return
 }
 
 func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -197,23 +233,99 @@ func (p *Producer) RequestKeyFrame(mappedSsrc uint32) {
 		return
 	}
 	ssrc := v.(uint32)
+
+	// If the current RTP packet is a key frame for the given mapped SSRC do
+	// nothing since we are gonna provide Consumers with the requested key frame
+	// right now.
+	//
+	// NOTE: We know that this may only happen before calling MangleRtpPacket()
+	// so the SSRC of the packet is still the original one and not the mapped one.
+	//
+
 	p.logger.Debug("RequestKeyFrame:%d,%d", mappedSsrc, ssrc)
+	monitor.MediasoupCount(monitor.Producer, monitor.EventRequestKeyFrame)
 	// todo
+	p.keyFrameRequestManager.KeyFrameNeeded(ssrc)
 }
 
-func (p *Producer) OnRtpStreamSendRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
-
+func (p *Producer) OnRtpStreamSendRtcpPacket(packet rtcp.Packet) {
+	p.onProducerSendRtcpPacketHandler(packet)
 }
 
-func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encoding *mediasoupdata.RtpEncodingParameters) *RtpStreamRecv {
+func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
 	ssrc := packet.SSRC
 	if _, ok := p.mapSsrcRtpStream.Load(ssrc); ok {
 		panic("RtpStream with given SSRC already exists")
 	}
-	p.logger.Debug("CreateRtpStream ssrc:%d", ssrc)
-	// todo
+	if v := p.rtpStreamByEncodingIdx[encodingIdx]; v != nil {
+		panic("RtpStream for given encoding index already exists")
+	}
+	encoding := p.RtpParameters.Encodings[encodingIdx]
+	encodingMapping := p.rtpMapping.Encodings[encodingIdx]
+	p.logger.Debug("CreateRtpStream ssrc:%d,mappedSsrc:%d,encodingIdx:%d,rid:%s,payloadType:%d",
+		ssrc, encodingMapping.MappedSsrc, encodingIdx, encoding.Rid, mediaCodec.PayloadType)
 
-	return nil
+	params := &ParamRtpStream{
+		EncodingIdx:    encodingIdx,
+		Ssrc:           ssrc,
+		PayloadType:    mediaCodec.PayloadType,
+		MimeType:       mediaCodec.RtpCodecMimeType,
+		ClockRate:      mediaCodec.ClockRate,
+		Rid:            encoding.Rid,
+		Cname:          p.RtpParameters.Rtcp.Cname,
+		RtxSsrc:        0,
+		RtxPayloadType: 0,
+		UseNack:        false,
+		UsePli:         false,
+		UseFir:         false,
+		UseInBandFec:   false,
+		UseDtx:         false,
+		SpatialLayers:  encoding.SpatialLayers,
+		TemporalLayers: encoding.TemporalLayers,
+	}
+	// Check in band FEC in codec parameters.
+	if mediaCodec.Parameters.Useinbandfec == 1 {
+		params.UseInBandFec = true
+	}
+	// Check DTX in codec parameters.
+	if mediaCodec.Parameters.Usedtx == 1 {
+		params.UseDtx = true
+	}
+	// Check DTX in the encoding.
+	if encoding.Dtx {
+		params.UseDtx = true
+	}
+	for _, fb := range mediaCodec.RtcpFeedback {
+		if !params.UseNack && fb.Type == "nack" && fb.Parameter == "" {
+			params.UseNack = true
+		} else if !params.UsePli && fb.Type == "nack" && fb.Parameter == "pli" {
+			params.UsePli = true
+		} else if !params.UseFir && fb.Type == "ccm" && fb.Parameter == "fir" {
+			params.UseFir = true
+		}
+	}
+
+	// Create a RtpStreamRecv for receiving a media stream.
+	rtpStream := newRtpStreamRecv(&ParamRtpStreamRecv{
+		ParamRtpStream:            params,
+		onRtpStreamSendRtcpPacket: p.OnRtpStreamSendRtcpPacket,
+	})
+
+	// Insert into the maps.
+	p.mapSsrcRtpStream.Store(ssrc, rtpStream)
+	p.rtpStreamByEncodingIdx[encodingIdx] = rtpStream
+	p.rtpStreamScores[encodingIdx] = rtpStream.GetScore()
+
+	// Set the mapped SSRC.
+	p.mapRtpStreamMappedSsrc.Store(rtpStream.GetId(), encodingMapping.MappedSsrc)
+	p.mapMappedSsrcSsrc.Store(encodingMapping.MappedSsrc, ssrc)
+
+	// If the Producer is paused tell it to the new RtpStreamRecv.
+	if p.Paused {
+		rtpStream.Pause()
+	}
+
+	return rtpStream
 }
 
 func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
@@ -238,7 +350,7 @@ func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
 	// Otherwise, check our encodings and, if appropriate, create a new stream.
 
 	// First, look for an encoding with matching media or RTX ssrc value.
-	for _, encoding := range p.RtpParameters.Encodings {
+	for idx, encoding := range p.RtpParameters.Encodings {
 		mediaCodec := p.RtpParameters.GetCodecForEncoding(encoding)
 		rtxCodec := p.RtpParameters.GetRtxCodecForEncoding(encoding)
 		var isMediaPacket, isRtxPacket bool
@@ -250,10 +362,30 @@ func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
 		}
 
 		if isMediaPacket && encoding.Ssrc == ssrc {
-			rtpStream := p.CreateRtpStream(packet, mediaCodec, encoding)
+			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
 			return rtpStream
 		} else if isRtxPacket && encoding.Rtx != nil && encoding.Rtx.Ssrc == ssrc {
-			// todo
+			v, ok := p.mapSsrcRtpStream.Load(encoding.Ssrc)
+			// Ignore if no stream has been created yet for the corresponding encoding.
+			if !ok {
+				p.logger.Debug("ignoring RTX packet for not yet created RtpStream (ssrc lookup)")
+				return nil
+			}
+			rtpStream := v.(*RtpStreamRecv)
+
+			// Ensure no RTX ssrc was previously detected.
+			if rtpStream.HasRtx() {
+				p.logger.Debug("ignoring RTX packet with new ssrc (ssrc lookup)")
+				return nil
+			}
+
+			// Update the stream RTX data.
+			rtpStream.SetRtx(payloadType, ssrc)
+
+			// Insert the new RTX ssrc into the map.
+			p.mapRtxSsrcRtpStream.Store(ssrc, rtpStream)
+
+			return rtpStream
 		}
 	}
 
@@ -265,4 +397,29 @@ func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
 
 func (p *Producer) PreProcessRtpPacket(packet *rtp.Packet) {
 	// todo
+}
+
+func (p *Producer) PostProcessRtpPacket(packet *rtp.Packet) {
+	if p.Kind == mediasoupdata.MediaKind_Video {
+	}
+	// todo
+}
+
+func (p *Producer) NotifyNewRtpStream(rtpStream *RtpStreamRecv) {
+	v, ok := p.mapRtpStreamMappedSsrc.Load(rtpStream.GetId())
+	if !ok {
+		return
+	}
+	mappedSsrc := v.(uint32)
+	p.onTransportProducerNewRtpStreamHandler(p.id, rtpStream, mappedSsrc)
+}
+
+func (p *Producer) OnKeyFrameNeeded(ssrc uint32) {
+	v, ok := p.mapSsrcRtpStream.Load(ssrc)
+	if !ok {
+		p.logger.Warn("no associated RtpStream found [ssrc:%d]", ssrc)
+		return
+	}
+	rtpStream := v.(*RtpStreamRecv)
+	rtpStream.RequestKeyFrame()
 }

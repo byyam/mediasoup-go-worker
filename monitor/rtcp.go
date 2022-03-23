@@ -7,12 +7,16 @@ import (
 var (
 	rtcpNamespace = "rtcp"
 
-	rtcpRecvCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	rtcpCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: rtcpNamespace,
 		Name:      "count",
-	}, []string{"action"})
+	}, []string{"direction", "action"})
 )
 
-func RtcpRecvCount(action ActionType) {
-	rtcpRecvCount.WithLabelValues(string(action)).Inc()
+func RtcpRecvCount(action TraceType) {
+	rtcpCount.WithLabelValues(string(DirectionTypeRecv), string(action)).Inc()
+}
+
+func RtcpSendCount(action TraceType) {
+	rtcpCount.WithLabelValues(string(DirectionTypeSend), string(action)).Inc()
 }

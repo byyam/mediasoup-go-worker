@@ -26,7 +26,7 @@ type Router struct {
 func NewRouter(id string) *Router {
 	return &Router{
 		id:                   id,
-		logger:               utils.NewLogger("router"),
+		logger:               utils.NewLogger("router", id),
 		mapProducerConsumers: utils.NewHashMap(),
 	}
 }

@@ -28,7 +28,7 @@ func NewChannel(consumerFd, producerFd int) *Channel {
 	c := &Channel{
 		consumerFd: consumerFd,
 		producerFd: producerFd,
-		logger:     utils.NewLogger("channel"),
+		logger:     utils.NewLogger("channel", consumerFd, producerFd),
 	}
 	go c.runReadLoop()
 	return c

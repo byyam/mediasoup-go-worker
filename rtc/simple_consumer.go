@@ -3,6 +3,8 @@ package rtc
 import (
 	"sync/atomic"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
@@ -27,7 +29,7 @@ type simpleConsumerParam struct {
 func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	var err error
 	c := &SimpleConsumer{
-		logger: utils.NewLogger("simple-consumer"),
+		logger: utils.NewLogger("simple-consumer", param.id),
 	}
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
 	c.onConsumerSendRtpPacketHandler.Store(param.OnConsumerSendRtpPacket)
@@ -44,6 +46,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
 	if handler, ok := c.onConsumerSendRtpPacketHandler.Load().(func(consumer IConsumer, packet *rtp.Packet)); ok && handler != nil {
 		handler(c.IConsumer, packet)
 	}
+	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
 	c.logger.Trace("SendRtpPacket:%+v", packet.Header)
 }
 
