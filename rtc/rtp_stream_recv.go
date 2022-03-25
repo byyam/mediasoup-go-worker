@@ -55,14 +55,14 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 			SenderSSRC: r.GetSsrc(),
 			MediaSSRC:  r.GetSsrc(),
 		}
-		monitor.MediasoupCount(monitor.RtpStreamRecv, monitor.EventPli)
+		monitor.KeyframeCount(r.GetSsrc(), monitor.KeyframeSendPLI)
 		r.onRtpStreamSendRtcpPacketHandler(packet)
 	} else if r.params.UseFir {
 		packet := &rtcp.FullIntraRequest{
 			SenderSSRC: r.GetSsrc(),
 			MediaSSRC:  r.GetSsrc(),
 		}
-		monitor.MediasoupCount(monitor.RtpStreamRecv, monitor.EventFir)
+		monitor.KeyframeCount(r.GetSsrc(), monitor.KeyframeSendFIR)
 		r.onRtpStreamSendRtcpPacketHandler(packet)
 	}
 }

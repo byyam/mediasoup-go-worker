@@ -3,6 +3,8 @@ package rtc
 import (
 	"encoding/json"
 
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
+
 	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -16,6 +18,7 @@ type IConsumer interface {
 	GetId() string
 	Close()
 	FillJson() json.RawMessage
+	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	GetType() mediasoupdata.ConsumerType
 	GetRtpParameters() mediasoupdata.RtpParameters
 	SendRtpPacket(packet *rtp.Packet)
@@ -71,6 +74,37 @@ func (c *Consumer) FillJson() json.RawMessage {
 	//TODO implement me
 	panic("implement me")
 }
+func (c *Consumer) FillJsonStats() json.RawMessage {
+	jsonData := mediasoupdata.ConsumerStat{
+		Type:                 "",
+		Timestamp:            0,
+		Ssrc:                 0,
+		RtxSsrc:              0,
+		Rid:                  "",
+		Kind:                 "",
+		MimeType:             "",
+		PacketsLost:          0,
+		FractionLost:         0,
+		PacketsDiscarded:     0,
+		PacketsRetransmitted: 0,
+		PacketsRepaired:      0,
+		NackCount:            0,
+		NackPacketCount:      0,
+		PliCount:             0,
+		FirCount:             0,
+		Score:                0,
+		PacketCount:          0,
+		ByteCount:            0,
+		Bitrate:              0,
+		RoundTripTime:        0,
+		RtxPacketsDiscarded:  0,
+		Jitter:               0,
+		BitrateByLayer:       nil,
+	}
+	data, _ := json.Marshal(&jsonData)
+	c.logger.Debug("getStats:%+v", jsonData)
+	return data
+}
 
 type consumerParam struct {
 	id                     string
@@ -117,4 +151,19 @@ func (c *Consumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
 
 func (c *Consumer) GetMediaSsrcs() []uint32 {
 	return c.mediaSsrcs
+}
+
+func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
+	defer func() {
+		c.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+	}()
+
+	switch request.Method {
+
+	case mediasoupdata.MethodConsumerDump:
+		response.Data = c.FillJson()
+
+	case mediasoupdata.MethodDataConsumerGetStats:
+		response.Data = c.FillJsonStats()
+	}
 }

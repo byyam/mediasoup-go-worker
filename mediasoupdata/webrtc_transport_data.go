@@ -135,3 +135,10 @@ const (
 	DtlsState_Failed     = "failed"
 	DtlsState_Closed     = "closed"
 )
+
+type WebRtcTransportSpecificStat struct {
+	IceRole          string          `json:"iceRole"`
+	IceState         IceState        `json:"iceState"`
+	DtlsState        DtlsRole        `json:"dtlsState"`
+	IceSelectedTuple *TransportTuple `json:"iceSelectedTuple,omitempty"`
+}

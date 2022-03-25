@@ -73,3 +73,32 @@ const (
 	TransportType_Pipe   TransportType = "PipeTransport"
 	TransportType_Webrtc TransportType = "WebrtcTransport"
 )
+
+type TransportStat struct {
+	// Common to all Transports.
+	Type                     string    `json:"type,omitempty"`
+	TransportId              string    `json:"transportId,omitempty"`
+	Timestamp                int64     `json:"timestamp,omitempty"`
+	SctpState                SctpState `json:"sctpState,omitempty"`
+	BytesReceived            int64     `json:"bytesReceived,omitempty"`
+	RecvBitrate              int64     `json:"recvBitrate,omitempty"`
+	BytesSent                int64     `json:"bytesSent,omitempty"`
+	SendBitrate              int64     `json:"sendBitrate,omitempty"`
+	RtpBytesReceived         int64     `json:"rtpBytesReceived,omitempty"`
+	RtpRecvBitrate           int64     `json:"rtpRecvBitrate,omitempty"`
+	RtpBytesSent             int64     `json:"rtpBytesSent,omitempty"`
+	RtpSendBitrate           int64     `json:"rtpSendBitrate,omitempty"`
+	RtxBytesReceived         int64     `json:"rtxBytesReceived,omitempty"`
+	RtxRecvBitrate           int64     `json:"rtxRecvBitrate,omitempty"`
+	RtxBytesSent             int64     `json:"rtxBytesSent,omitempty"`
+	RtxSendBitrate           int64     `json:"rtxSendBitrate,omitempty"`
+	ProbationBytesSent       int64     `json:"probationBytesSent,omitempty"`
+	ProbationSendBitrate     int64     `json:"probationSendBitrate,omitempty"`
+	AvailableOutgoingBitrate int64     `json:"availableOutgoingBitrate,omitempty"`
+	AvailableIncomingBitrate int64     `json:"availableIncomingBitrate,omitempty"`
+	MaxIncomingBitrate       int64     `json:"maxIncomingBitrate,omitempty"`
+	RtpPacketLossReceived    float64   `json:"rtpPacketLossReceived,omitempty"`
+	RtpPacketLossSent        float64   `json:"rtpPacketLossSent,omitempty"`
+
+	*WebRtcTransportSpecificStat
+}

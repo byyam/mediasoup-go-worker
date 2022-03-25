@@ -80,6 +80,38 @@ func (t *Transport) FillJson() json.RawMessage {
 	return data
 }
 
+func (t *Transport) FillJsonStats() json.RawMessage {
+	jsonData := mediasoupdata.TransportStat{
+		Type:                        "",
+		TransportId:                 "",
+		Timestamp:                   0,
+		SctpState:                   "",
+		BytesReceived:               0,
+		RecvBitrate:                 0,
+		BytesSent:                   0,
+		SendBitrate:                 0,
+		RtpBytesReceived:            0,
+		RtpRecvBitrate:              0,
+		RtpBytesSent:                0,
+		RtpSendBitrate:              0,
+		RtxBytesReceived:            0,
+		RtxRecvBitrate:              0,
+		RtxBytesSent:                0,
+		RtxSendBitrate:              0,
+		ProbationBytesSent:          0,
+		ProbationSendBitrate:        0,
+		AvailableOutgoingBitrate:    0,
+		AvailableIncomingBitrate:    0,
+		MaxIncomingBitrate:          0,
+		RtpPacketLossReceived:       0,
+		RtpPacketLossSent:           0,
+		WebRtcTransportSpecificStat: nil,
+	}
+	data, _ := json.Marshal(&jsonData)
+	t.logger.Debug("getStats:%+v", jsonData)
+	return data
+}
+
 type transportParam struct {
 	Id                                   string
 	OnTransportNewProducer               func(producer *Producer) error
@@ -163,6 +195,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	case mediasoupdata.MethodTransportEnableTraceEvent:
 
 	case mediasoupdata.MethodTransportGetStats:
+		response.Data = t.FillJsonStats()
 
 	// producer
 	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
@@ -333,11 +366,11 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	case *rtcp.FullIntraRequest:
 		pkg := packet.(*rtcp.FullIntraRequest)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
-		t.logger.Debug("%s", pkg.String())
+		monitor.KeyframeCount(pkg.MediaSSRC, monitor.KeyframeRecvFIR)
 	case *rtcp.PictureLossIndication:
 		pkg := packet.(*rtcp.PictureLossIndication)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
-		t.logger.Debug("%s", pkg.String())
+		monitor.KeyframeCount(pkg.MediaSSRC, monitor.KeyframeRecvPLI)
 	case *rtcp.ReceiverEstimatedMaximumBitrate:
 		pkg := packet.(*rtcp.ReceiverEstimatedMaximumBitrate)
 		t.logger.Debug("%s", pkg.String())

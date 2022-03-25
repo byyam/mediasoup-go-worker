@@ -103,3 +103,5 @@ type ConsumerData struct {
 	ProducerPaused bool          `json:"producerPaused,omitempty"`
 	Score          ConsumerScore `json:"score,omitempty"`
 }
+
+type ConsumerStat = ProducerStat

@@ -66,3 +66,33 @@ type ProducerData struct {
 	RtpParameters           RtpParameters `json:"rtpParameters,omitempty"`
 	ConsumableRtpParameters RtpParameters `json:"consumableRtpParameters,omitempty"`
 }
+
+type ProducerStat struct {
+	// Common to all RtpStreams.
+	Type                 string  `json:"type,omitempty"`
+	Timestamp            int64   `json:"timestamp,omitempty"`
+	Ssrc                 uint32  `json:"ssrc,omitempty"`
+	RtxSsrc              uint32  `json:"rtxSsrc,omitempty"`
+	Rid                  string  `json:"rid,omitempty"`
+	Kind                 string  `json:"kind,omitempty"`
+	MimeType             string  `json:"mimeType,omitempty"`
+	PacketsLost          uint32  `json:"packetsLost,omitempty"`
+	FractionLost         uint32  `json:"fractionLost,omitempty"`
+	PacketsDiscarded     uint32  `json:"packetsDiscarded,omitempty"`
+	PacketsRetransmitted uint32  `json:"packetsRetransmitted,omitempty"`
+	PacketsRepaired      uint32  `json:"packetsRepaired,omitempty"`
+	NackCount            uint32  `json:"nackCount,omitempty"`
+	NackPacketCount      uint32  `json:"nackPacketCount,omitempty"`
+	PliCount             uint32  `json:"pliCount,omitempty"`
+	FirCount             uint32  `json:"firCount,omitempty"`
+	Score                uint32  `json:"score,omitempty"`
+	PacketCount          int64   `json:"packetCount,omitempty"`
+	ByteCount            int64   `json:"byteCount,omitempty"`
+	Bitrate              uint32  `json:"bitrate,omitempty"`
+	RoundTripTime        float32 `json:"roundTripTime,omitempty"`
+	RtxPacketsDiscarded  uint32  `json:"rtxPacketsDiscarded,omitempty"`
+
+	// RtpStreamRecv specific.
+	Jitter         uint32 `json:"jitter,omitempty"`
+	BitrateByLayer H      `json:"bitrateByLayer,omitempty"`
+}

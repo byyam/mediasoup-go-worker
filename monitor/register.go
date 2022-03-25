@@ -7,6 +7,7 @@ func register() {
 	prometheus.MustRegister(rtcpCount)
 	prometheus.MustRegister(iceCount)
 	prometheus.MustRegister(mediasoupCount)
+	prometheus.MustRegister(keyframeCount)
 }
 
 type DirectionType string
@@ -43,8 +44,5 @@ const (
 type EventType string
 
 const (
-	EventRequestKeyFrame EventType = "request_key_frame"
-	EventSendRtp                   = "send_rtp"
-	EventPli                       = "pli"
-	EventFir                       = "fir"
+	EventSendRtp EventType = "send_rtp"
 )

@@ -150,6 +150,7 @@ func isKeyFrame(data []byte) bool {
 
 func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacketResult) {
 	if p.Kind == mediasoupdata.MediaKind_Video && isKeyFrame(packet.Payload) {
+		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug("isKeyFrame")
 	}
 
@@ -193,6 +194,38 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 	return
 }
 
+func (p *Producer) FillJsonStats() json.RawMessage {
+	jsonData := mediasoupdata.ProducerStat{
+		Type:                 "",
+		Timestamp:            0,
+		Ssrc:                 0,
+		RtxSsrc:              0,
+		Rid:                  "",
+		Kind:                 "",
+		MimeType:             "",
+		PacketsLost:          0,
+		FractionLost:         0,
+		PacketsDiscarded:     0,
+		PacketsRetransmitted: 0,
+		PacketsRepaired:      0,
+		NackCount:            0,
+		NackPacketCount:      0,
+		PliCount:             0,
+		FirCount:             0,
+		Score:                0,
+		PacketCount:          0,
+		ByteCount:            0,
+		Bitrate:              0,
+		RoundTripTime:        0,
+		RtxPacketsDiscarded:  0,
+		Jitter:               0,
+		BitrateByLayer:       nil,
+	}
+	data, _ := json.Marshal(&jsonData)
+	p.logger.Debug("getStats:%+v", jsonData)
+	return data
+}
+
 func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
 		p.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
@@ -201,6 +234,8 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 	switch request.Method {
 	case mediasoupdata.MethodProducerDump:
 		response.Data = p.FillJson()
+	case mediasoupdata.MethodProducerGetStats:
+		response.Data = p.FillJsonStats()
 	}
 
 }
@@ -243,7 +278,6 @@ func (p *Producer) RequestKeyFrame(mappedSsrc uint32) {
 	//
 
 	p.logger.Debug("RequestKeyFrame:%d,%d", mappedSsrc, ssrc)
-	monitor.MediasoupCount(monitor.Producer, monitor.EventRequestKeyFrame)
 	// todo
 	p.keyFrameRequestManager.KeyFrameNeeded(ssrc)
 }
