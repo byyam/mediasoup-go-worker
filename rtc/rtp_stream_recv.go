@@ -1,7 +1,10 @@
 package rtc
 
 import (
+	"time"
+
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -64,5 +67,34 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 		}
 		monitor.KeyframeCount(r.GetSsrc(), monitor.KeyframeSendFIR)
 		r.onRtpStreamSendRtcpPacketHandler(packet)
+	}
+}
+
+func (r *RtpStreamRecv) FillJsonStats() mediasoupdata.ProducerStat {
+	return mediasoupdata.ProducerStat{
+		Type:                 "inbound-rtp",
+		Timestamp:            time.Now().Unix(),
+		Ssrc:                 r.GetSsrc(),
+		RtxSsrc:              r.GetRtxSsrc(),
+		Rid:                  "",
+		Kind:                 "",
+		MimeType:             "",
+		PacketsLost:          0,
+		FractionLost:         0,
+		PacketsDiscarded:     0,
+		PacketsRetransmitted: 0,
+		PacketsRepaired:      0,
+		NackCount:            0,
+		NackPacketCount:      0,
+		PliCount:             0,
+		FirCount:             0,
+		Score:                0,
+		PacketCount:          0,
+		ByteCount:            0,
+		Bitrate:              0,
+		RoundTripTime:        0,
+		RtxPacketsDiscarded:  0,
+		Jitter:               0,
+		BitrateByLayer:       nil,
 	}
 }

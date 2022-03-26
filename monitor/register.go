@@ -14,7 +14,7 @@ type DirectionType string
 
 const (
 	DirectionTypeRecv DirectionType = "recv"
-	DirectionTypeSend               = "send"
+	DirectionTypeSend DirectionType = "send"
 )
 
 type PacketType string
@@ -39,6 +39,8 @@ const (
 	TraceRtpRtxStreamRecvFailed           = "rtp_rtx_stream_recv_failed"
 	TraceRtpStreamNotFound                = "rtp_stream_not_found"
 	TraceUnknownRtcpType                  = "unknown_rtcp_type"
+	TraceAudio                            = "audio"
+	TraceVideo                            = "video"
 )
 
 type EventType string

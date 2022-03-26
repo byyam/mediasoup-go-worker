@@ -153,6 +153,11 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug("isKeyFrame")
 	}
+	if p.Kind == mediasoupdata.MediaKind_Video {
+		monitor.RtpRecvCount(monitor.TraceVideo)
+	} else if p.Kind == mediasoupdata.MediaKind_Audio {
+		monitor.RtpRecvCount(monitor.TraceAudio)
+	}
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
@@ -195,31 +200,13 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 }
 
 func (p *Producer) FillJsonStats() json.RawMessage {
-	jsonData := mediasoupdata.ProducerStat{
-		Type:                 "",
-		Timestamp:            0,
-		Ssrc:                 0,
-		RtxSsrc:              0,
-		Rid:                  "",
-		Kind:                 "",
-		MimeType:             "",
-		PacketsLost:          0,
-		FractionLost:         0,
-		PacketsDiscarded:     0,
-		PacketsRetransmitted: 0,
-		PacketsRepaired:      0,
-		NackCount:            0,
-		NackPacketCount:      0,
-		PliCount:             0,
-		FirCount:             0,
-		Score:                0,
-		PacketCount:          0,
-		ByteCount:            0,
-		Bitrate:              0,
-		RoundTripTime:        0,
-		RtxPacketsDiscarded:  0,
-		Jitter:               0,
-		BitrateByLayer:       nil,
+	var jsonData []mediasoupdata.ProducerStat
+	for _, rtpStream := range p.rtpStreamByEncodingIdx {
+		if rtpStream == nil {
+			continue
+		}
+		stat := rtpStream.FillJsonStats()
+		jsonData = append(jsonData, stat)
 	}
 	data, _ := json.Marshal(&jsonData)
 	p.logger.Debug("getStats:%+v", jsonData)

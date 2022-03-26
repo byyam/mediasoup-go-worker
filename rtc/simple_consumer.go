@@ -41,6 +41,11 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 }
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
+	if c.GetKind() == mediasoupdata.MediaKind_Video {
+		monitor.RtpSendCount(monitor.TraceVideo)
+	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {
+		monitor.RtpSendCount(monitor.TraceAudio)
+	}
 	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
 	if handler, ok := c.onConsumerSendRtpPacketHandler.Load().(func(consumer IConsumer, packet *rtp.Packet)); ok && handler != nil {
