@@ -77,10 +77,8 @@ func RtpSendCount(action TraceType) {
 
 // RTCP count
 var (
-	rtcpNamespace = "rtcp"
-
 	rtcpCount = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: rtcpNamespace,
+		Namespace: "rtcp",
 		Name:      "count",
 	}, []string{"direction", "action"})
 )

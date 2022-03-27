@@ -21,26 +21,26 @@ type PacketType string
 
 const (
 	PacketAll  PacketType = "all"
-	PacketStun            = "stun"
-	PacketDtls            = "dtls"
+	PacketStun PacketType = "stun"
+	PacketDtls PacketType = "dtls"
 )
 
 type TraceType string
 
 const (
 	TraceReceive                TraceType = "recv"
-	TraceSend                             = "send"
-	TraceDecryptFailed                    = "decrypt_failed"
-	TraceEncryptFailed                    = "encrypt_failed"
-	TraceUnmarshalFailed                  = "unmarshal_failed"
-	TraceMarshalFailed                    = "marshal_failed"
-	TraceSsrcNotFound                     = "ssrc_not_found"
-	TraceRtpStreamRecvFailed              = "rtp_stream_recv_failed"
-	TraceRtpRtxStreamRecvFailed           = "rtp_rtx_stream_recv_failed"
-	TraceRtpStreamNotFound                = "rtp_stream_not_found"
-	TraceUnknownRtcpType                  = "unknown_rtcp_type"
-	TraceAudio                            = "audio"
-	TraceVideo                            = "video"
+	TraceSend                   TraceType = "send"
+	TraceDecryptFailed          TraceType = "decrypt_failed"
+	TraceEncryptFailed          TraceType = "encrypt_failed"
+	TraceUnmarshalFailed        TraceType = "unmarshal_failed"
+	TraceMarshalFailed          TraceType = "marshal_failed"
+	TraceSsrcNotFound           TraceType = "ssrc_not_found"
+	TraceRtpStreamRecvFailed    TraceType = "rtp_stream_recv_failed"
+	TraceRtpRtxStreamRecvFailed TraceType = "rtp_rtx_stream_recv_failed"
+	TraceRtpStreamNotFound      TraceType = "rtp_stream_not_found"
+	TraceUnknownRtcpType        TraceType = "unknown_rtcp_type"
+	TraceAudio                  TraceType = "audio"
+	TraceVideo                  TraceType = "video"
 )
 
 type EventType string
