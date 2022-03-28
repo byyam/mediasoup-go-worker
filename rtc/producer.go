@@ -15,7 +15,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/rtc/rtc_rtcp"
+	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -106,9 +106,9 @@ func (p *Producer) init(param producerParam) error {
 	}
 
 	if p.Kind == mediasoupdata.MediaKind_Audio {
-		p.maxRtcpInterval = rtc_rtcp.MaxAudioIntervalMs
+		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
 	} else {
-		p.maxRtcpInterval = rtc_rtcp.MaxVideoIntervalMs
+		p.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
 		p.keyFrameRequestManager = NewKeyFrameRequestManager(&KeyFrameRequestManagerParam{
 			keyFrameRequestDelay: param.options.KeyFrameRequestDelay,
 			onKeyFrameNeeded:     p.OnKeyFrameNeeded,

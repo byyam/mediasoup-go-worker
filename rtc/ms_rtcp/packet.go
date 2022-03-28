@@ -1,4 +1,4 @@
-package rtc_rtcp
+package ms_rtcp
 
 import "time"
 

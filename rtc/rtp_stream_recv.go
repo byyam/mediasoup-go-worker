@@ -13,6 +13,7 @@ import (
 type RtpStreamRecv struct {
 	*RtpStream
 	score                            uint8
+	transmissionCounter              *TransmissionCounter
 	logger                           utils.Logger
 	onRtpStreamSendRtcpPacketHandler func(packet rtcp.Packet)
 }
