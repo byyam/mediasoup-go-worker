@@ -91,6 +91,11 @@ func (r *Router) Close() {
 		transport.Close()
 		return true
 	})
+	r.mapProducers.Range(func(key, value interface{}) bool {
+		producer := value.(*Producer)
+		producer.Close()
+		return true
+	})
 	r.logger.Warn("router:%s stop", r.id)
 }
 

@@ -1,21 +1,18 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/byyam/mediasoup-go-worker/monitor"
-
-	"github.com/byyam/mediasoup-go-worker/internal/global"
-
-	"github.com/byyam/mediasoup-go-worker/conf"
-
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
-
+	"github.com/byyam/mediasoup-go-worker/conf"
+	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-
+	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
+	"github.com/google/gops/agent"
 )
 
 const (
@@ -43,6 +40,10 @@ func main() {
 
 	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
 	w.Start()
+
+	if err := agent.Listen(agent.Options{}); err != nil {
+		log.Fatal(err)
+	}
 
 	// block here
 	listenSignal()

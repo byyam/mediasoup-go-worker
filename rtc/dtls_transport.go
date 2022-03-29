@@ -19,36 +19,64 @@ import (
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 )
 
+const (
+	defaultDtlsConnectTimeout = 30 * time.Second
+)
+
+var (
+	defaultSRTPProtectionProfiles = []dtls.SRTPProtectionProfile{
+		dtls.SRTP_AEAD_AES_128_GCM,
+		dtls.SRTP_AES128_CM_HMAC_SHA1_80,
+	}
+
+	defaultFingerprintAlgorithms = []crypto.Hash{
+		crypto.SHA1,
+		crypto.SHA224,
+		crypto.SHA256,
+		crypto.SHA384,
+		crypto.SHA512,
+	}
+)
+
 type dtlsTransport struct {
-	dtlsConn      *dtls.Conn
-	dtlsConnState dtls.State
-	config        *dtls.Config
-	state         mediasoupdata.DtlsState
-	fingerPrints  []mediasoupdata.DtlsFingerprint
-	role          mediasoupdata.DtlsRole
-	tlsCerts      []tls.Certificate
-	logger        utils.Logger
+	dtlsConn               *dtls.Conn
+	dtlsConnState          dtls.State
+	config                 *dtls.Config
+	state                  mediasoupdata.DtlsState
+	fingerPrints           []mediasoupdata.DtlsFingerprint
+	role                   mediasoupdata.DtlsRole
+	tlsCerts               []tls.Certificate
+	logger                 utils.Logger
+	connTimeout            time.Duration
+	fingerprintAlgorithms  []crypto.Hash
+	sRTPProtectionProfiles []dtls.SRTPProtectionProfile
+	srtpProtectionProfile  srtp.ProtectionProfile
 }
 
 type dtlsTransportParam struct {
+	transportId string
 	role        mediasoupdata.DtlsRole
-	connTimeout time.Duration
+	connTimeout *time.Duration
 }
 
 func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
-	if param.connTimeout <= 0 {
-		return nil, common.ErrInvalidParam
-	}
 	d := &dtlsTransport{
-		state:  mediasoupdata.DtlsState_New,
-		role:   param.role,
-		logger: utils.NewLogger("dtls"),
+		state:                  mediasoupdata.DtlsState_New,
+		role:                   param.role,
+		logger:                 utils.NewLogger("dtls", param.transportId),
+		fingerprintAlgorithms:  defaultFingerprintAlgorithms,
+		sRTPProtectionProfiles: defaultSRTPProtectionProfiles,
 	}
-
+	d.fingerPrints = make([]mediasoupdata.DtlsFingerprint, len(d.fingerprintAlgorithms))
+	if param.connTimeout == nil {
+		d.connTimeout = defaultDtlsConnectTimeout
+	} else {
+		d.connTimeout = *param.connTimeout
+	}
 	if err := d.selfSignCerts(); err != nil {
 		return nil, err
 	}
-	d.prepareConfig(param.connTimeout)
+	d.prepareConfig(d.connTimeout)
 	return d, nil
 }
 
@@ -72,16 +100,23 @@ func (d *dtlsTransport) selfSignCerts() error {
 	if err != nil {
 		return err
 	}
-	d.logger.Debug("x509 length:%d", len(x509cert.Raw))
-	actualSHA256, err := fingerprint.Fingerprint(x509cert, crypto.SHA256)
-	if err != nil {
-		return err
-	}
-	d.fingerPrints = append(d.fingerPrints, mediasoupdata.DtlsFingerprint{
-		Algorithm: "sha-256",
-		Value:     actualSHA256,
-	})
 	d.tlsCerts = append(d.tlsCerts, certificate)
+	d.logger.Debug("x509 length:%d", len(x509cert.Raw))
+	// set fingerprint
+	for i, algo := range d.fingerprintAlgorithms {
+		name, err := fingerprint.StringFromHash(algo)
+		if err != nil {
+			return err
+		}
+		value, err := fingerprint.Fingerprint(x509cert, algo)
+		if err != nil {
+			return err
+		}
+		d.fingerPrints[i] = mediasoupdata.DtlsFingerprint{
+			Algorithm: name,
+			Value:     value,
+		}
+	}
 	return nil
 }
 
@@ -93,9 +128,8 @@ func (d *dtlsTransport) prepareConfig(timeout time.Duration) {
 		ConnectContextMaker: func() (context.Context, func()) {
 			return context.WithTimeout(context.Background(), timeout)
 		},
-		SRTPProtectionProfiles: []dtls.SRTPProtectionProfile{dtls.SRTP_AES128_CM_HMAC_SHA1_80},
+		SRTPProtectionProfiles: d.sRTPProtectionProfiles,
 	}
-
 }
 
 func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*mediasoupdata.TransportConnectData, error) {
@@ -138,8 +172,20 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 }
 
 func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
+	srtpProfile, ok := d.dtlsConn.SelectedSRTPProtectionProfile()
+	if !ok {
+		return nil, common.ErrNoSRTPProtectionProfile
+	}
+	switch srtpProfile {
+	case dtls.SRTP_AEAD_AES_128_GCM:
+		d.srtpProtectionProfile = srtp.ProtectionProfileAeadAes128Gcm
+	case dtls.SRTP_AES128_CM_HMAC_SHA1_80:
+		d.srtpProtectionProfile = srtp.ProtectionProfileAes128CmHmacSha1_80
+	default:
+		return nil, common.ErrNoSRTPProtectionProfile
+	}
 	srtpConfig := &srtp.Config{
-		Profile: srtp.ProtectionProfileAes128CmHmacSha1_80,
+		Profile: d.srtpProtectionProfile,
 	}
 	var isClient bool
 	if d.role == mediasoupdata.DtlsRole_Client {
@@ -149,4 +195,8 @@ func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 		return nil, fmt.Errorf("errDtlsKeyExtractionFailed: %v", err)
 	}
 	return srtpConfig, nil
+}
+
+func (d *dtlsTransport) Disconnect() {
+	d.logger.Info("dtls disconnect")
 }

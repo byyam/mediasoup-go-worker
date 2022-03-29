@@ -38,7 +38,7 @@ type Transport struct {
 	// handler
 	onTransportNewProducerHandler               atomic.Value
 	onTransportProducerClosedHandler            func(producerId string)
-	onTransportProducerRtpPacketReceivedHandler atomic.Value // (producer *Producer, packet *rtp.Packet)
+	onTransportProducerRtpPacketReceivedHandler func(*Producer, *rtp.Packet)
 	onTransportNewConsumerHandler               func(consumer IConsumer, producerId string) error
 	onTransportConsumerClosedHandler            func(producerId, consumerId string)
 	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
@@ -149,7 +149,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
-	transport.onTransportProducerRtpPacketReceivedHandler.Store(param.OnTransportProducerRtpPacketReceived)
+	transport.onTransportProducerRtpPacketReceivedHandler = param.OnTransportProducerRtpPacketReceived
 	transport.onTransportNewConsumerHandler = param.OnTransportNewConsumer
 	transport.onTransportConsumerClosedHandler = param.OnTransportConsumerClosed
 	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
@@ -326,9 +326,7 @@ func (t *Transport) ReceiveRtpPacket(packet *rtp.Packet) {
 }
 
 func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
-	if handler, ok := t.onTransportProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
-		handler(producer, packet)
-	}
+	t.onTransportProducerRtpPacketReceivedHandler(producer, packet)
 }
 
 func (t *Transport) OnProducerSendRtcpPacket(packet rtcp.Packet) {

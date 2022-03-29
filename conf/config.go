@@ -19,11 +19,11 @@ func InitCli() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "logLevel", Value: "warn", Aliases: []string{"l"}},
 			&cli.StringSliceFlag{Name: "logTag", Aliases: []string{"t"}},
-			&cli.IntFlag{Name: "rtcMinPort", Value: 40000, Aliases: []string{"m"}},
-			&cli.IntFlag{Name: "rtcMaxPort", Value: 50000, Aliases: []string{"M"}},
+			&cli.IntFlag{Name: "rtcMinPort", Value: 0, Aliases: []string{"m"}},
+			&cli.IntFlag{Name: "rtcMaxPort", Value: 0, Aliases: []string{"M"}},
 			&cli.StringFlag{Name: "dtlsCertificateFile", Aliases: []string{"c"}},
 			&cli.StringFlag{Name: "dtlsPrivateKeyFile", Aliases: []string{"p"}},
-			&cli.IntFlag{Name: "rtcStaticPort", Value: 40000, Aliases: []string{"s"}},
+			&cli.IntFlag{Name: "rtcStaticPort", Value: 0, Aliases: []string{"s"}},
 			&cli.StringFlag{Name: "rtcListenIp", Value: "0.0.0.0", Aliases: []string{"L"}},
 		},
 	}
@@ -49,6 +49,12 @@ func InitCli() {
 	if err != nil {
 		panic(err)
 	}
+
+	initLogLevel()
+	checkPort()
+}
+
+func initLogLevel() {
 	// set log level
 	switch Settings.LogLevel {
 	case "trace":
@@ -63,5 +69,14 @@ func InitCli() {
 		utils.DefaultLevel = utils.ErrorLevel
 	default:
 		panic("unknown log level")
+	}
+}
+
+func checkPort() {
+	if Settings.RtcMaxPort == 0 && Settings.RtcStaticPort == 0 && Settings.RtcMinPort == 0 {
+		panic("port value invalid")
+	}
+	if Settings.RtcMaxPort < Settings.RtcMinPort {
+		panic("port range invalid")
 	}
 }

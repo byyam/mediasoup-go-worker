@@ -3,28 +3,26 @@ package rtc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
-	"sync/atomic"
-
-	"github.com/byyam/mediasoup-go-worker/monitor"
-
-	"github.com/pion/transport/packetio"
+	"sync"
+	"time"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
-
-	"github.com/pion/stun"
-
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-
+	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/pion/ice/v2"
+	"github.com/pion/stun"
+	"github.com/pion/transport/packetio"
 )
 
 const (
 	maxBufferSize = 1000 * 1000 // 1MB
+	// keepaliveInterval used to keep candidates alive
+	defaultKeepaliveInterval = 2 * time.Second
+	// defaultDisconnectedTimeout is the default time till an Agent transitions disconnected
+	defaultDisconnectedTimeout = 5 * time.Second
 )
 
 type iceServer struct {
@@ -36,48 +34,91 @@ type iceServer struct {
 	udpMux     *ice.UDPMuxDefault
 	udpConn    net.PacketConn
 	buffer     *packetio.Buffer
+	// timestamp
+	lastStunTimestamp   time.Time
+	disconnectedTimeout time.Duration
+	keepaliveInterval   time.Duration
 	// remote info
 	iceConn  *iceConn
 	connDone chan struct{}
+	// close
+	closedChan chan struct{}
+	closeOnce  sync.Once
 	// handler
-	onPacketReceivedHandler atomic.Value
+	onPacketReceivedHandler func(data []byte)
 }
 
 type iceServerParam struct {
-	iceLite          bool
-	tcp4             bool
-	OnPacketReceived func(data []byte)
+	transportId         string
+	iceLite             bool
+	tcp4                bool
+	OnPacketReceived    func(data []byte)
+	DisconnectedTimeout *time.Duration
+	KeepaliveInterval   *time.Duration
 }
 
 func newIceServer(param iceServerParam) (*iceServer, error) {
 	ufrag, _ := utils.GenerateUFrag()
 	pwd, _ := utils.GeneratePwd()
-	i := &iceServer{
-		iceLite:    param.iceLite, // todo: support full ICE
-		state:      mediasoupdata.IceState_New,
-		logger:     utils.NewLogger("ice"),
-		localUfrag: ufrag,
-		localPwd:   pwd,
-		udpMux:     global.UdpMuxConn,
-		connDone:   make(chan struct{}),
-		buffer:     packetio.NewBuffer(),
+	d := &iceServer{
+		iceLite:           param.iceLite, // todo: support full ICE
+		state:             mediasoupdata.IceState_New,
+		logger:            utils.NewLogger("ice", param.transportId),
+		localUfrag:        ufrag,
+		localPwd:          pwd,
+		udpMux:            global.UdpMuxConn,
+		connDone:          make(chan struct{}),
+		closedChan:        make(chan struct{}),
+		buffer:            packetio.NewBuffer(),
+		lastStunTimestamp: time.Now(), // init stun TS to now.
 	}
-	i.onPacketReceivedHandler.Store(param.OnPacketReceived)
-	i.buffer.SetLimitSize(maxBufferSize)
+	if param.DisconnectedTimeout == nil {
+		d.disconnectedTimeout = defaultDisconnectedTimeout
+	} else {
+		d.disconnectedTimeout = *param.DisconnectedTimeout
+	}
+	if param.KeepaliveInterval == nil {
+		d.keepaliveInterval = defaultKeepaliveInterval
+	} else {
+		d.keepaliveInterval = *param.KeepaliveInterval
+	}
+	d.onPacketReceivedHandler = param.OnPacketReceived
+	d.buffer.SetLimitSize(maxBufferSize)
 	networkTypes := []ice.NetworkType{ice.NetworkTypeUDP4} // udp is default
 	if param.tcp4 {
 		networkTypes = append(networkTypes, ice.NetworkTypeTCP4)
 	}
-	i.logger.Debug("ice server start, ufrag=%s", i.localUfrag)
+	d.logger.Debug("ice server start, ufrag=%s", d.localUfrag)
 
 	go func() {
-		if err := i.connect(networkTypes); err != nil {
-			i.logger.Error("ice connecting failed:%v", err)
+		if err := d.connect(networkTypes); err != nil {
+			d.logger.Error("ice connecting failed:%v", err)
 			return
 		}
 	}()
 
-	return i, nil
+	go d.connectivityChecks()
+
+	return d, nil
+}
+
+func (d *iceServer) connectivityChecks() {
+	checkFn := func() {
+		if time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
+			d.logger.Warn("ice inactive")
+			d.Disconnect()
+		}
+	}
+	for {
+		t := time.NewTimer(defaultKeepaliveInterval)
+		select {
+		case <-t.C:
+			checkFn()
+		case <-d.closedChan:
+			d.logger.Warn("stop ice connectivityChecks")
+			return
+		}
+	}
 }
 
 func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
@@ -125,9 +166,7 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 		}
 		return nil
 	}
-	if handler, ok := d.onPacketReceivedHandler.Load().(func(data []byte)); ok && handler != nil {
-		handler(buffer[:n])
-	}
+	d.onPacketReceivedHandler(buffer[:n])
 	return nil
 }
 
@@ -152,10 +191,11 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 		} else if err = utils.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
 		}
-		log.Printf("inbound STUN (Request) from %s to %s", remote.String(), d.udpMux.LocalAddr())
+		d.logger.Debug("inbound STUN (Request) from %s to %s", remote.String(), d.udpMux.LocalAddr())
 		if err := d.handleBindingRequest(m, remote); err != nil {
 			return err
 		}
+		d.lastStunTimestamp = time.Now()
 	}
 	return nil
 }
@@ -163,7 +203,7 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 func (d *iceServer) handleBindingRequest(m *stun.Message, remote net.Addr) error {
 	if m.Contains(stun.AttrUseCandidate) {
 		// todo
-		log.Printf("get AttrUseCandidate")
+		d.logger.Info("get AttrUseCandidate")
 	}
 	return d.sendBindingSuccess(m, remote)
 }
@@ -222,7 +262,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,
 		Protocol:   "udp",
-		Port:       uint32(conf.Settings.RtcStaticPort),
+		Port:       uint32(global.UdpMuxPort),
 		Type:       "host",
 		TcpType:    "",
 	}
@@ -237,4 +277,40 @@ func (d *iceServer) GetConn() (*iceConn, error) {
 		d.logger.Debug("ice connected")
 	}
 	return d.iceConn, nil
+}
+
+func (d *iceServer) Disconnect() {
+	d.closeOnce.Do(func() {
+		close(d.closedChan)
+	})
+	if d.iceConn != nil {
+		if err := d.iceConn.Close(); err != nil {
+			d.logger.Error("disconnect ice failed:%v", err)
+		}
+	}
+	if d.buffer != nil {
+		if err := d.buffer.Close(); err != nil {
+			d.logger.Error("close ice buffer failed:%v", err)
+		}
+	}
+	if d.udpConn != nil {
+		if err := d.udpConn.Close(); err != nil {
+			d.logger.Error("close udp conn failed:%v", err)
+		}
+	}
+	d.udpMux.RemoveConnByUfrag(d.localUfrag)
+	d.logger.Info("ice disconnect")
+}
+
+func (d *iceServer) isClosed() bool {
+	select {
+	case <-d.closedChan:
+		return true
+	default:
+		return false
+	}
+}
+
+func (d *iceServer) CloseChannel() <-chan struct{} {
+	return d.closedChan
 }

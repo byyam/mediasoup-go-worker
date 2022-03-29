@@ -2,24 +2,16 @@ package rtc
 
 import (
 	"encoding/json"
-	"time"
-
-	"github.com/kr/pretty"
-
-	"github.com/byyam/mediasoup-go-worker/monitor"
-
-	"github.com/pion/rtcp"
-
-	"github.com/pion/srtp/v2"
-
-	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/common"
-
-	"github.com/byyam/mediasoup-go-worker/workerchannel"
-
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
+	"github.com/kr/pretty"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/srtp/v2"
 )
 
 type WebrtcTransport struct {
@@ -52,6 +44,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 		return nil, err
 	}
 	if t.iceServer, err = newIceServer(iceServerParam{
+		transportId:      param.Id,
 		iceLite:          true,
 		tcp4:             true,
 		OnPacketReceived: t.OnPacketReceived,
@@ -59,12 +52,18 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 		return nil, err
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
+		transportId: param.Id,
 		role:        mediasoupdata.DtlsRole_Auto,
-		connTimeout: 30 * time.Second,
 	}); err != nil {
 		return nil, err
 	}
 	t.logger.Debug("newWebrtcTransport options:%# v", pretty.Formatter(param.options))
+	go func() {
+		<-t.iceServer.CloseChannel()
+		t.logger.Warn("ice closed")
+		t.Close()
+		// todo emit
+	}()
 	return t, nil
 }
 
@@ -235,4 +234,15 @@ func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 		return
 	}
 	monitor.RtcpSendCount(monitor.TraceSend)
+}
+
+func (t *WebrtcTransport) Close() {
+	if t.iceServer != nil {
+		t.iceServer.Disconnect()
+	}
+	if t.dtlsTransport != nil {
+		t.dtlsTransport.Disconnect()
+	}
+	t.ITransport.Close()
+	t.logger.Info("webrtc transport closed")
 }
