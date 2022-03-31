@@ -26,14 +26,20 @@ type ParamRtpStream struct {
 }
 
 type RtpStream struct {
-	id        string
-	rtxStream *RtxStream
-	params    *ParamRtpStream
+	id           string
+	score        uint8
+	rtxStream    *RtxStream
+	params       *ParamRtpStream
+	rtt          float64
+	hasRtt       bool
+	packetsLost  uint32
+	fractionLost uint8
 }
 
-func newRtpStream(param *ParamRtpStream) *RtpStream {
+func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
 	return &RtpStream{
 		id:     uuid.New().String(),
+		score:  initialScore,
 		params: param,
 	}
 }

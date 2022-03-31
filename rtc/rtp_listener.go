@@ -24,7 +24,11 @@ func (r *RtpListener) AddProducer(producer *Producer) {
 }
 
 func (r *RtpListener) GetProducer(packet *rtp.Packet) *Producer {
-	value, ok := r.ssrcTable.Load(packet.SSRC)
+	return r.GetProducerBySSRC(packet.SSRC)
+}
+
+func (r *RtpListener) GetProducerBySSRC(ssrc uint32) *Producer {
+	value, ok := r.ssrcTable.Load(ssrc)
 	if !ok {
 		return nil
 	}

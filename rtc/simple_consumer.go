@@ -3,6 +3,8 @@ package rtc
 import (
 	"sync/atomic"
 
+	"github.com/pion/rtcp"
+
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -13,7 +15,8 @@ import (
 
 type SimpleConsumer struct {
 	IConsumer
-	logger utils.Logger
+	logger    utils.Logger
+	rtpStream *RtpStreamSend
 
 	// handler
 	onConsumerSendRtpPacketHandler     atomic.Value
@@ -37,7 +40,16 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Create RtpStreamSend instance for sending a single stream to the remote.
+	c.CreateRtpStream()
 	return c, nil
+}
+
+func (c *SimpleConsumer) CreateRtpStream() {
+	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
+		ParamRtpStream: nil,
+		bufferSize:     0,
+	})
 }
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
@@ -70,4 +82,8 @@ func (c *SimpleConsumer) RequestKeyFrame() {
 	}
 	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
 	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, mappedSsrc)
+}
+
+func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
+	c.rtpStream.ReceiveRtcpReceiverReport(report)
 }

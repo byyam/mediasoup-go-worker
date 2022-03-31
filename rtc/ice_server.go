@@ -104,6 +104,9 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 
 func (d *iceServer) connectivityChecks() {
 	checkFn := func() {
+		if !d.isConnected() {
+			return
+		}
 		if time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
 			d.logger.Warn("ice inactive")
 			d.Disconnect()
@@ -300,6 +303,15 @@ func (d *iceServer) Disconnect() {
 	}
 	d.udpMux.RemoveConnByUfrag(d.localUfrag)
 	d.logger.Info("ice disconnect")
+}
+
+func (d *iceServer) isConnected() bool {
+	select {
+	case <-d.connDone:
+		return true
+	default:
+		return false
+	}
 }
 
 func (d *iceServer) isClosed() bool {

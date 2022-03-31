@@ -3,6 +3,8 @@ package rtc
 import (
 	"encoding/json"
 
+	"github.com/pion/rtcp"
+
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/pion/rtp"
@@ -26,6 +28,7 @@ type IConsumer interface {
 	GetMediaSsrcs() []uint32
 	GetKind() mediasoupdata.MediaKind
 	GetConsumableRtpEncodings() []mediasoupdata.RtpEncodingParameters
+	ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
 }
 
 type Consumer struct {
@@ -166,4 +169,9 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 	case mediasoupdata.MethodDataConsumerGetStats:
 		response.Data = c.FillJsonStats()
 	}
+}
+
+func (c *Consumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
+	//TODO implement me
+	panic("implement me")
 }

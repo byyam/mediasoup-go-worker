@@ -30,10 +30,11 @@ type Transport struct {
 	id     string
 	logger utils.Logger
 
-	mapProducers    sync.Map //map[string]*Producer
-	mapConsumers    sync.Map
-	mapSsrcConsumer sync.Map
-	rtpListener     *RtpListener
+	mapProducers       sync.Map //map[string]*Producer
+	mapConsumers       sync.Map
+	mapSsrcConsumer    sync.Map
+	mapRtxSsrcConsumer sync.Map
+	rtpListener        *RtpListener
 
 	// handler
 	onTransportNewProducerHandler               atomic.Value
@@ -351,16 +352,42 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	switch packet.(type) {
 	case *rtcp.SenderReport:
 		pkg := packet.(*rtcp.SenderReport)
-		t.logger.Debug("%s", pkg.String())
+		for _, sr := range pkg.Reports {
+			t.logger.Debug("handle SR:%s,report:%+v", pkg.String(), sr)
+			producer := t.rtpListener.GetProducerBySSRC(sr.SSRC)
+			if producer == nil {
+				t.logger.Warn("no Producer found for received Sender Report [ssrc:%d]", sr.SSRC)
+				continue
+			}
+			producer.ReceiveRtcpSenderReport(&sr)
+		}
 	case *rtcp.ReceiverReport:
 		pkg := packet.(*rtcp.ReceiverReport)
-		t.logger.Debug("%s", pkg.String())
+		for _, rr := range pkg.Reports {
+			t.logger.Debug("handle RR:%s,report:%+v", pkg.String(), rr)
+			// Special case for the RTP probator.
+			if rr.SSRC == RtpProbationSsrc {
+				continue
+			}
+			consumer, ok := t.mapSsrcConsumer.Load(rr.SSRC)
+			if !ok {
+				// Special case for (unused) RTCP-RR from the RTX stream.
+				_, ok := t.mapRtxSsrcConsumer.Load(rr.SSRC)
+				if ok {
+					continue
+				}
+				t.logger.Warn("no Consumer found for received Receiver Report [ssrc %d]", rr.SSRC)
+				continue
+			}
+			consumer.(IConsumer).ReceiveRtcpReceiverReport(&rr)
+			// todo
+		}
 	case *rtcp.SourceDescription:
 		pkg := packet.(*rtcp.SourceDescription)
 		t.logger.Debug("%s", pkg.String())
 	case *rtcp.Goodbye:
 		pkg := packet.(*rtcp.Goodbye)
-		t.logger.Debug("%s", pkg.String())
+		t.logger.Debug("ignoring received RTCP BYE %s", pkg.String())
 	case *rtcp.FullIntraRequest:
 		pkg := packet.(*rtcp.FullIntraRequest)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
@@ -374,7 +401,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 		t.logger.Debug("%s", pkg.String())
 	default:
 		monitor.RtcpRecvCount(monitor.TraceUnknownRtcpType)
-		t.logger.Warn("unknown rtcp header:%+v", header)
+		t.logger.Warn("unhandled RTCP type received %+v", header)
 	}
 }
 

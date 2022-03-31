@@ -25,7 +25,7 @@ type ParamRtpStreamRecv struct {
 
 func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	r := &RtpStreamRecv{
-		RtpStream:                        newRtpStream(param.ParamRtpStream),
+		RtpStream:                        newRtpStream(param.ParamRtpStream, 10),
 		onRtpStreamSendRtcpPacketHandler: param.onRtpStreamSendRtcpPacket,
 	}
 	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())
