@@ -160,13 +160,16 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 }
 
 func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
+	// clear mapConsumerProducer
 	r.mapConsumerProducer.Delete(consumerId)
+	// clear mapProducerConsumers
 	v, ok := r.mapProducerConsumers.Load(producerId, consumerId)
 	if !ok {
-		r.logger.Error("consumer not found[producerId:%s][consumerId:%s]", producerId, consumerId)
-		return
+		r.logger.Error("consumer not found in mapProducerConsumers[producerId:%s][consumerId:%s]", producerId, consumerId)
+	} else {
+		v.(IConsumer).Close()
+		r.mapProducerConsumers.Delete(producerId, consumerId)
 	}
-	v.(IConsumer).Close()
 }
 
 func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {

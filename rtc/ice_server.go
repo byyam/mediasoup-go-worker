@@ -63,7 +63,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	d := &iceServer{
 		iceLite:           param.iceLite, // todo: support full ICE
 		state:             mediasoupdata.IceState_New,
-		logger:            utils.NewLogger("ice", param.transportId),
+		logger:            utils.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:        ufrag,
 		localPwd:          pwd,
 		udpMux:            global.UdpMuxConn,
@@ -92,7 +92,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 
 	go func() {
 		if err := d.connect(networkTypes); err != nil {
-			d.logger.Error("ice connecting failed:%v", err)
+			d.logger.Error("read ice connection failed:%v", err)
 			return
 		}
 	}()
@@ -108,7 +108,7 @@ func (d *iceServer) connectivityChecks() {
 			return
 		}
 		if time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
-			d.logger.Warn("ice inactive")
+			d.logger.Warn("ice inactive, disconnectedTimeout=%v, ufrag=%s", d.disconnectedTimeout, d.localUfrag)
 			d.Disconnect()
 		}
 	}

@@ -63,7 +63,7 @@ func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	d := &dtlsTransport{
 		state:                  mediasoupdata.DtlsState_New,
 		role:                   param.role,
-		logger:                 utils.NewLogger("dtls", param.transportId),
+		logger:                 utils.NewLogger(string(mediasoupdata.WorkerLogTag_DTLS), param.transportId),
 		fingerprintAlgorithms:  defaultFingerprintAlgorithms,
 		sRTPProtectionProfiles: defaultSRTPProtectionProfiles,
 	}

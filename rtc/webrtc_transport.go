@@ -39,6 +39,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
+	param.NotifyCloseFunc = t.Close
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
 		return nil, err

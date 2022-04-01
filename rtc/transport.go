@@ -47,9 +47,16 @@ type Transport struct {
 	// transport base call sons
 	sendRtpPacketFunc  func(packet *rtp.Packet)
 	sendRtcpPacketFunc func(packet rtcp.Packet)
+	notifyCloseFunc    func()
+
+	// close
+	closeOnce sync.Once
 }
 
 func (t *Transport) Close() {
+	t.closeOnce.Do(func() {
+		t.logger.Info("closed")
+	})
 }
 
 func (t *Transport) FillJson() json.RawMessage {
@@ -124,6 +131,7 @@ type transportParam struct {
 	// call webrtcTransport
 	SendRtpPacketFunc  func(packet *rtp.Packet)
 	SendRtcpPacketFunc func(packet rtcp.Packet)
+	NotifyCloseFunc    func()
 }
 
 func (t transportParam) valid() bool {
@@ -133,7 +141,7 @@ func (t transportParam) valid() bool {
 	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
 		return false
 	}
-	if t.SendRtpPacketFunc == nil {
+	if t.SendRtpPacketFunc == nil || t.SendRtcpPacketFunc == nil {
 		return false
 	}
 	return true
@@ -156,6 +164,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
+	transport.notifyCloseFunc = param.NotifyCloseFunc
 	return transport, nil
 }
 
@@ -170,6 +179,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.Data = t.FillJson()
 
 	case mediasoupdata.MethodTransportClose:
+		t.notifyCloseFunc() // call son close, tiger this close
 
 	case mediasoupdata.MethodTransportProduce:
 		var options mediasoupdata.ProducerOptions

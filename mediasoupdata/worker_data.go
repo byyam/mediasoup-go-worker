@@ -3,7 +3,9 @@ package mediasoupdata
 type WorkerLogLevel string
 
 const (
+	WorkerLogLevel_Trace WorkerLogLevel = "trace"
 	WorkerLogLevel_Debug WorkerLogLevel = "debug"
+	WorkerLogLevel_Info  WorkerLogLevel = "info"
 	WorkerLogLevel_Warn  WorkerLogLevel = "warn"
 	WorkerLogLevel_Error WorkerLogLevel = "error"
 	WorkerLogLevel_None  WorkerLogLevel = "none"

@@ -29,6 +29,10 @@ const (
 var (
 	// DefaultLevel defines default log level.
 	DefaultLevel = DebugLevel
+	// Scopes defines default log scopes.
+	NoneScopeLimit = true // if not set, all scope is valid
+	NoneScopeLevel = DefaultLevel
+	Scopes         = make(map[string]bool)
 	// NewLogger defines function to create logger instance.
 	NewLogger = newDefaultLogger
 	// NewLoggerWriter defines function to create logger writer.
@@ -57,6 +61,13 @@ var (
 		return writer
 	}
 )
+
+func SetScopes(scopes ...string) {
+	NoneScopeLimit = false
+	for _, s := range scopes {
+		Scopes[s] = true
+	}
+}
 
 type Logger interface {
 	Trace(format string, v ...interface{})
@@ -89,8 +100,12 @@ func newDefaultLogger(scope string, ids ...interface{}) Logger {
 		context = context.Str(zerolog.CallerFieldName, caller)
 	}
 
+	logLevel := DefaultLevel
+	if !Scopes[scope] && !NoneScopeLimit {
+		logLevel = NoneScopeLevel
+	}
 	return &defaultLogger{
-		logger: context.Logger().Level(DefaultLevel),
+		logger: context.Logger().Level(logLevel),
 	}
 }
 

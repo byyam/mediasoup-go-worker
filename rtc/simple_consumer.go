@@ -1,8 +1,6 @@
 package rtc
 
 import (
-	"sync/atomic"
-
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -19,7 +17,7 @@ type SimpleConsumer struct {
 	rtpStream *RtpStreamSend
 
 	// handler
-	onConsumerSendRtpPacketHandler     atomic.Value
+	onConsumerSendRtpPacketHandler     func(consumer IConsumer, packet *rtp.Packet)
 	onConsumerKeyFrameRequestedHandler func(consumer IConsumer, mappedSsrc uint32)
 }
 
@@ -35,7 +33,7 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 		logger: utils.NewLogger("simple-consumer", param.id),
 	}
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
-	c.onConsumerSendRtpPacketHandler.Store(param.OnConsumerSendRtpPacket)
+	c.onConsumerSendRtpPacketHandler = param.OnConsumerSendRtpPacket
 	c.onConsumerKeyFrameRequestedHandler = param.OnConsumerKeyFrameRequested
 	if err != nil {
 		return nil, err
@@ -60,9 +58,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
 	}
 	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
-	if handler, ok := c.onConsumerSendRtpPacketHandler.Load().(func(consumer IConsumer, packet *rtp.Packet)); ok && handler != nil {
-		handler(c.IConsumer, packet)
-	}
+	c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
 	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
 	c.logger.Trace("SendRtpPacket:%+v", packet.Header)
 }

@@ -51,24 +51,31 @@ func InitCli() {
 	}
 
 	initLogLevel()
+	initLogScope()
 	checkPort()
 }
 
 func initLogLevel() {
 	// set log level
 	switch Settings.LogLevel {
-	case "trace":
+	case mediasoupdata.WorkerLogLevel_Trace:
 		utils.DefaultLevel = utils.TraceLevel
-	case "debug":
+	case mediasoupdata.WorkerLogLevel_Debug:
 		utils.DefaultLevel = utils.DebugLevel
-	case "info":
+	case mediasoupdata.WorkerLogLevel_Info:
 		utils.DefaultLevel = utils.InfoLevel
-	case "warn":
+	case mediasoupdata.WorkerLogLevel_Warn:
 		utils.DefaultLevel = utils.WarnLevel
-	case "error":
+	case mediasoupdata.WorkerLogLevel_Error:
 		utils.DefaultLevel = utils.ErrorLevel
 	default:
 		panic("unknown log level")
+	}
+}
+
+func initLogScope() {
+	for _, tag := range Settings.LogTags {
+		utils.SetScopes(string(tag))
 	}
 }
 
