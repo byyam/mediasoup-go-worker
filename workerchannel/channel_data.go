@@ -2,8 +2,6 @@ package workerchannel
 
 import (
 	"encoding/json"
-
-	"github.com/ragsagar/netstringer"
 )
 
 type channelData struct {
@@ -20,13 +18,4 @@ type channelData struct {
 	Event    string `json:"event,omitempty"`
 	// common data
 	Data json.RawMessage `json:"data,omitempty"`
-}
-
-func (c *channelData) Marshal() ([]byte, error) {
-	jsonByte, err := json.Marshal(c)
-	if err != nil {
-		return nil, err
-	}
-	buf := netstringer.Encode(jsonByte)
-	return buf, nil
 }

@@ -2,65 +2,57 @@ package workerchannel
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-
-	"github.com/ragsagar/netstringer"
+	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
 )
 
 const (
-	READ_MAX_BUF = 4096
+	// netstring length for a 4194304 bytes payload.
+	NS_MESSAGE_MAX_LEN = 4194308
+	NS_PAYLOAD_MAX_LEN = 4194304
 )
 
 type Channel struct {
-	consumerFd int
-	producerFd int
-	logger     utils.Logger
+	logger    utils.Logger
+	netParser netparser.INetParser
 
 	// handle request message
 	OnRequestHandler atomic.Value // func(request RequestData) ResponseData
 }
 
-func NewChannel(consumerFd, producerFd int) *Channel {
+func NewChannel(netParser netparser.INetParser, id string) *Channel {
 	c := &Channel{
-		consumerFd: consumerFd,
-		producerFd: producerFd,
-		logger:     utils.NewLogger("channel", consumerFd, producerFd),
+		netParser: netParser,
+		logger:    utils.NewLogger("channel", id),
 	}
+	c.logger.Info("channel start")
 	go c.runReadLoop()
 	return c
 }
 
-func (c *Channel) writeBuf(msg []byte) (int, error) {
-	return syscall.Write(c.producerFd, msg)
-}
-
-func (c *Channel) readBuf(buf []byte) (int, error) {
-	return syscall.Read(c.consumerFd, buf)
-}
-
 func (c *Channel) runReadLoop() {
-	buf := make([]byte, READ_MAX_BUF)
-	netStringerDecoder := netstringer.NewDecoder()
+	defer c.Close()
 	for {
-		n, err := c.readBuf(buf)
+		payload, err := c.netParser.ReadBuffer()
 		if err != nil {
-			c.logger.Debug("read loop error:%v", err)
+			c.logger.Error("Channel error:%v", err)
 			break
 		}
-		netStringerDecoder.FeedData(buf[:n])
-		nsPayload := <-netStringerDecoder.DataOutput
-		c.processPayload(nsPayload)
+		c.logger.Debug("payload:%s", string(payload))
+		c.processPayload(payload)
 	}
 }
 
 func (c *Channel) processPayload(nsPayload []byte) {
 	switch nsPayload[0] {
 	case '{':
-		_ = c.processMessage(nsPayload)
+		if err := c.processMessage(nsPayload); err != nil {
+			c.logger.Error("process message failed:%s", err)
+		}
 	case 'X':
 		c.logger.Debug("%s\n", nsPayload[1:])
 	default:
@@ -79,7 +71,8 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 	}
 	c.logger.Debug("request Id=%d, Method=%s", reqData.Id, reqData.Method)
 	var ret ResponseData
-	rspData := channelData{Id: reqData.Id}
+	rspData := new(channelData)
+	rspData.Id = reqData.Id
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		var internal InternalData
 		_ = internal.Unmarshal(reqData.Internal)
@@ -100,9 +93,16 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 		rspData.Accepted = true
 	}
 	rspData.Data = ret.Data
-	buf, _ := rspData.Marshal()
-	n, err := c.writeBuf(buf)
-	c.logger.Debug("response Id=%d, len=%d, err=%v", rspData.Id, n, err)
+	jsonByte, _ := json.Marshal(&rspData)
+
+	if len(jsonByte) > NS_MESSAGE_MAX_LEN {
+		return errors.New("channel response too big")
+	}
+	c.logger.Trace("WriteBuffer:[%s],rspData:%+v", string(jsonByte), rspData)
+	if err := c.netParser.WriteBuffer(jsonByte); err != nil {
+		return err
+	}
+	c.logger.Debug("response Id=%d,err=%v", rspData.Id, rspData.Error)
 	return nil
 }
 
@@ -112,7 +112,10 @@ func (c *Channel) Event(targetId int, event string) {
 		Event:    event,
 	}
 	jsonByte, _ := json.Marshal(&msg)
-	buf := netstringer.Encode(jsonByte)
-	n, err := c.writeBuf(buf)
-	c.logger.Debug("send Event %+v,len=%d, err=%v", msg, n, err)
+	err := c.netParser.WriteBuffer(jsonByte)
+	c.logger.Debug("send Event msg:%+v,err=%v", msg, err)
+}
+
+func (c *Channel) Close() {
+	c.logger.Info("closed")
 }

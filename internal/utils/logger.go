@@ -29,10 +29,9 @@ const (
 var (
 	// DefaultLevel defines default log level.
 	DefaultLevel = DebugLevel
+	ScopeLevel   = DefaultLevel
 	// Scopes defines default log scopes.
-	NoneScopeLimit = true // if not set, all scope is valid
-	NoneScopeLevel = DefaultLevel
-	Scopes         = make(map[string]bool)
+	Scopes = make(map[string]bool)
 	// NewLogger defines function to create logger instance.
 	NewLogger = newDefaultLogger
 	// NewLoggerWriter defines function to create logger writer.
@@ -63,7 +62,6 @@ var (
 )
 
 func SetScopes(scopes ...string) {
-	NoneScopeLimit = false
 	for _, s := range scopes {
 		Scopes[s] = true
 	}
@@ -101,8 +99,8 @@ func newDefaultLogger(scope string, ids ...interface{}) Logger {
 	}
 
 	logLevel := DefaultLevel
-	if !Scopes[scope] && !NoneScopeLimit {
-		logLevel = NoneScopeLevel
+	if Scopes[scope] {
+		logLevel = ScopeLevel
 	}
 	return &defaultLogger{
 		logger: context.Logger().Level(logLevel),

@@ -59,15 +59,15 @@ func initLogLevel() {
 	// set log level
 	switch Settings.LogLevel {
 	case mediasoupdata.WorkerLogLevel_Trace:
-		utils.DefaultLevel = utils.TraceLevel
+		utils.ScopeLevel = utils.TraceLevel
 	case mediasoupdata.WorkerLogLevel_Debug:
-		utils.DefaultLevel = utils.DebugLevel
+		utils.ScopeLevel = utils.DebugLevel
 	case mediasoupdata.WorkerLogLevel_Info:
-		utils.DefaultLevel = utils.InfoLevel
+		utils.ScopeLevel = utils.InfoLevel
 	case mediasoupdata.WorkerLogLevel_Warn:
-		utils.DefaultLevel = utils.WarnLevel
+		utils.ScopeLevel = utils.WarnLevel
 	case mediasoupdata.WorkerLogLevel_Error:
-		utils.DefaultLevel = utils.ErrorLevel
+		utils.ScopeLevel = utils.ErrorLevel
 	default:
 		panic("unknown log level")
 	}

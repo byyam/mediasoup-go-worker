@@ -12,9 +12,9 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/pion/rtcp"
@@ -65,7 +65,7 @@ type producerParam struct {
 
 func newProducer(param producerParam) (*Producer, error) {
 	if ok := param.options.Valid(); !ok {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 	p := &Producer{
 		id:     param.id,

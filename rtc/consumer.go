@@ -11,7 +11,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
-	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
@@ -74,9 +74,27 @@ func (c *Consumer) Close() {
 }
 
 func (c *Consumer) FillJson() json.RawMessage {
-	//TODO implement me
-	panic("implement me")
+	jsonData := mediasoupdata.ConsumerDump{
+		Id:                         c.Id,
+		ProducerId:                 c.ProducerId,
+		Kind:                       string(c.Kind),
+		Type:                       string(c.consumerType),
+		RtpParameters:              c.rtpParameters,
+		ConsumableRtpEncodings:     nil,
+		SupportedCodecPayloadTypes: nil,
+		Paused:                     false,
+		ProducerPaused:             false,
+		Priority:                   0,
+		TraceEventTypes:            "",
+		RtpStreams:                 nil,
+		RtpStream:                  nil,
+		SimulcastConsumerDump:      nil,
+	}
+	data, _ := json.Marshal(&jsonData)
+	c.logger.Debug("dump:%+v", jsonData)
+	return data
 }
+
 func (c *Consumer) FillJsonStats() json.RawMessage {
 	jsonData := mediasoupdata.ConsumerStat{
 		Type:                 "",
@@ -129,7 +147,7 @@ func (c consumerParam) valid() bool {
 
 func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer, error) {
 	if !param.valid() {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 
 	c := &Consumer{

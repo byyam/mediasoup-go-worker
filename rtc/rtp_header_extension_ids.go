@@ -1,8 +1,8 @@
 package rtc
 
 import (
-	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 )
 
 type RtpHeaderExtensionIds struct {
@@ -59,7 +59,7 @@ func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderE
 
 	for _, ext := range headerExtensions {
 		if ext.Id == 0 {
-			return common.ErrInvalidParam
+			return mserror.ErrInvalidParam
 		}
 		fn(ext)
 	}

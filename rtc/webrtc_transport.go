@@ -3,10 +3,10 @@ package rtc
 import (
 	"encoding/json"
 
-	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
@@ -106,7 +106,7 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 
 func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
 	if options.DtlsParameters == nil {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 	go func() {
 		iceConn, err := t.iceServer.GetConn()

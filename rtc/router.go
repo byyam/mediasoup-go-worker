@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
@@ -53,7 +53,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			response.Err = common.ErrCreateWebrtcTransport
+			response.Err = mserror.ErrCreateWebrtcTransport
 			return
 		}
 		r.mapTransports.Store(request.Internal.TransportId, webrtcTransport)
@@ -77,7 +77,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	default:
 		t, ok := r.mapTransports.Load(request.Internal.TransportId)
 		if !ok {
-			response.Err = common.ErrTransportNotFound
+			response.Err = mserror.ErrTransportNotFound
 			return
 		}
 		transport := t.(ITransport)
@@ -122,7 +122,7 @@ func (r *Router) FillJson() json.RawMessage {
 
 func (r *Router) OnTransportNewProducer(producer *Producer) error {
 	if _, ok := r.mapProducers.Load(producer.id); ok {
-		return common.ErrProducerExist
+		return mserror.ErrProducerExist
 	}
 	r.mapProducers.Store(producer.id, producer)
 
@@ -150,7 +150,7 @@ func (r *Router) OnTransportProducerClosed(producerId string) {
 
 func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) error {
 	if _, ok := r.mapProducers.Load(producerId); !ok {
-		return common.ErrProducerNotFound
+		return mserror.ErrProducerNotFound
 	}
 	r.mapProducerConsumers.Store(producerId, consumer.GetId(), consumer)
 	r.mapConsumerProducer.Store(consumer.GetId(), producerId)

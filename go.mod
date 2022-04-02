@@ -7,6 +7,7 @@ require (
 	github.com/google/gops v0.3.22
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/go-version v1.4.0
 	github.com/imdario/mergo v0.3.12
 	github.com/jiyeyuran/go-protoo v1.0.4
 	github.com/kr/pretty v0.3.0

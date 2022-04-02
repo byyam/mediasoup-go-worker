@@ -5,7 +5,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+	logger = utils.NewLogger("prometheus")
 )
 
 type monitorOpt struct {
@@ -24,7 +30,7 @@ func InitPrometheus(options ...func(*monitorOpt)) {
 		for _, option := range options {
 			option(&settings)
 		}
-		log.Printf("prometheus listen on http:%+v", settings)
+		logger.Info("prometheus listen on http:%+v", settings)
 		http.Handle(settings.Path, promhttp.Handler())
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", settings.Port), nil))
 	}()

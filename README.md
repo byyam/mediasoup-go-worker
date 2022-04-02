@@ -1,13 +1,13 @@
 # mediasoup-go-worker
-Pure Go implementation of Mediasoup worker.
+Pure Go implementation of [Mediasoup worker](https://github.com/versatica/mediasoup).
 
 ### Features
 #### Mediasoup worker Protocol
 
-|   version    | stream protocol type |         support         |
-|:------------:|:--------------------:|:-----------------------:|
-| 3.6.18~3.9.0 |     netstringer      | :ballot_box_with_check: |
-|    3.9.0~    |        native        | :ballot_box_with_check: |
+|  version  | stream protocol type |         support         |
+|:---------:|:--------------------:|:-----------------------:|
+|  < 3.9.0  |      netstring       | :ballot_box_with_check: |
+| \>= 3.9.0 |        native        | :ballot_box_with_check: |
 
 
 #### Mediasoup worker API
@@ -114,6 +114,18 @@ Pure Go implementation of Mediasoup worker.
 #### Codec
 
 
+### Usage
+
+#### mediasoup-worker
+
+build out executable file.
+
+``` shell
+$ cd cmd/mediasoup-worker
+$ go build
+```
+
+Replace the worker Binary in [mediasoup](https://github.com/versatica/mediasoup) project.
 
 
 ### References

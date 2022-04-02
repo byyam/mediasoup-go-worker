@@ -11,7 +11,7 @@ import (
 
 	"github.com/pion/rtp"
 
-	"github.com/byyam/mediasoup-go-worker/common"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -149,7 +149,7 @@ func (t transportParam) valid() bool {
 
 func newTransport(param transportParam) (ITransport, error) {
 	if !param.valid() {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
 		id:          param.Id,
@@ -213,7 +213,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
-			response.Err = common.ErrProducerNotFound
+			response.Err = mserror.ErrProducerNotFound
 			return
 		}
 		producer := value.(*Producer)
@@ -222,7 +222,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	case mediasoupdata.MethodProducerClose:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
-			response.Err = common.ErrProducerNotFound
+			response.Err = mserror.ErrProducerNotFound
 			return
 		}
 		producer := value.(*Producer)
@@ -230,10 +230,22 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.mapProducers.Delete(request.Internal.ProducerId)
 		t.onTransportProducerClosedHandler(producer.id)
 
+	// consumer
+	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodDataConsumerGetStats, mediasoupdata.MethodConsumerPause,
+		mediasoupdata.MethodConsumerResume, mediasoupdata.MethodConsumerSetPreferredLayers, mediasoupdata.MethodConsumerSetPriority,
+		mediasoupdata.MethodConsumerRequestKeyFrame, mediasoupdata.MethodConsumerEnableTraceEvent:
+		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
+		if !ok {
+			response.Err = mserror.ErrConsumerNotFound
+			return
+		}
+		consumer := value.(IConsumer)
+		consumer.HandleRequest(request, response)
+
 	case mediasoupdata.MethodConsumerClose:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
 		if !ok {
-			response.Err = common.ErrConsumerNotFound
+			response.Err = mserror.ErrConsumerNotFound
 			return
 		}
 		consumer := value.(IConsumer)
@@ -251,7 +263,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 
 func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
 	if producerId == "" || consumerId == "" {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 
 	var consumer IConsumer
@@ -273,7 +285,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	case mediasoupdata.ConsumerType_Simulcast: // todo...
 	case mediasoupdata.ConsumerType_Svc:
 	default:
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 
 	if err != nil {
@@ -298,10 +310,10 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 
 func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
 	if id == "" {
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 	if _, ok := t.mapProducers.Load(id); ok {
-		return nil, common.ErrDuplicatedId
+		return nil, mserror.ErrDuplicatedId
 	}
 	producer, err := newProducer(producerParam{
 		id:                          id,

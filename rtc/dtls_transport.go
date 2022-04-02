@@ -14,9 +14,9 @@ import (
 	"github.com/pion/dtls/v2/pkg/crypto/selfsign"
 	"github.com/pion/srtp/v2"
 
-	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 )
 
 const (
@@ -140,7 +140,7 @@ func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*med
 	case mediasoupdata.DtlsRole_Server:
 		d.role = mediasoupdata.DtlsRole_Client
 	default:
-		return nil, common.ErrInvalidParam
+		return nil, mserror.ErrInvalidParam
 	}
 	return &mediasoupdata.TransportConnectData{DtlsLocalRole: d.role}, nil
 }
@@ -174,7 +174,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 	srtpProfile, ok := d.dtlsConn.SelectedSRTPProtectionProfile()
 	if !ok {
-		return nil, common.ErrNoSRTPProtectionProfile
+		return nil, mserror.ErrNoSRTPProtectionProfile
 	}
 	switch srtpProfile {
 	case dtls.SRTP_AEAD_AES_128_GCM:
@@ -182,7 +182,7 @@ func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 	case dtls.SRTP_AES128_CM_HMAC_SHA1_80:
 		d.srtpProtectionProfile = srtp.ProtectionProfileAes128CmHmacSha1_80
 	default:
-		return nil, common.ErrNoSRTPProtectionProfile
+		return nil, mserror.ErrNoSRTPProtectionProfile
 	}
 	srtpConfig := &srtp.Config{
 		Profile: d.srtpProtectionProfile,

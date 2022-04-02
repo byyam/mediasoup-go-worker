@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/byyam/mediasoup-go-worker/common"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/rtc"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -40,7 +40,7 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 	default:
 		r, ok := w.routerMap.Load(request.Internal.RouterId)
 		if !ok {
-			response.Err = common.ErrRouterNotFound
+			response.Err = mserror.ErrRouterNotFound
 			return
 		}
 		router := r.(*rtc.Router)
