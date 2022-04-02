@@ -141,7 +141,7 @@ func (t transportParam) valid() bool {
 	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
 		return false
 	}
-	if t.SendRtpPacketFunc == nil || t.SendRtcpPacketFunc == nil {
+	if t.SendRtpPacketFunc == nil || t.SendRtcpPacketFunc == nil || t.NotifyCloseFunc == nil {
 		return false
 	}
 	return true
