@@ -3,6 +3,7 @@ package netparser
 import (
 	"encoding/binary"
 	"io"
+	"unsafe"
 )
 
 type NetNative struct {
@@ -39,4 +40,18 @@ func (c NetNative) ReadBuffer() (payload []byte, err error) {
 	payload = make([]byte, payloadLen)
 	_, err = io.ReadFull(c.r, payload)
 	return
+}
+
+func HostByteOrder() binary.ByteOrder {
+	buf := [2]byte{}
+	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
+
+	switch buf {
+	case [2]byte{0xCD, 0xAB}:
+		return binary.LittleEndian
+	case [2]byte{0xAB, 0xCD}:
+		return binary.BigEndian
+	default:
+		panic("Could not determine native endian.")
+	}
 }

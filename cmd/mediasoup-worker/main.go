@@ -57,8 +57,9 @@ func main() {
 	var netParser netparser.INetParser
 	nativeVersion, _ := version.NewVersion(NativeVersion)
 	if currentLatest.GreaterThanOrEqual(nativeVersion) {
-		netParser = netparser.NewNetNative(producerSocket, consumerSocket, utils.HostByteOrder())
-		logger.Info("create native codec")
+		order := netparser.HostByteOrder()
+		netParser = netparser.NewNetNative(producerSocket, consumerSocket, order)
+		logger.Info("create native codec, host order:%s", order)
 	} else {
 		netParser = netparser.NewNetStrings(producerSocket, consumerSocket)
 		logger.Info("create netstrings codec")
