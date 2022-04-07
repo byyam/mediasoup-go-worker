@@ -300,7 +300,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	for _, ssrc := range consumer.GetMediaSsrcs() {
 		t.mapSsrcConsumer.Store(ssrc, consumer)
 	}
-	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s,ssrc:%v", producerId, consumerId, options.Type, consumer.GetMediaSsrcs())
+	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v", producerId, consumerId, options.Type, options.Kind, consumer.GetMediaSsrcs())
 	return &mediasoupdata.ConsumerData{
 		Paused:         false,
 		ProducerPaused: false,

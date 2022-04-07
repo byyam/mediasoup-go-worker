@@ -21,6 +21,7 @@ type RtpHeaderExtensionIds struct {
 
 func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderExtensionParameters) error {
 	fn := func(ext mediasoupdata.RtpHeaderExtensionParameters) {
+		ext.Type = mediasoupdata.GetRtpHeaderExtensionUri(ext.Uri)
 		if r.Mid == 0 && ext.Type == mediasoupdata.MID {
 			r.Mid = uint8(ext.Id)
 		}

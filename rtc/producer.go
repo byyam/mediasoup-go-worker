@@ -104,6 +104,7 @@ func (p *Producer) init(param producerParam) error {
 		p.logger.Error("fill RtpHeaderExtensionIds failed:%v", err)
 		return err
 	}
+	p.logger.Info("fill RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
 	if p.Kind == mediasoupdata.MediaKind_Audio {
 		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
@@ -190,6 +191,11 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 		return
 	}
 
+	// Mangle the packet before providing the listener with it.
+	if !p.MangleRtpPacket(packet, rtpStream) {
+		return ReceiveRtpPacketResultDISCARDED
+	}
+
 	// Post-process the packet.
 	p.PostProcessRtpPacket(packet)
 
@@ -197,6 +203,58 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 		handler(p, packet)
 	}
 	return
+}
+
+func (p *Producer) MangleRtpPacket(packet *rtp.Packet, rtpStream *RtpStreamRecv) bool {
+	// Mangle the payload type.
+	payloadType := packet.PayloadType
+	var mappedPayloadType uint8
+	for _, codec := range p.rtpMapping.Codecs { // todo: use map
+		if codec.PayloadType == payloadType {
+			mappedPayloadType = codec.MappedPayloadType
+			break
+		}
+	}
+	if mappedPayloadType == 0 {
+		p.logger.Warn("unknown payload type [payloadType:%d]", payloadType)
+		return false
+	}
+	packet.PayloadType = mappedPayloadType
+
+	// Mangle the SSRC.
+	v, ok := p.mapRtpStreamMappedSsrc.Load(rtpStream.GetId())
+	if !ok {
+		p.logger.Warn("unknown rtpStream type [rtpStream:%d]", rtpStream.GetId())
+		return false
+	}
+	mappedSsrc := v.(uint32)
+	packet.SSRC = mappedSsrc
+
+	// Mangle RTP header extensions.
+	// Add urn:ietf:params:rtp-hdrext:sdes:mid.
+	{
+		payload := packet.GetExtension(p.RtpHeaderExtensionIds.Mid)
+		if payload == nil {
+			p.logger.Warn("set RTP header extension MID failed,mappedSsrc:%d", mappedSsrc)
+		} else {
+			if err := packet.SetExtension(mediasoupdata.MID, payload); err != nil {
+				p.logger.Warn("set RTP header extension MID failed:%s,mappedSsrc:%d", err, mappedSsrc)
+			}
+		}
+	}
+	if p.Kind == mediasoupdata.MediaKind_Audio {
+		// Proxy urn:ietf:params:rtp-hdrext:ssrc-audio-level.
+		payload := packet.GetExtension(p.RtpHeaderExtensionIds.SsrcAudioLevel)
+		if payload != nil {
+			if err := packet.SetExtension(mediasoupdata.SSRC_AUDIO_LEVEL, payload); err != nil {
+				p.logger.Warn("set RTP header extension ssrc audio level failed:%s,mappedSsrc:%d", err, mappedSsrc)
+			}
+		}
+	} else if p.Kind == mediasoupdata.MediaKind_Video {
+		// todo
+	}
+
+	return true
 }
 
 func (p *Producer) FillJsonStats() json.RawMessage {
@@ -446,5 +504,11 @@ func (p *Producer) OnKeyFrameNeeded(ssrc uint32) {
 }
 
 func (p *Producer) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {
-	// todo
+	v, ok := p.mapSsrcRtpStream.Load(report.SSRC)
+	if !ok {
+		p.logger.Warn("RtpStream not found [ssrc:%d]", report.SSRC)
+		return
+	}
+	rtpStream := v.(*RtpStreamRecv)
+	rtpStream.ReceiveRtcpSenderReport(report)
 }

@@ -99,3 +99,7 @@ func (r *RtpStreamRecv) FillJsonStats() mediasoupdata.ProducerStat {
 		BitrateByLayer:       nil,
 	}
 }
+
+func (r *RtpStreamRecv) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {
+	// todo
+}

@@ -3,6 +3,8 @@ package rtc
 import (
 	"encoding/json"
 
+	"github.com/kr/pretty"
+
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -161,6 +163,9 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	for _, encoding := range c.rtpParameters.Encodings {
 		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
 	}
+	c.logger.Info("new consumer:%# v", pretty.Formatter(c.rtpParameters))
+	c.logger.Info("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
+	c.logger.Info("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
 
 	return c, nil
 }
