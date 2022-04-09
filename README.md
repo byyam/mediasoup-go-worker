@@ -1,6 +1,14 @@
 # mediasoup-go-worker
 Pure Go implementation of [Mediasoup worker](https://github.com/versatica/mediasoup).
 
+
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+<a href="Language"><img src="https://img.shields.io/badge/language-golang-green.svg"></a>
+ <a href="https://goreportcard.com/report/github.com/byyam/mediasoup-go-worker"><img src="https://goreportcard.com/badge/github.com/byyam/mediasoup-go-worker" alt="Go Report Card"></a>
+</p>
+
+
 ### Features
 #### Mediasoup worker Protocol
 
