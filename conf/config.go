@@ -18,7 +18,7 @@ func InitCli() {
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "logLevel", Value: "warn", Aliases: []string{"l"}},
-			&cli.StringSliceFlag{Name: "logTag", Aliases: []string{"t"}},
+			&cli.StringSliceFlag{Name: "logTags", Aliases: []string{"t"}},
 			&cli.IntFlag{Name: "rtcMinPort", Value: 0, Aliases: []string{"m"}},
 			&cli.IntFlag{Name: "rtcMaxPort", Value: 0, Aliases: []string{"M"}},
 			&cli.StringFlag{Name: "dtlsCertificateFile", Aliases: []string{"c"}},

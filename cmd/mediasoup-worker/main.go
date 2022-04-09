@@ -13,7 +13,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/google/gops/agent"
 	"github.com/hashicorp/go-version"
@@ -46,7 +45,7 @@ func main() {
 
 	conf.InitCli()
 	logger.Info("argv:%+v", conf.Settings)
-	monitor.InitPrometheus()
+	// monitor.InitPrometheus()
 
 	producerSocket, err := utils.FileToConn(os.NewFile(uintptr(ProducerChannelFd), ""))
 	checkError(err)
