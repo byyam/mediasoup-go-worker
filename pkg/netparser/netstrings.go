@@ -5,12 +5,20 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net"
+	"os"
 	"strconv"
+)
+
+const (
+	separatorSymbol = byte(':')
+	endSymbol       = byte(',')
 )
 
 type NetStrings struct {
 	w                          io.Writer
 	r                          *bufio.Reader
+	writeFile, readFile        *os.File
 	separatorSymbol, endSymbol byte
 }
 
@@ -18,9 +26,29 @@ func NewNetStrings(w io.Writer, r io.Reader) INetParser {
 	return &NetStrings{
 		w:               w,
 		r:               bufio.NewReader(r),
-		separatorSymbol: byte(':'),
-		endSymbol:       byte(','),
+		separatorSymbol: separatorSymbol,
+		endSymbol:       endSymbol,
 	}
+}
+
+func NewNetStringsFd(writeFd, readFd int) (INetParser, error) {
+	var err error
+	c := &NetStrings{
+		separatorSymbol: separatorSymbol,
+		endSymbol:       endSymbol,
+	}
+	c.writeFile = os.NewFile(uintptr(writeFd), "")
+	c.readFile = os.NewFile(uintptr(readFd), "")
+	c.w, err = net.FileConn(c.writeFile)
+	if err != nil {
+		return nil, err
+	}
+	reader, err := net.FileConn(c.readFile)
+	if err != nil {
+		return nil, err
+	}
+	c.r = bufio.NewReader(reader)
+	return c, nil
 }
 
 func (c NetStrings) WriteBuffer(payload []byte) error {
@@ -65,4 +93,20 @@ func (c NetStrings) ReadBuffer() (payload []byte, err error) {
 		return
 	}
 	return
+}
+
+func (c *NetStrings) Close() error {
+	if c.writeFile != nil {
+		err := c.writeFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	if c.readFile != nil {
+		err := c.readFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	ConsumerChannelFd        = 3
-	ProducerChannelFd        = 4
+	ConsumerChannelFd        = 3 // read fd
+	ProducerChannelFd        = 4 // write fd
 	PayloadConsumerChannelFd = 5
 	PayloadProducerChannelFd = 6
 
@@ -47,22 +47,22 @@ func main() {
 	logger.Info("argv:%+v", conf.Settings)
 	// monitor.InitPrometheus()
 
-	producerSocket, err := utils.FileToConn(os.NewFile(uintptr(ProducerChannelFd), ""))
-	checkError(err)
-	consumerSocket, err := utils.FileToConn(os.NewFile(uintptr(ConsumerChannelFd), ""))
-	checkError(err)
 	logger.Info("create producer:%d and consumer:%d socket", ProducerChannelFd, ConsumerChannelFd)
 
 	var netParser netparser.INetParser
 	nativeVersion, _ := version.NewVersion(NativeVersion)
 	if currentLatest.GreaterThanOrEqual(nativeVersion) {
 		order := netparser.HostByteOrder()
-		netParser = netparser.NewNetNative(producerSocket, consumerSocket, order)
+		netParser, err = netparser.NewNetNativeFd(ProducerChannelFd, ConsumerChannelFd, order)
 		logger.Info("create native codec, host order:%s", order)
 	} else {
-		netParser = netparser.NewNetStrings(producerSocket, consumerSocket)
+		netParser, err = netparser.NewNetStringsFd(ProducerChannelFd, ConsumerChannelFd)
 		logger.Info("create netstrings codec")
 	}
+	checkError(err)
+	defer func() {
+		_ = netParser.Close()
+	}()
 
 	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("pid=%d,cfd=%d,pfd=%d", global.Pid, ConsumerChannelFd, ProducerChannelFd))
 	payloadChannel := workerchannel.NewPayloadChannel()
