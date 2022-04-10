@@ -2,6 +2,7 @@ package netparser
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -53,28 +54,24 @@ func (c NetNative) WriteBuffer(payload []byte) error {
 	return err
 }
 
-func (c NetNative) ReadBuffer() (payload []byte, err error) {
+func (c NetNative) ReadBuffer(payload []byte) (int, error) {
 	var payloadLen uint32
-	if err = binary.Read(c.r, c.nativeEndian, &payloadLen); err != nil {
-		return
+	if err := binary.Read(c.r, c.nativeEndian, &payloadLen); err != nil {
+		return 0, err
 	}
-	payload = make([]byte, payloadLen)
-	_, err = io.ReadFull(c.r, payload)
-	return
+	return io.ReadFull(c.r, payload[:payloadLen])
 }
 
 func (c *NetNative) Close() error {
+	var wErr, rErr error
 	if c.writeFile != nil {
-		err := c.writeFile.Close()
-		if err != nil {
-			return err
-		}
+		wErr = c.writeFile.Close()
 	}
 	if c.readFile != nil {
-		err := c.readFile.Close()
-		if err != nil {
-			return err
-		}
+		rErr = c.readFile.Close()
+	}
+	if wErr != nil || rErr != nil {
+		return errors.New("close write/read file failed")
 	}
 	return nil
 }

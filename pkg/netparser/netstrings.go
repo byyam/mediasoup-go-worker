@@ -63,50 +63,44 @@ func (c NetStrings) WriteBuffer(payload []byte) error {
 	return err
 }
 
-func (c NetStrings) ReadBuffer() (payload []byte, err error) {
+func (c NetStrings) ReadBuffer(payload []byte) (int, error) {
 	begin, err := c.r.ReadString(c.separatorSymbol)
 	if err != nil {
-		return
+		return 0, err
 	}
 	if len(begin) < 1 {
-		err = errors.New("invalid payload start")
-		return
+		return 0, errors.New("invalid payload start")
 	}
 	if separator := begin[len(begin)-1]; separator != c.separatorSymbol {
-		err = errors.New("invalid payload separator")
-		return
+		return 0, errors.New("invalid payload separator")
 	}
 	length, err := strconv.Atoi(begin[:len(begin)-1])
 	if err != nil {
-		return
+		return 0, err
 	}
-	payload = make([]byte, length)
-	if _, err = io.ReadFull(c.r, payload); err != nil {
-		return
+	if _, err = io.ReadFull(c.r, payload[:length]); err != nil {
+		return 0, err
 	}
 	end, err := c.r.ReadByte()
 	if err != nil {
-		return
+		return 0, err
 	}
 	if end != c.endSymbol {
-		err = errors.New("invalid payload end")
-		return
+		return 0, errors.New("invalid payload end")
 	}
-	return
+	return length, nil
 }
 
 func (c *NetStrings) Close() error {
+	var wErr, rErr error
 	if c.writeFile != nil {
-		err := c.writeFile.Close()
-		if err != nil {
-			return err
-		}
+		wErr = c.writeFile.Close()
 	}
 	if c.readFile != nil {
-		err := c.readFile.Close()
-		if err != nil {
-			return err
-		}
+		rErr = c.readFile.Close()
+	}
+	if wErr != nil || rErr != nil {
+		return errors.New("close write/read file failed")
 	}
 	return nil
 }

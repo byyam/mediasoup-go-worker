@@ -22,27 +22,32 @@ func BenchmarkNetStrings_WriteBuffer(b *testing.B) {
 }
 
 func BenchmarkNetStrings_ReadBuffer(b *testing.B) {
+	buffer := make([]byte, 4194308)
 	buf := bytes.NewReader(netstringPayload)
 	parser := NewNetStrings(nil, buf)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = parser.ReadBuffer()
+		_, err := parser.ReadBuffer(buffer)
+		if err != nil {
+			b.Fatal(err)
+		}
 		buf.Reset(netstringPayload)
 	}
 }
 
 func TestNetStrings_ReadBuffer(t *testing.T) {
+	buffer := make([]byte, 4194308)
 	buf := bytes.NewReader(netstringPayload)
 	parser := NewNetStrings(nil, buf)
-	out, err := parser.ReadBuffer()
+	n, err := parser.ReadBuffer(buffer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(out)
+	t.Log(buffer[:n])
 	buf.Reset(netstringPayload)
-	out1, err1 := parser.ReadBuffer()
-	if err1 != nil {
-		t.Fatal(err1)
+	n1, err := parser.ReadBuffer(buffer)
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Log(out1)
+	t.Log(buffer[:n1])
 }

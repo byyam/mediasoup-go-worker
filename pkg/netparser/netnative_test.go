@@ -16,12 +16,13 @@ func BenchmarkNetNative_WriteBuffer(b *testing.B) {
 
 func BenchmarkNetNative_ReadBuffer(b *testing.B) {
 	r, w := io.Pipe()
+	buffer := make([]byte, 4194308)
 
 	parser := NewNetNative(nil, r, HostByteOrder())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		resetWriter(w, rawPayload)
-		_, err := parser.ReadBuffer()
+		_, err := parser.ReadBuffer(buffer)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -36,21 +37,22 @@ func TestNetNative_ReadBuffer(t *testing.T) {
 	payload := []byte("{\"id\":2,\"internal\":null,\"method\":\"worker.getResourceUsage\"}")
 	t.Logf("payload[%d]", len(payload))
 	resetWriter(w, payload)
+	buffer := make([]byte, 4194308)
 
 	// read
 	parser := NewNetNative(nil, r, HostByteOrder())
-	out, err := parser.ReadBuffer()
+	n, err := parser.ReadBuffer(buffer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("out[%d]:%s", len(out), string(out))
+	t.Logf("out[%d]:%s", n, string(buffer[:n]))
 	// reset
 	resetWriter(w, payload)
-	out1, err := parser.ReadBuffer()
+	n1, err := parser.ReadBuffer(buffer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("out1[%d]:%s", len(out1), string(out1))
+	t.Logf("out1[%d]:%s", n1, string(buffer[:n]))
 	_ = w.Close()
 	_ = r.Close()
 }

@@ -36,14 +36,15 @@ func NewChannel(netParser netparser.INetParser, id string) *Channel {
 
 func (c *Channel) runReadLoop() {
 	defer c.Close()
+	payload := make([]byte, NS_PAYLOAD_MAX_LEN)
 	for {
-		payload, err := c.netParser.ReadBuffer()
+		n, err := c.netParser.ReadBuffer(payload)
 		if err != nil {
 			c.logger.Error("Channel error:%v", err)
 			break
 		}
-		c.logger.Debug("payload:%s", string(payload))
-		c.processPayload(payload)
+		c.logger.Debug("payload:%s", string(payload[:n]))
+		c.processPayload(payload[:n])
 	}
 }
 
