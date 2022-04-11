@@ -231,7 +231,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.onTransportProducerClosedHandler(producer.id)
 
 	// consumer
-	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodDataConsumerGetStats, mediasoupdata.MethodConsumerPause,
+	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodConsumerGetStats, mediasoupdata.MethodConsumerPause,
 		mediasoupdata.MethodConsumerResume, mediasoupdata.MethodConsumerSetPreferredLayers, mediasoupdata.MethodConsumerSetPriority,
 		mediasoupdata.MethodConsumerRequestKeyFrame, mediasoupdata.MethodConsumerEnableTraceEvent:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)

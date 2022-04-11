@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrInvalidParam            = errors.New("invalid param")
+	ErrInvalidMethod           = errors.New("invalid method")
 	ErrRouterNotFound          = errors.New("router not found")
 	ErrTransportNotFound       = errors.New("transport not found")
 	ErrCreateWebrtcTransport   = errors.New("create webrtc-transport failed")

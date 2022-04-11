@@ -1,6 +1,8 @@
 package rtc
 
-import "github.com/pion/rtp"
+import (
+	"github.com/pion/rtp"
+)
 
 const (
 	InactivityCheckInterval        = 1500 // In ms.
@@ -18,9 +20,9 @@ func newTransmissionCounter(spatialLayers, temporalLayers uint8, windowSize int)
 	}
 
 	for idx, _ := range t.spatialLayerCounters {
-		temporalLayerCounter := make([]*RtpDataCounter, temporalLayers)
+		temporalLayerCounter := make([]*RtpDataCounter, 0)
 		for tIdx := uint8(0); tIdx < temporalLayers; tIdx++ {
-			r := newRtpDataCounter(windowSize)
+			r := NewRtpDataCounter(windowSize)
 			temporalLayerCounter = append(temporalLayerCounter, r)
 		}
 		t.spatialLayerCounters[idx] = temporalLayerCounter
@@ -30,5 +32,34 @@ func newTransmissionCounter(spatialLayers, temporalLayers uint8, windowSize int)
 }
 
 func (p *TransmissionCounter) Update(packet *rtp.Packet) {
-	// todo
+	// todo: support svc
+	counter := p.spatialLayerCounters[0][0]
+	counter.Update(packet)
+}
+
+func (p *TransmissionCounter) GetBitrate(nowMs int64) (rate uint32) {
+	for _, spatialLayers := range p.spatialLayerCounters {
+		for _, temporalLayer := range spatialLayers {
+			rate += temporalLayer.GetBitrate(nowMs)
+		}
+	}
+	return
+}
+
+func (p *TransmissionCounter) GetBytes() (bytes int64) {
+	for _, spatialLayers := range p.spatialLayerCounters {
+		for _, temporalLayer := range spatialLayers {
+			bytes += temporalLayer.GetBytes()
+		}
+	}
+	return
+}
+
+func (p *TransmissionCounter) GetPacketCount() (packetCount int64) {
+	for _, spatialLayers := range p.spatialLayerCounters {
+		for _, temporalLayer := range spatialLayers {
+			packetCount += temporalLayer.GetPacketCount()
+		}
+	}
+	return
 }

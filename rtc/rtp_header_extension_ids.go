@@ -19,7 +19,7 @@ type RtpHeaderExtensionIds struct {
 	AbsCaptureTime    uint8
 }
 
-func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderExtensionParameters) error {
+func (r *RtpHeaderExtensionIds) set(headerExtensions []mediasoupdata.RtpHeaderExtensionParameters, isProducer bool) error {
 	fn := func(ext mediasoupdata.RtpHeaderExtensionParameters) {
 		ext.Type = mediasoupdata.GetRtpHeaderExtensionUri(ext.Uri)
 		if r.Mid == 0 && ext.Type == mediasoupdata.MID {
@@ -38,10 +38,10 @@ func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderE
 			r.TransportWideCc01 = uint8(ext.Id)
 		}
 		// NOTE: Remove this once framemarking draft becomes RFC.
-		if r.FrameMarking07 == 0 && ext.Type == mediasoupdata.FRAME_MARKING_07 {
+		if r.FrameMarking07 == 0 && ext.Type == mediasoupdata.FRAME_MARKING_07 && isProducer {
 			r.FrameMarking07 = uint8(ext.Id)
 		}
-		if r.FrameMarking == 0 && ext.Type == mediasoupdata.FRAME_MARKING {
+		if r.FrameMarking == 0 && ext.Type == mediasoupdata.FRAME_MARKING && isProducer {
 			r.FrameMarking = uint8(ext.Id)
 		}
 		if r.SsrcAudioLevel == 0 && ext.Type == mediasoupdata.SSRC_AUDIO_LEVEL {
@@ -50,10 +50,10 @@ func (r *RtpHeaderExtensionIds) fill(headerExtensions []mediasoupdata.RtpHeaderE
 		if r.VideoOrientation == 0 && ext.Type == mediasoupdata.VIDEO_ORIENTATION {
 			r.VideoOrientation = uint8(ext.Id)
 		}
-		if r.TOffset == 0 && ext.Type == mediasoupdata.TOFFSET {
+		if r.TOffset == 0 && ext.Type == mediasoupdata.TOFFSET && isProducer {
 			r.TOffset = uint8(ext.Id)
 		}
-		if r.AbsCaptureTime == 0 && ext.Type == mediasoupdata.ABS_CAPTURE_TIME {
+		if r.AbsCaptureTime == 0 && ext.Type == mediasoupdata.ABS_CAPTURE_TIME && isProducer {
 			r.AbsCaptureTime = uint8(ext.Id)
 		}
 	}

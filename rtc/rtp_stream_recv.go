@@ -1,8 +1,6 @@
 package rtc
 
 import (
-	"time"
-
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -13,7 +11,7 @@ import (
 type RtpStreamRecv struct {
 	*RtpStream
 	score                            uint8
-	transmissionCounter              *TransmissionCounter
+	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
 	logger                           utils.Logger
 	onRtpStreamSendRtcpPacketHandler func(packet rtcp.Packet)
 }
@@ -28,7 +26,13 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 		RtpStream:                        newRtpStream(param.ParamRtpStream, 10),
 		onRtpStreamSendRtcpPacketHandler: param.onRtpStreamSendRtcpPacket,
 	}
+	windowSize := 2500
+	if param.UseDtx {
+		windowSize = 6000
+	}
+	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())
+	r.logger.Info("new RtpStreamRecv:%# v", *param.ParamRtpStream)
 	return r
 }
 
@@ -43,6 +47,8 @@ func (r *RtpStreamRecv) ReceivePacket(packet *rtp.Packet) bool {
 		r.logger.Debug("packet discarded")
 		return false
 	}
+	// Increase transmission counter.
+	r.transmissionCounter.Update(packet)
 	// todo
 
 	return true
@@ -71,33 +77,15 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 	}
 }
 
-func (r *RtpStreamRecv) FillJsonStats() mediasoupdata.ProducerStat {
-	return mediasoupdata.ProducerStat{
-		Type:                 "inbound-rtp",
-		Timestamp:            time.Now().Unix(),
-		Ssrc:                 r.GetSsrc(),
-		RtxSsrc:              r.GetRtxSsrc(),
-		Rid:                  "",
-		Kind:                 "",
-		MimeType:             "",
-		PacketsLost:          0,
-		FractionLost:         0,
-		PacketsDiscarded:     0,
-		PacketsRetransmitted: 0,
-		PacketsRepaired:      0,
-		NackCount:            0,
-		NackPacketCount:      0,
-		PliCount:             0,
-		FirCount:             0,
-		Score:                0,
-		PacketCount:          0,
-		ByteCount:            0,
-		Bitrate:              0,
-		RoundTripTime:        0,
-		RtxPacketsDiscarded:  0,
-		Jitter:               0,
-		BitrateByLayer:       nil,
-	}
+func (r *RtpStreamRecv) FillJsonStats(stat *mediasoupdata.ProducerStat) {
+	nowMs := utils.GetTimeMs()
+	stat.Type = "inbound-rtp"
+	stat.Timestamp = nowMs
+	stat.PacketCount = r.transmissionCounter.GetPacketCount()
+	stat.ByteCount = r.transmissionCounter.GetBytes()
+	stat.Bitrate = r.transmissionCounter.GetBitrate(nowMs)
+
+	r.RtpStream.FillJsonStats(stat)
 }
 
 func (r *RtpStreamRecv) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {

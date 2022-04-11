@@ -28,7 +28,7 @@ const (
 
 var (
 	// DefaultLevel defines default log level.
-	DefaultLevel = DebugLevel
+	DefaultLevel = InfoLevel
 	ScopeLevel   = DefaultLevel
 	// Scopes defines default log scopes.
 	Scopes = make(map[string]bool)

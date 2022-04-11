@@ -65,6 +65,7 @@ const (
 
 type RtpCodecMimeType struct {
 	Type     MimeType
+	TypeStr  string
 	SubType  MimeSubType
 	MimeType string
 }
@@ -77,11 +78,11 @@ func (r *RtpCodecMimeType) SetMimeType(mimeType string) error {
 	if len(slashPos) != 2 {
 		return errors.New("wrong codec MIME")
 	}
-	tye := slashPos[0]
+	r.TypeStr = slashPos[0]
 	subType := slashPos[1]
 
 	// Set MIME type.
-	switch tye {
+	switch r.TypeStr {
 	case "audio":
 		r.Type = MimeTypeAudio
 	case "video":

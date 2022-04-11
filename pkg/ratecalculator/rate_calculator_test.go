@@ -1,0 +1,29 @@
+package ratecalculator
+
+import (
+	"math/rand"
+	"testing"
+	"time"
+
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
+)
+
+func BenchmarkRateCalculator_Update(b *testing.B) {
+	rate := NewRateCalculator(2500, 0, 0)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		nowMs := utils.GetTimeMs()
+		rate.Update(300, nowMs)
+	}
+}
+
+func TestRateCalculator_Update(t *testing.T) {
+	utils.DefaultLevel = utils.TraceLevel
+	rate := NewRateCalculator(5, 0, 0)
+	for i := 0; i < 100; i++ {
+		nowMs := utils.GetTimeMs()
+		jitterMs := nowMs + int64(rand.Intn(400))
+		rate.Update(300, jitterMs)
+		time.Sleep(time.Millisecond * 200)
+	}
+}

@@ -1,4 +1,4 @@
-package rtc
+package ratecalculator
 
 import (
 	"math"
@@ -33,14 +33,14 @@ type RateCalculator struct {
 	oldestItemStartTime int64        // Time (in milliseconds) for oldest item in the time window.
 	oldestItemIndex     int32        // Index for the oldest item in the time window.
 	totalCount          int          // Total count in the time window.
-	bytes               int          // Total bytes transmitted.
+	bytes               int64        // Total bytes transmitted.
 	lastRate            uint32       // Last value calculated by GetRate().
 	lastTime            int64        // Last time GetRate() was called.
 
 	logger utils.Logger
 }
 
-func (p RateCalculator) GetBytes() int {
+func (p RateCalculator) GetBytes() int64 {
 	return p.bytes
 }
 
@@ -63,7 +63,7 @@ func (p *RateCalculator) Update(size int, nowMs int64) {
 		return
 	}
 	// Increase bytes.
-	p.bytes += size
+	p.bytes += int64(size)
 	p.RemoveOldData(nowMs)
 
 	// If the elapsed time from the newest item start time is greater than the
@@ -78,19 +78,22 @@ func (p *RateCalculator) Update(size int, nowMs int64) {
 		if p.newestItemIndex == p.oldestItemIndex && p.oldestItemIndex != -1 {
 			p.logger.Warn("calculation buffer full, windowSizeMs:%d ms windowItems:%d", p.windowSizeMs, p.windowItems)
 
-			oldestItem := p.buffer[p.oldestItemIndex]
+			oldestItem := &p.buffer[p.oldestItemIndex]
 			p.totalCount -= oldestItem.count
 			oldestItem.Reset()
 			if p.oldestItemIndex+1 >= p.windowItems {
 				p.oldestItemIndex = 0
+			} else {
+				p.oldestItemStartTime += 1
 			}
 		}
 		// Set the newest item.
-		item := p.buffer[p.newestItemIndex]
-		item.Reset()
+		item := &p.buffer[p.newestItemIndex]
+		item.count = size
+		item.time = nowMs
 	} else {
 		// Update the newest item.
-		item := p.buffer[p.newestItemIndex]
+		item := &p.buffer[p.newestItemIndex]
 		item.count += size
 	}
 	// Set the oldest item index and time, if not set.
@@ -106,7 +109,7 @@ func (p *RateCalculator) Update(size int, nowMs int64) {
 }
 
 func (p *RateCalculator) RemoveOldData(nowMs int64) {
-	p.logger.Trace("remove old data%+v", *p)
+	p.logger.Trace("remove old data%+v,nowMs=%d", *p, nowMs)
 
 	// No item set.
 	if p.newestItemIndex < 0 || p.oldestItemIndex < 0 {
@@ -115,6 +118,7 @@ func (p *RateCalculator) RemoveOldData(nowMs int64) {
 	newOldestTime := nowMs - int64(p.windowSizeMs)
 	// Oldest item already removed.
 	if newOldestTime <= p.oldestItemStartTime {
+		p.logger.Trace("oldest item already removed")
 		return
 	}
 	// A whole window size time has elapsed since last entry. Reset the buffer.
@@ -124,6 +128,7 @@ func (p *RateCalculator) RemoveOldData(nowMs int64) {
 	}
 
 	for p.oldestItemStartTime < newOldestTime {
+		p.logger.Trace("oldestItemStartTime=%d,newOldestTime=%d", p.oldestItemStartTime, newOldestTime)
 		oldestItem := p.buffer[p.oldestItemIndex]
 		p.totalCount -= oldestItem.count
 		oldestItem.Reset()
@@ -136,6 +141,7 @@ func (p *RateCalculator) RemoveOldData(nowMs int64) {
 
 		newOldestItem := p.buffer[p.oldestItemIndex]
 		p.oldestItemStartTime = newOldestItem.time
+		p.logger.Trace("update oldestItemStartTime=%d", p.oldestItemStartTime)
 	}
 }
 
@@ -153,7 +159,7 @@ func (p *RateCalculator) Reset() {
 	}
 }
 
-func newRateCalculator(windowSizeMs int, scale float64, windowItems int32) *RateCalculator {
+func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32) *RateCalculator {
 	if windowSizeMs == 0 {
 		windowSizeMs = DefaultWindowSize
 	}

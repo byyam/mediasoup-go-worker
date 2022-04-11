@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/byyam/mediasoup-go-worker/monitor"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
@@ -38,6 +40,7 @@ func checkError(err error) {
 }
 
 func main() {
+	// init configurations
 	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")
 	currentLatest, err := version.NewVersion(mediasoupVersion)
 	checkError(err)
@@ -45,10 +48,11 @@ func main() {
 
 	conf.InitCli()
 	logger.Info("argv:%+v", conf.Settings)
-	// monitor.InitPrometheus()
+	if conf.Settings.PrometheusPort > 0 {
+		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
+	}
 
-	logger.Info("create producer:%d and consumer:%d socket", ProducerChannelFd, ConsumerChannelFd)
-
+	// prepare write/read channel
 	var netParser netparser.INetParser
 	nativeVersion, _ := version.NewVersion(NativeVersion)
 	if currentLatest.GreaterThanOrEqual(nativeVersion) {

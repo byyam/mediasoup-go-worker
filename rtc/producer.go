@@ -100,11 +100,11 @@ func (p *Producer) init(param producerParam) error {
 	}
 
 	p.initRtpMapping(param.options.RtpMapping)
-	if err := p.RtpHeaderExtensionIds.fill(param.options.RtpParameters.HeaderExtensions); err != nil {
-		p.logger.Error("fill RtpHeaderExtensionIds failed:%v", err)
+	if err := p.RtpHeaderExtensionIds.set(param.options.RtpParameters.HeaderExtensions, true); err != nil {
+		p.logger.Error("set RtpHeaderExtensionIds failed:%v", err)
 		return err
 	}
-	p.logger.Info("fill RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
+	p.logger.Info("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
 	if p.Kind == mediasoupdata.MediaKind_Audio {
 		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
@@ -259,15 +259,18 @@ func (p *Producer) MangleRtpPacket(packet *rtp.Packet, rtpStream *RtpStreamRecv)
 
 func (p *Producer) FillJsonStats() json.RawMessage {
 	var jsonData []mediasoupdata.ProducerStat
-	for _, rtpStream := range p.rtpStreamByEncodingIdx {
+	for idx, rtpStream := range p.rtpStreamByEncodingIdx {
 		if rtpStream == nil {
+			p.logger.Warn("rtpStream empty, idx=%d", idx)
 			continue
 		}
-		stat := rtpStream.FillJsonStats()
-		jsonData = append(jsonData, stat)
+		stat := &mediasoupdata.ProducerStat{}
+		rtpStream.FillJsonStats(stat)
+		jsonData = append(jsonData, *stat)
+		p.logger.Info("stat:%+v", *stat)
 	}
 	data, _ := json.Marshal(&jsonData)
-	p.logger.Debug("getStats:%+v", jsonData)
+	p.logger.Info("getStats:%+v", jsonData)
 	return data
 }
 
@@ -281,6 +284,10 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 		response.Data = p.FillJson()
 	case mediasoupdata.MethodProducerGetStats:
 		response.Data = p.FillJsonStats()
+
+	default:
+		response.Err = mserror.ErrInvalidMethod
+		p.logger.Error("unknown method:%s", request.Method)
 	}
 
 }
@@ -341,7 +348,7 @@ func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata
 	}
 	encoding := p.RtpParameters.Encodings[encodingIdx]
 	encodingMapping := p.rtpMapping.Encodings[encodingIdx]
-	p.logger.Debug("CreateRtpStream ssrc:%d,mappedSsrc:%d,encodingIdx:%d,rid:%s,payloadType:%d",
+	p.logger.Info("CreateRtpStream ssrc:%d,mappedSsrc:%d,encodingIdx:%d,rid:%s,payloadType:%d",
 		ssrc, encodingMapping.MappedSsrc, encodingIdx, encoding.Rid, mediaCodec.PayloadType)
 
 	params := &ParamRtpStream{

@@ -76,3 +76,11 @@ func (r *RtpStream) ReceivePacket(packet *rtp.Packet) bool {
 
 	return true
 }
+
+func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
+	stat.Ssrc = r.GetSsrc()
+	stat.RtxSsrc = r.GetRtxSsrc()
+	stat.Rid = r.params.Rid
+	stat.Kind = r.params.MimeType.TypeStr
+	stat.MimeType = r.params.MimeType.MimeType
+}

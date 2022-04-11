@@ -18,16 +18,13 @@ Pure Go implementation of [Mediasoup worker](https://github.com/versatica/medias
 | \>= 3.9.0 |        native        | :ballot_box_with_check: |
 
 
-```shell
-goos: darwin
-goarch: amd64
-pkg: github.com/byyam/mediasoup-go-worker/pkg/netparser
+~~~shell
 cpu: Intel(R) Core(TM) i7-8850H CPU @ 2.60GHz
 BenchmarkNetNative_WriteBuffer-12       39985699                29.73 ns/op            4 B/op          1 allocs/op
 BenchmarkNetNative_ReadBuffer-12          269317              4487 ns/op              12 B/op          3 allocs/op
 BenchmarkNetStrings_WriteBuffer-12       7167288               152.0 ns/op           355 B/op          3 allocs/op
 BenchmarkNetStrings_ReadBuffer-12       13219642                88.37 ns/op            4 B/op          1 allocs/op
-``
+~~~
 
 #### Mediasoup worker API
 

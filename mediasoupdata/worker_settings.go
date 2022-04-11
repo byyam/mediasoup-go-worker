@@ -40,6 +40,9 @@ type WorkerSettings struct {
 	 */
 	DtlsPrivateKeyFile string `json:"dtlsPrivateKeyFile,omitempty"`
 
+	PrometheusPath string `json:"prometheusPath,omitempty"`
+	PrometheusPort int    `json:"prometheusPort,omitempty"`
+
 	/**
 	 * Custom application data.
 	 */

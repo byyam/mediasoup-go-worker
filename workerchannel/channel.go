@@ -70,7 +70,7 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 	if err := json.Unmarshal(nsPayload, &reqData); err != nil {
 		return err
 	}
-	c.logger.Debug("request Id=%d, Method=%s", reqData.Id, reqData.Method)
+	c.logger.Info("request Id=%d, Method=%s", reqData.Id, reqData.Method)
 	var ret ResponseData
 	rspData := new(channelData)
 	rspData.Id = reqData.Id
@@ -103,7 +103,7 @@ func (c *Channel) processMessage(nsPayload []byte) error {
 	if err := c.netParser.WriteBuffer(jsonByte); err != nil {
 		return err
 	}
-	c.logger.Debug("response Id=%d,err=%v", rspData.Id, rspData.Error)
+	c.logger.Info("response Id=%d,err=[%v]", rspData.Id, rspData.Error)
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (c *Channel) Event(targetId int, event string) {
 	}
 	jsonByte, _ := json.Marshal(&msg)
 	err := c.netParser.WriteBuffer(jsonByte)
-	c.logger.Debug("send Event msg:%+v,err=%v", msg, err)
+	c.logger.Info("send Event msg:%+v,err=%v", msg, err)
 }
 
 func (c *Channel) Close() {

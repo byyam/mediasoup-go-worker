@@ -1,6 +1,8 @@
 package rtc
 
 import (
+	"encoding/json"
+
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -32,6 +34,7 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	c := &SimpleConsumer{
 		logger: utils.NewLogger("simple-consumer", param.id),
 	}
+	param.fillJsonStatsFunc = c.FillJsonStats
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
 	c.onConsumerSendRtpPacketHandler = param.OnConsumerSendRtpPacket
 	c.onConsumerKeyFrameRequestedHandler = param.OnConsumerKeyFrameRequested
@@ -44,8 +47,29 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 }
 
 func (c *SimpleConsumer) CreateRtpStream() {
+	rtpParameters := c.IConsumer.GetRtpParameters()
+	encoding := rtpParameters.Encodings[0]
+	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
+	param := &ParamRtpStream{
+		EncodingIdx:    0,
+		Ssrc:           encoding.Ssrc,
+		PayloadType:    mediaCodec.PayloadType,
+		MimeType:       mediaCodec.RtpCodecMimeType,
+		ClockRate:      mediaCodec.ClockRate,
+		Rid:            "",
+		Cname:          rtpParameters.Rtcp.Cname,
+		RtxSsrc:        0,
+		RtxPayloadType: 0,
+		UseNack:        false,
+		UsePli:         false,
+		UseFir:         false,
+		UseInBandFec:   false,
+		UseDtx:         false,
+		SpatialLayers:  0,
+		TemporalLayers: 0,
+	}
 	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
-		ParamRtpStream: nil,
+		ParamRtpStream: param,
 		bufferSize:     0,
 	})
 }
@@ -58,7 +82,9 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
 	}
 	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
-	c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
+	if c.rtpStream.ReceivePacket(packet) { // todo
+		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
+	}
 	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
 	c.logger.Trace("SendRtpPacket:%+v", packet.Header)
 }
@@ -82,4 +108,16 @@ func (c *SimpleConsumer) RequestKeyFrame() {
 
 func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
 	c.rtpStream.ReceiveRtcpReceiverReport(report)
+}
+
+func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
+	var jsonData []mediasoupdata.ConsumerStat
+	if c.rtpStream != nil {
+		var stat mediasoupdata.ConsumerStat
+		c.rtpStream.FillJsonStats(&stat)
+		jsonData = append(jsonData, stat)
+	}
+	data, _ := json.Marshal(&jsonData)
+	c.logger.Debug("getStats:%+v", jsonData)
+	return data
 }

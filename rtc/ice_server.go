@@ -22,7 +22,7 @@ const (
 	// keepaliveInterval used to keep candidates alive
 	defaultKeepaliveInterval = 2 * time.Second
 	// defaultDisconnectedTimeout is the default time till an Agent transitions disconnected
-	defaultDisconnectedTimeout = 5 * time.Second
+	defaultDisconnectedTimeout = 30 * time.Second
 )
 
 type iceServer struct {

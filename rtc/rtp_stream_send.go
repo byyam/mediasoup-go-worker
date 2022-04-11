@@ -2,7 +2,9 @@ package rtc
 
 import (
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 )
 
 type RtpStreamSend struct {
@@ -15,7 +17,7 @@ type RtpStreamSend struct {
 	bufferStartIdx      uint16
 	storage             []StorageItem
 	rtxSeq              uint16
-	transmissionCounter *TransmissionCounter
+	transmissionCounter *RtpDataCounter
 }
 
 type ParamRtpStreamSend struct {
@@ -25,7 +27,8 @@ type ParamRtpStreamSend struct {
 
 func newRtpStreamSend(param *ParamRtpStreamSend) *RtpStreamSend {
 	r := &RtpStreamSend{
-		RtpStream: newRtpStream(param.ParamRtpStream, 10),
+		RtpStream:           newRtpStream(param.ParamRtpStream, 10),
+		transmissionCounter: NewRtpDataCounter(0), // default
 	}
 	r.logger = utils.NewLogger("RtpStreamSend", r.GetId())
 	if param.bufferSize > 0 {
@@ -58,7 +61,24 @@ func (p *RtpStreamSend) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) 
 	p.UpdateScore(report)
 }
 
+func (p *RtpStreamSend) ReceivePacket(packet *rtp.Packet) bool {
+	// todo
+	p.transmissionCounter.Update(packet)
+	return true
+}
+
 func (p *RtpStreamSend) UpdateScore(report *rtcp.ReceptionReport) {
 	// todo
 	p.logger.Debug("update data by RR:%# v", *p.RtpStream)
+}
+
+func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
+	nowMs := utils.GetTimeMs()
+	stat.Timestamp = nowMs
+	stat.Type = "outbound-rtp"
+	stat.Bitrate = p.transmissionCounter.GetBitrate(nowMs)
+	stat.ByteCount = p.transmissionCounter.GetBytes()
+	stat.PacketCount = p.transmissionCounter.GetPacketCount()
+
+	p.RtpStream.FillJsonStats(stat)
 }

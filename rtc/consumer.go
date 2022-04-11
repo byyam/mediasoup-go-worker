@@ -2,6 +2,9 @@ package rtc
 
 import (
 	"encoding/json"
+	"time"
+
+	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 
 	"github.com/kr/pretty"
 
@@ -34,14 +37,19 @@ type IConsumer interface {
 }
 
 type Consumer struct {
-	Id         string
-	ProducerId string
-	Kind       mediasoupdata.MediaKind
-	mediaSsrcs []uint32
+	Id                         string
+	ProducerId                 string
+	Kind                       mediasoupdata.MediaKind
+	RtpHeaderExtensionIds      RtpHeaderExtensionIds
+	mediaSsrcs                 []uint32
+	rtxSsrcs                   []uint32
+	supportedCodecPayloadTypes []uint8
+	maxRtcpInterval            time.Duration
 
 	consumerType           mediasoupdata.ConsumerType
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []mediasoupdata.RtpEncodingParameters
+	fillJsonStatsFunc      func() json.RawMessage
 
 	logger utils.Logger
 }
@@ -98,35 +106,7 @@ func (c *Consumer) FillJson() json.RawMessage {
 }
 
 func (c *Consumer) FillJsonStats() json.RawMessage {
-	jsonData := mediasoupdata.ConsumerStat{
-		Type:                 "",
-		Timestamp:            0,
-		Ssrc:                 0,
-		RtxSsrc:              0,
-		Rid:                  "",
-		Kind:                 "",
-		MimeType:             "",
-		PacketsLost:          0,
-		FractionLost:         0,
-		PacketsDiscarded:     0,
-		PacketsRetransmitted: 0,
-		PacketsRepaired:      0,
-		NackCount:            0,
-		NackPacketCount:      0,
-		PliCount:             0,
-		FirCount:             0,
-		Score:                0,
-		PacketCount:          0,
-		ByteCount:            0,
-		Bitrate:              0,
-		RoundTripTime:        0,
-		RtxPacketsDiscarded:  0,
-		Jitter:               0,
-		BitrateByLayer:       nil,
-	}
-	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug("getStats:%+v", jsonData)
-	return data
+	return c.fillJsonStatsFunc()
 }
 
 type consumerParam struct {
@@ -135,6 +115,7 @@ type consumerParam struct {
 	kind                   mediasoupdata.MediaKind
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []mediasoupdata.RtpEncodingParameters
+	fillJsonStatsFunc      func() json.RawMessage
 }
 
 func (c consumerParam) valid() bool {
@@ -142,6 +123,9 @@ func (c consumerParam) valid() bool {
 		return false
 	}
 	if !c.rtpParameters.Valid() {
+		return false
+	}
+	if c.fillJsonStatsFunc == nil {
 		return false
 	}
 	return true
@@ -159,15 +143,49 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 		Kind:                   param.kind,
 		rtpParameters:          param.rtpParameters,
 		consumableRtpEncodings: param.consumableRtpEncodings,
+		fillJsonStatsFunc:      param.fillJsonStatsFunc,
 	}
-	for _, encoding := range c.rtpParameters.Encodings {
-		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
+	c.logger.Info("input param for consumer: %# v", pretty.Formatter(param))
+	// init consumer with param
+	if err := c.init(param); err != nil {
+		return nil, err
 	}
 	c.logger.Info("new consumer:%# v", pretty.Formatter(c.rtpParameters))
 	c.logger.Info("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
 	c.logger.Info("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
 
 	return c, nil
+}
+
+func (c *Consumer) init(param consumerParam) error {
+	if err := c.rtpParameters.Init(); err != nil {
+		return err
+	}
+	if err := c.RtpHeaderExtensionIds.set(param.rtpParameters.HeaderExtensions, false); err != nil {
+		c.logger.Error("set RtpHeaderExtensionIds failed:%v", err)
+		return err
+	}
+	c.logger.Info("set RtpHeaderExtensionIds:%# v", pretty.Formatter(c.RtpHeaderExtensionIds))
+	// Fill supported codec payload types.
+	for _, codec := range c.rtpParameters.Codecs {
+		if codec.RtpCodecMimeType.IsMediaCodec() {
+			c.supportedCodecPayloadTypes = append(c.supportedCodecPayloadTypes, codec.PayloadType)
+		}
+	}
+	// Fill media SSRCs vector.
+	for _, encoding := range c.rtpParameters.Encodings {
+		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
+	}
+	// todo: Fill RTX SSRCs vector.
+	//for _, encoding := range c.rtpParameters.Encodings {
+	//}
+	// Set the RTCP report generation interval.
+	if c.Kind == mediasoupdata.MediaKind_Audio {
+		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
+	} else {
+		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
+	}
+	return nil
 }
 
 func (c *Consumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
@@ -189,7 +207,7 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 	case mediasoupdata.MethodConsumerDump:
 		response.Data = c.FillJson()
 
-	case mediasoupdata.MethodDataConsumerGetStats:
+	case mediasoupdata.MethodConsumerGetStats:
 		response.Data = c.FillJsonStats()
 	}
 }
