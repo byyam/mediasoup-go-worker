@@ -13,4 +13,5 @@ var (
 	ErrProducerNotFound        = errors.New("producer not found")
 	ErrConsumerNotFound        = errors.New("consumer not found")
 	ErrNoSRTPProtectionProfile = errors.New("DTLS Handshake completed and no SRTP Protection Profile was chosen")
+	ErrSubTypeNotRtx           = errors.New("mimeType.subtype is not RTX")
 )

@@ -383,10 +383,13 @@ func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata
 	}
 	for _, fb := range mediaCodec.RtcpFeedback {
 		if !params.UseNack && fb.Type == "nack" && fb.Parameter == "" {
+			p.logger.Info("NACK supported")
 			params.UseNack = true
 		} else if !params.UsePli && fb.Type == "nack" && fb.Parameter == "pli" {
+			p.logger.Info("PLI supported")
 			params.UsePli = true
 		} else if !params.UseFir && fb.Type == "ccm" && fb.Parameter == "fir" {
+			p.logger.Info("FIR supported")
 			params.UseFir = true
 		}
 	}

@@ -55,6 +55,22 @@ func (r *RtpStreamRecv) ReceivePacket(packet *rtp.Packet) bool {
 }
 
 func (r *RtpStreamRecv) ReceiveRtxPacket(packet *rtp.Packet) bool {
+	if !r.params.UseNack {
+		r.logger.Warn("NACK not supported")
+		return false
+	}
+	if packet.SSRC != r.params.RtxSsrc {
+		r.logger.Warn("invalid ssrc:%d on RTX packet,expect:%d", packet.SSRC, r.params.RtxSsrc)
+		return false
+	}
+	// Check that the payload type corresponds to the one negotiated.
+	if packet.PayloadType != r.params.RtxPayloadType {
+		r.logger.Warn("ignoring RTX packet with invalid payload type [ssrc:%d,seq:%d,pt:%d]", packet.SSRC, packet.SequenceNumber, packet.PayloadType)
+		return false
+	}
+	if r.HasRtx() {
+
+	}
 
 	return true
 }

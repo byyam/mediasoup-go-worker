@@ -65,80 +65,82 @@ const (
 
 type RtpCodecMimeType struct {
 	Type     MimeType
-	TypeStr  string
 	SubType  MimeSubType
 	MimeType string
 }
 
+var rtpCodecMimeType2String = map[MimeType]string{
+	MimeTypeAudio: "audio",
+	MimeTypeVideo: "video",
+}
+
+var rtpCodecMimeString2Type = map[string]MimeType{}
+
+var rtpCodecMimeSubType2String = map[MimeSubType]string{
+	// Audio codecs:
+	MimeSubTypeOPUS:      "opus",
+	MimeSubTypeMULTIOPUS: "multiopus",
+	MimeSubTypePCMA:      "PCMA",
+	MimeSubTypePCMU:      "PCMU",
+	MimeSubTypeISAC:      "ISAC",
+	MimeSubTypeG722:      "G722",
+	MimeSubTypeILBC:      "iLBC",
+	MimeSubTypeSILK:      "SILK",
+	// Video codecs:
+	MimeSubTypeVP8:      "VP8",
+	MimeSubTypeVP9:      "VP9",
+	MimeSubTypeH264:     "H264",
+	MimeSubTypeX_H264UC: "X-H264UC",
+	MimeSubTypeH265:     "H265",
+	// Complementary codecs:
+	MimeSubTypeCN:              "CN",
+	MimeSubTypeTELEPHONE_EVENT: "telephone-event",
+	// Feature codecs:
+	MimeSubTypeRTX:        "rtx",
+	MimeSubTypeULPFEC:     "ulpfec",
+	MimeSubTypeFLEXFEC:    "flexfec",
+	MimeSubTypeX_ULPFECUC: "x-ulpfecuc",
+	MimeSubTypeRED:        "red",
+}
+
+var rtpCodecMimeString2SubType = map[string]MimeSubType{}
+
 func (r *RtpCodecMimeType) SetMimeType(mimeType string) error {
 	// Force lowcase names.
+	// Set mimeType.
 	r.MimeType = strings.ToLower(mimeType)
 
 	slashPos := strings.Split(r.MimeType, "/")
 	if len(slashPos) != 2 {
 		return errors.New("wrong codec MIME")
 	}
-	r.TypeStr = slashPos[0]
-	subType := slashPos[1]
+	typeStr := slashPos[0]
+	subTypeStr := slashPos[1]
 
+	var ok bool
 	// Set MIME type.
-	switch r.TypeStr {
-	case "audio":
-		r.Type = MimeTypeAudio
-	case "video":
-		r.Type = MimeTypeVideo
-	default:
+	r.Type, ok = rtpCodecMimeString2Type[typeStr]
+	if !ok {
 		return errors.New("unknown codec MIME type")
 	}
-
-	switch subType {
-	// Audio codecs:
-	case "opus":
-		r.SubType = MimeSubTypeOPUS
-	case "multiopus":
-		r.SubType = MimeSubTypeMULTIOPUS
-	case "pcma":
-		r.SubType = MimeSubTypePCMA
-	case "pcmu":
-		r.SubType = MimeSubTypePCMU
-	case "isac":
-		r.SubType = MimeSubTypeISAC
-	case "g722":
-		r.SubType = MimeSubTypeG722
-	case "ilbc":
-		r.SubType = MimeSubTypeILBC
-	case "silk":
-		r.SubType = MimeSubTypeSILK
-	// Video codecs:
-	case "vp8":
-		r.SubType = MimeSubTypeVP8
-	case "vp9":
-		r.SubType = MimeSubTypeVP9
-	case "h264":
-		r.SubType = MimeSubTypeH264
-	case "h265":
-		r.SubType = MimeSubTypeH265
-	// Complementary codecs:
-	case "cn":
-		r.SubType = MimeSubTypeCN
-	case "telephone-event":
-		r.SubType = MimeSubTypeTELEPHONE_EVENT
-	// Feature codecs:
-	case "rtx":
-		r.SubType = MimeSubTypeRTX
-	case "ulpfec":
-		r.SubType = MimeSubTypeULPFEC
-	case "flexfec":
-		r.SubType = MimeSubTypeFLEXFEC
-	case "x-ulpfecuc":
-		r.SubType = MimeSubTypeX_ULPFECUC
-	case "red":
-		r.SubType = MimeSubTypeRED
-	default:
+	// Set MIME subtype.
+	r.SubType, ok = rtpCodecMimeString2SubType[subTypeStr]
+	if !ok {
 		return errors.New("unknown codec MIME subtype")
 	}
-
 	return nil
+}
+
+func (r *RtpCodecMimeType) UpdateMimeType() {
+	if r.Type == MimeTypeUnset {
+		panic("type unset")
+	}
+	if r.SubType == MimeSubTypeUNSET {
+		panic("subtype unset")
+	}
+
+	// Set mimeType.
+	r.MimeType = r.Type2String() + "/" + r.SubType2String()
 }
 
 func (r RtpCodecMimeType) IsMediaCodec() bool {
@@ -160,4 +162,12 @@ func (r RtpCodecMimeType) IsFeatureCodec() bool {
 		return true
 	}
 	return false
+}
+
+func (r RtpCodecMimeType) Type2String() string {
+	return rtpCodecMimeType2String[r.Type]
+}
+
+func (r RtpCodecMimeType) SubType2String() string {
+	return rtpCodecMimeSubType2String[r.SubType]
 }

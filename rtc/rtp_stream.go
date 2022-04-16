@@ -1,8 +1,10 @@
 package rtc
 
 import (
+	"strconv"
+
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/google/uuid"
 	"github.com/pion/rtp"
 )
 
@@ -34,13 +36,16 @@ type RtpStream struct {
 	hasRtt       bool
 	packetsLost  uint32
 	fractionLost uint8
+	logger       utils.Logger
 }
 
 func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
+	id := strconv.FormatInt(int64(param.Ssrc), 10)
 	return &RtpStream{
-		id:     uuid.New().String(),
+		id:     id,
 		score:  initialScore,
 		params: param,
+		logger: utils.NewLogger("RtpStream", id),
 	}
 }
 
@@ -56,8 +61,18 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 	r.params.RtxSsrc = ssrc
 
 	if r.HasRtx() {
-		// todo
+		r.logger.Warn("replace RTX stream:%d", ssrc)
 	}
+	// Set RTX stream params.
+	params := &ParamRtxStream{
+		Ssrc:        ssrc,
+		PayloadType: payloadType,
+		MimeType:    r.params.MimeType,
+		ClockRate:   r.params.ClockRate,
+		RRid:        r.params.Rid,
+		Cname:       r.params.Cname,
+	}
+	params.MimeType.SubType = mediasoupdata.MimeSubTypeRTX
 }
 
 func (r *RtpStream) GetId() string {
@@ -81,6 +96,6 @@ func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
 	stat.Ssrc = r.GetSsrc()
 	stat.RtxSsrc = r.GetRtxSsrc()
 	stat.Rid = r.params.Rid
-	stat.Kind = r.params.MimeType.TypeStr
+	stat.Kind = r.params.MimeType.Type2String()
 	stat.MimeType = r.params.MimeType.MimeType
 }
