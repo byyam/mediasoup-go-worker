@@ -3,6 +3,8 @@ package rtc
 import (
 	"encoding/json"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -186,9 +188,8 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 		t.logger.Error("DecryptRTP failed:%v", err)
 		return
 	}
-
-	rtpPacket := &rtp.Packet{}
-	if err := rtpPacket.Unmarshal(actualDecrypted); err != nil {
+	rtpPacket, err := rtpparser.Parse(actualDecrypted)
+	if err != nil {
 		monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
 		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
 		return
@@ -198,7 +199,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }
 
-func (t *WebrtcTransport) SendRtpPacket(packet *rtp.Packet) {
+func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 	if !t.connected {
 		t.logger.Warn("webrtc not connected, ignore send rtp packet")
 		return

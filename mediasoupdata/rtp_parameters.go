@@ -329,7 +329,12 @@ func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *Rt
 }
 
 func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
-	// todo
+	payloadType := encoding.CodecPayloadType
+	for _, codec := range r.Codecs {
+		if codec.RtpCodecMimeType.IsFeatureCodec() && codec.Parameters.Apt == payloadType {
+			return codec
+		}
+	}
 	return nil
 }
 

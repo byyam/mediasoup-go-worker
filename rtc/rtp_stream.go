@@ -3,9 +3,10 @@ package rtc
 import (
 	"strconv"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/pion/rtp"
 )
 
 type ParamRtpStream struct {
@@ -73,6 +74,15 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 		Cname:       r.params.Cname,
 	}
 	params.MimeType.SubType = mediasoupdata.MimeSubTypeRTX
+	// Tell the RtpCodecMimeType to update its string based on current type and subtype.
+	params.MimeType.UpdateMimeType()
+	var err error
+	r.rtxStream, err = newRtxStream(params)
+	if err != nil {
+		r.logger.Error("set rtx failed:%v", err)
+		return
+	}
+	r.logger.Info("set RTX stream:%d", ssrc)
 }
 
 func (r *RtpStream) GetId() string {
@@ -87,7 +97,7 @@ func (r *RtpStream) GetRtxSsrc() uint32 {
 	return r.params.RtxSsrc
 }
 
-func (r *RtpStream) ReceivePacket(packet *rtp.Packet) bool {
+func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 
 	return true
 }

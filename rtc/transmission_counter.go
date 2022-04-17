@@ -1,7 +1,7 @@
 package rtc
 
 import (
-	"github.com/pion/rtp"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 )
 
 const (
@@ -31,7 +31,7 @@ func newTransmissionCounter(spatialLayers, temporalLayers uint8, windowSize int)
 	return t
 }
 
-func (p *TransmissionCounter) Update(packet *rtp.Packet) {
+func (p *TransmissionCounter) Update(packet *rtpparser.Packet) {
 	// todo: support svc
 	counter := p.spatialLayerCounters[0][0]
 	counter.Update(packet)

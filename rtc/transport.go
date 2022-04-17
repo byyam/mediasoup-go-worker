@@ -5,11 +5,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
 	"github.com/pion/rtcp"
-
-	"github.com/pion/rtp"
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
@@ -22,7 +22,7 @@ type ITransport interface {
 	Close()
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
-	ReceiveRtpPacket(packet *rtp.Packet)
+	ReceiveRtpPacket(packet *rtpparser.Packet)
 	ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet)
 }
 
@@ -39,13 +39,13 @@ type Transport struct {
 	// handler
 	onTransportNewProducerHandler               atomic.Value
 	onTransportProducerClosedHandler            func(producerId string)
-	onTransportProducerRtpPacketReceivedHandler func(*Producer, *rtp.Packet)
+	onTransportProducerRtpPacketReceivedHandler func(*Producer, *rtpparser.Packet)
 	onTransportNewConsumerHandler               func(consumer IConsumer, producerId string) error
 	onTransportConsumerClosedHandler            func(producerId, consumerId string)
 	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
 
 	// transport base call sons
-	sendRtpPacketFunc  func(packet *rtp.Packet)
+	sendRtpPacketFunc  func(packet *rtpparser.Packet)
 	sendRtcpPacketFunc func(packet rtcp.Packet)
 	notifyCloseFunc    func()
 
@@ -124,12 +124,12 @@ type transportParam struct {
 	Id                                   string
 	OnTransportNewProducer               func(producer *Producer) error
 	OnTransportProducerClosed            func(producerId string)
-	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtp.Packet)
+	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtpparser.Packet)
 	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
 	OnTransportConsumerClosed            func(consumerId, producerId string)
 	OnTransportConsumerKeyFrameRequested func(consumerId string, mappedSsrc uint32)
 	// call webrtcTransport
-	SendRtpPacketFunc  func(packet *rtp.Packet)
+	SendRtpPacketFunc  func(packet *rtpparser.Packet)
 	SendRtcpPacketFunc func(packet rtcp.Packet)
 	NotifyCloseFunc    func()
 }
@@ -324,7 +324,9 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	if err != nil {
 		return nil, err
 	}
-	t.rtpListener.AddProducer(producer)
+	if err = t.rtpListener.AddProducer(producer); err != nil {
+		return nil, err
+	}
 	if handler, ok := t.onTransportNewProducerHandler.Load().(func(*Producer) error); ok && handler != nil {
 		if err := handler(producer); err != nil {
 			return nil, err
@@ -337,7 +339,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
 }
 
-func (t *Transport) ReceiveRtpPacket(packet *rtp.Packet) {
+func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
@@ -348,7 +350,7 @@ func (t *Transport) ReceiveRtpPacket(packet *rtp.Packet) {
 	producer.ReceiveRtpPacket(packet)
 }
 
-func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
+func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtpparser.Packet) {
 	t.onTransportProducerRtpPacketReceivedHandler(producer, packet)
 }
 
@@ -356,7 +358,7 @@ func (t *Transport) OnProducerSendRtcpPacket(packet rtcp.Packet) {
 	t.sendRtcpPacketFunc(packet)
 }
 
-func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtp.Packet) {
+func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtpparser.Packet) {
 	t.logger.Trace("OnConsumerSendRtpPacket:%+v", packet.Header)
 	t.sendRtpPacketFunc(packet)
 }

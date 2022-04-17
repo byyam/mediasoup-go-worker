@@ -4,21 +4,14 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
-
-	"github.com/kr/pretty"
-
-	"github.com/pion/rtcp"
-
-	"github.com/byyam/mediasoup-go-worker/workerchannel"
-
-	"github.com/pion/rtp"
-
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-
-	"github.com/byyam/mediasoup-go-worker/mserror"
-
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/mserror"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
+	"github.com/kr/pretty"
+	"github.com/pion/rtcp"
 )
 
 type IConsumer interface {
@@ -28,7 +21,7 @@ type IConsumer interface {
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	GetType() mediasoupdata.ConsumerType
 	GetRtpParameters() mediasoupdata.RtpParameters
-	SendRtpPacket(packet *rtp.Packet)
+	SendRtpPacket(packet *rtpparser.Packet)
 	ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32)
 	GetMediaSsrcs() []uint32
 	GetKind() mediasoupdata.MediaKind
@@ -58,7 +51,7 @@ func (c *Consumer) GetKind() mediasoupdata.MediaKind {
 	return c.Kind
 }
 
-func (c *Consumer) SendRtpPacket(packet *rtp.Packet) {
+func (c *Consumer) SendRtpPacket(packet *rtpparser.Packet) {
 	//TODO implement me
 	panic("implement me")
 }

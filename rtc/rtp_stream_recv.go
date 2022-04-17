@@ -4,8 +4,8 @@ import (
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 type RtpStreamRecv struct {
@@ -42,7 +42,7 @@ func (r *RtpStreamRecv) GetScore() uint8 {
 
 func (r *RtpStreamRecv) Pause() {}
 
-func (r *RtpStreamRecv) ReceivePacket(packet *rtp.Packet) bool {
+func (r *RtpStreamRecv) ReceivePacket(packet *rtpparser.Packet) bool {
 	if !r.RtpStream.ReceivePacket(packet) {
 		r.logger.Debug("packet discarded")
 		return false
@@ -54,7 +54,7 @@ func (r *RtpStreamRecv) ReceivePacket(packet *rtp.Packet) bool {
 	return true
 }
 
-func (r *RtpStreamRecv) ReceiveRtxPacket(packet *rtp.Packet) bool {
+func (r *RtpStreamRecv) ReceiveRtxPacket(packet *rtpparser.Packet) bool {
 	if !r.params.UseNack {
 		r.logger.Warn("NACK not supported")
 		return false

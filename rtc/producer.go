@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
 	"github.com/kr/pretty"
@@ -18,7 +20,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 type Producer struct {
@@ -59,7 +60,7 @@ const (
 type producerParam struct {
 	id                          string
 	options                     mediasoupdata.ProducerOptions
-	OnProducerRtpPacketReceived func(*Producer, *rtp.Packet)
+	OnProducerRtpPacketReceived func(*Producer, *rtpparser.Packet)
 	OnProducerSendRtcpPacket    func(packet rtcp.Packet)
 }
 
@@ -149,7 +150,7 @@ func isKeyFrame(data []byte) bool {
 	return false
 }
 
-func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacketResult) {
+func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
 	if p.Kind == mediasoupdata.MediaKind_Video && isKeyFrame(packet.Payload) {
 		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug("isKeyFrame")
@@ -199,13 +200,13 @@ func (p *Producer) ReceiveRtpPacket(packet *rtp.Packet) (result ReceiveRtpPacket
 	// Post-process the packet.
 	p.PostProcessRtpPacket(packet)
 
-	if handler, ok := p.onProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtp.Packet)); ok && handler != nil {
+	if handler, ok := p.onProducerRtpPacketReceivedHandler.Load().(func(*Producer, *rtpparser.Packet)); ok && handler != nil {
 		handler(p, packet)
 	}
 	return
 }
 
-func (p *Producer) MangleRtpPacket(packet *rtp.Packet, rtpStream *RtpStreamRecv) bool {
+func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStreamRecv) bool {
 	// Mangle the payload type.
 	payloadType := packet.PayloadType
 	var mappedPayloadType uint8
@@ -224,7 +225,7 @@ func (p *Producer) MangleRtpPacket(packet *rtp.Packet, rtpStream *RtpStreamRecv)
 	// Mangle the SSRC.
 	v, ok := p.mapRtpStreamMappedSsrc.Load(rtpStream.GetId())
 	if !ok {
-		p.logger.Warn("unknown rtpStream type [rtpStream:%d]", rtpStream.GetId())
+		p.logger.Warn("unknown rtpStream type [rtpStream:%s]", rtpStream.GetId())
 		return false
 	}
 	mappedSsrc := v.(uint32)
@@ -253,7 +254,16 @@ func (p *Producer) MangleRtpPacket(packet *rtp.Packet, rtpStream *RtpStreamRecv)
 	} else if p.Kind == mediasoupdata.MediaKind_Video {
 		// todo
 	}
-
+	// Assign mediasoup RTP header extension ids (just those that mediasoup may
+	// be interested in after passing it to the Router).
+	packet.SetMidExtensionId(mediasoupdata.MID)
+	packet.SetAbsSendTimeExtensionId(mediasoupdata.ABS_SEND_TIME)
+	packet.SetTransportWideCc01ExtensionId(mediasoupdata.TRANSPORT_WIDE_CC_01)
+	// NOTE: Remove this once framemarking draft becomes RFC.
+	packet.SetFrameMarking07ExtensionId(mediasoupdata.FRAME_MARKING_07)
+	packet.SetFrameMarkingExtensionId(mediasoupdata.FRAME_MARKING)
+	packet.SetSsrcAudioLevelExtensionId(mediasoupdata.SSRC_AUDIO_LEVEL)
+	packet.SetVideoOrientationExtensionId(mediasoupdata.VIDEO_ORIENTATION)
 	return true
 }
 
@@ -338,7 +348,7 @@ func (p *Producer) OnRtpStreamSendRtcpPacket(packet rtcp.Packet) {
 	p.onProducerSendRtcpPacketHandler(packet)
 }
 
-func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
+func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
 	ssrc := packet.SSRC
 	if _, ok := p.mapSsrcRtpStream.Load(ssrc); ok {
 		panic("RtpStream with given SSRC already exists")
@@ -417,7 +427,7 @@ func (p *Producer) CreateRtpStream(packet *rtp.Packet, mediaCodec *mediasoupdata
 	return rtpStream
 }
 
-func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
+func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 	ssrc := packet.SSRC
 	payloadType := packet.PayloadType
 
@@ -481,14 +491,20 @@ func (p *Producer) GetRtpStream(packet *rtp.Packet) *RtpStreamRecv {
 	// If not found, look for an encoding matching the packet RID value.
 	// todo
 	p.logger.Warn("ignoring packet with unknown RID (RID lookup)")
+	// If not found, and there is a single encoding without ssrc and RID, this
+	// may be the media or RTX stream.
+
 	return nil
 }
 
-func (p *Producer) PreProcessRtpPacket(packet *rtp.Packet) {
-	// todo
+func (p *Producer) PreProcessRtpPacket(packet *rtpparser.Packet) {
+	if p.Kind == mediasoupdata.MediaKind_Video {
+		packet.SetFrameMarking07ExtensionId(p.RtpHeaderExtensionIds.FrameMarking07)
+		packet.SetFrameMarkingExtensionId(p.RtpHeaderExtensionIds.FrameMarking)
+	}
 }
 
-func (p *Producer) PostProcessRtpPacket(packet *rtp.Packet) {
+func (p *Producer) PostProcessRtpPacket(packet *rtpparser.Packet) {
 	if p.Kind == mediasoupdata.MediaKind_Video {
 	}
 	// todo

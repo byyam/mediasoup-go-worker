@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/pion/rtp"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
@@ -172,7 +172,7 @@ func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
 	}
 }
 
-func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtp.Packet) {
+func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtpparser.Packet) {
 	value, ok := r.mapProducerConsumers.Get(producer.id)
 	if !ok {
 		r.logger.Trace("no consumers to router RTP")

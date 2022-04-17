@@ -3,6 +3,8 @@ package rtc
 import (
 	"encoding/json"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -10,7 +12,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/pion/rtp"
 )
 
 type SimpleConsumer struct {
@@ -19,13 +20,13 @@ type SimpleConsumer struct {
 	rtpStream *RtpStreamSend
 
 	// handler
-	onConsumerSendRtpPacketHandler     func(consumer IConsumer, packet *rtp.Packet)
+	onConsumerSendRtpPacketHandler     func(consumer IConsumer, packet *rtpparser.Packet)
 	onConsumerKeyFrameRequestedHandler func(consumer IConsumer, mappedSsrc uint32)
 }
 
 type simpleConsumerParam struct {
 	consumerParam
-	OnConsumerSendRtpPacket     func(consumer IConsumer, packet *rtp.Packet)
+	OnConsumerSendRtpPacket     func(consumer IConsumer, packet *rtpparser.Packet)
 	OnConsumerKeyFrameRequested func(consumer IConsumer, mappedSsrc uint32)
 }
 
@@ -74,7 +75,7 @@ func (c *SimpleConsumer) CreateRtpStream() {
 	})
 }
 
-func (c *SimpleConsumer) SendRtpPacket(packet *rtp.Packet) {
+func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	if c.GetKind() == mediasoupdata.MediaKind_Video {
 		monitor.RtpSendCount(monitor.TraceVideo)
 	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {

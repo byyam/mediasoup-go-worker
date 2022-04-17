@@ -3,8 +3,8 @@ package rtc
 import (
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 )
 
 type RtpStreamSend struct {
@@ -61,7 +61,7 @@ func (p *RtpStreamSend) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) 
 	p.UpdateScore(report)
 }
 
-func (p *RtpStreamSend) ReceivePacket(packet *rtp.Packet) bool {
+func (p *RtpStreamSend) ReceivePacket(packet *rtpparser.Packet) bool {
 	// todo
 	p.transmissionCounter.Update(packet)
 	return true

@@ -1,4 +1,4 @@
-package ms_codecs
+package rtpparser
 
 type PayloadDescriptorHandler interface {
 	GetSpatialLayer() uint8
