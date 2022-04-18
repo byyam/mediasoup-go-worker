@@ -4,7 +4,8 @@ import "github.com/pion/rtp"
 
 type Packet struct {
 	*rtp.Packet
-	packetLen int
+	packetLen                int
+	payloadDescriptorHandler PayloadDescriptorHandler
 
 	midExtensionId               uint8
 	ridExtensionId               uint8
@@ -67,4 +68,44 @@ func (p *Packet) SetSsrcAudioLevelExtensionId(id uint8) {
 
 func (p *Packet) SetVideoOrientationExtensionId(id uint8) {
 	p.videoOrientationExtensionId = id
+}
+
+func (p *Packet) SetPayloadDescriptorHandler(payloadDescriptorHandler PayloadDescriptorHandler) {
+	p.payloadDescriptorHandler = payloadDescriptorHandler
+}
+
+func (p Packet) GetSpatialLayer() uint8 {
+	if p.payloadDescriptorHandler == nil {
+		return 0
+	}
+	return p.payloadDescriptorHandler.GetSpatialLayer()
+}
+
+func (p Packet) GetTemporalLayer() uint8 {
+	if p.payloadDescriptorHandler == nil {
+		return 0
+	}
+	return p.payloadDescriptorHandler.GetTemporalLayer()
+}
+
+func (p Packet) IsKeyFrame() bool {
+	if p.payloadDescriptorHandler == nil {
+		return false
+	}
+	return p.payloadDescriptorHandler.IsKeyFrame()
+}
+
+func (p Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool {
+	extenValue := p.GetExtension(p.frameMarkingExtensionId)
+	// NOTE: Remove this once framemarking draft becomes RFC.
+	if extenValue == nil {
+		extenValue = p.GetExtension(p.frameMarking07ExtensionId)
+	}
+	extenLen := len(extenValue)
+	if extenValue == nil || extenLen > 3 {
+		return false
+	}
+	frameMarking.Unmarshal(extenValue)
+	*length = uint8(extenLen)
+	return true
 }
