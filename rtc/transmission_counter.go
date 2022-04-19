@@ -11,10 +11,14 @@ const (
 
 type TransmissionCounter struct {
 	spatialLayerCounters [][]*RtpDataCounter
+	spatialLayers        uint8
+	temporalLayers       uint8
 }
 
 func newTransmissionCounter(spatialLayers, temporalLayers uint8, windowSize int) *TransmissionCounter {
 	t := &TransmissionCounter{
+		spatialLayers:  spatialLayers,
+		temporalLayers: temporalLayers,
 		// Reserve vectors capacity.
 		spatialLayerCounters: make([][]*RtpDataCounter, spatialLayers),
 	}
@@ -32,8 +36,17 @@ func newTransmissionCounter(spatialLayers, temporalLayers uint8, windowSize int)
 }
 
 func (p *TransmissionCounter) Update(packet *rtpparser.Packet) {
-	// todo: support svc
-	counter := p.spatialLayerCounters[0][0]
+	spatialLayer := packet.GetSpatialLayer()
+	temporalLayer := packet.GetTemporalLayer()
+	// Sanity check. Do not allow spatial layers higher than defined.
+	if spatialLayer > p.spatialLayers-1 {
+		spatialLayer = p.spatialLayers - 1
+	}
+	// Sanity check. Do not allow temporal layers higher than defined.
+	if temporalLayer > p.temporalLayers-1 {
+		temporalLayer = p.temporalLayers - 1
+	}
+	counter := p.spatialLayerCounters[spatialLayer][temporalLayer]
 	counter.Update(packet)
 }
 

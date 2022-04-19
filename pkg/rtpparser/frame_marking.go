@@ -1,7 +1,7 @@
 package rtpparser
 
 type FrameMarking struct {
-	tid         uint8
+	tid         uint8 // 3 bit
 	base        uint8
 	discardable uint8
 	independent uint8
@@ -11,19 +11,6 @@ type FrameMarking struct {
 	tl0picidx   uint8
 }
 
-func NewFrameMarking() *FrameMarking {
-	return &FrameMarking{
-		tid:         3,
-		base:        1,
-		discardable: 1,
-		independent: 1,
-		end:         1,
-		start:       1,
-		lid:         0,
-		tl0picidx:   0,
-	}
-}
-
-func (p *FrameMarking) Unmarshal(buf []byte) {
-
+func Unmarshal(buf []byte) *FrameMarking {
+	return &FrameMarking{}
 }

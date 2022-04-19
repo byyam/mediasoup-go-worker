@@ -105,7 +105,7 @@ func (p Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool
 	if extenValue == nil || extenLen > 3 {
 		return false
 	}
-	frameMarking.Unmarshal(extenValue)
+	frameMarking = Unmarshal(extenValue)
 	*length = uint8(extenLen)
 	return true
 }

@@ -1,8 +1,6 @@
 package rtc
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"sync"
 	"sync/atomic"
@@ -125,33 +123,8 @@ func (p *Producer) initRtpMapping(rtpMapping mediasoupdata.RtpMapping) {
 
 }
 
-// todo: other codecs
-func isKeyFrame(data []byte) bool {
-	const (
-		typeSTAPA       = 24
-		typeSPS         = 7
-		naluTypeBitmask = 0x1F
-	)
-
-	var word uint32
-
-	payload := bytes.NewReader(data)
-	if err := binary.Read(payload, binary.BigEndian, &word); err != nil {
-		return false
-	}
-
-	naluType := (word >> 24) & naluTypeBitmask
-	if naluType == typeSTAPA && word&naluTypeBitmask == typeSPS {
-		return true
-	} else if naluType == typeSPS {
-		return true
-	}
-
-	return false
-}
-
 func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
-	if p.Kind == mediasoupdata.MediaKind_Video && isKeyFrame(packet.Payload) {
+	if p.Kind == mediasoupdata.MediaKind_Video && packet.IsKeyFrame() {
 		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug("isKeyFrame")
 	}

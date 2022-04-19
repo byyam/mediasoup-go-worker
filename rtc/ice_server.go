@@ -22,7 +22,7 @@ const (
 	// keepaliveInterval used to keep candidates alive
 	defaultKeepaliveInterval = 2 * time.Second
 	// defaultDisconnectedTimeout is the default time till an Agent transitions disconnected
-	defaultDisconnectedTimeout = 30 * time.Second
+	defaultDisconnectedTimeout = 10 * time.Second
 )
 
 type iceServer struct {
@@ -109,7 +109,7 @@ func (d *iceServer) connectivityChecks() {
 		}
 		if time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
 			d.logger.Warn("ice inactive, disconnectedTimeout=%v, ufrag=%s", d.disconnectedTimeout, d.localUfrag)
-			d.Disconnect()
+			// d.Disconnect()
 		}
 	}
 	for {
