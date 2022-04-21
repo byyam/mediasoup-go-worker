@@ -29,15 +29,17 @@ type ParamRtpStream struct {
 }
 
 type RtpStream struct {
-	id           string
-	score        uint8
-	rtxStream    *RtxStream
-	params       *ParamRtpStream
-	rtt          float64
-	hasRtt       bool
-	packetsLost  uint32
-	fractionLost uint8
-	logger       utils.Logger
+	id              string
+	score           uint8
+	rtxStream       *RtxStream
+	params          *ParamRtpStream
+	rtt             float64
+	hasRtt          bool
+	packetsLost     uint32
+	fractionLost    uint8
+	nackCount       uint32
+	nackPacketCount uint32
+	logger          utils.Logger
 }
 
 func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {

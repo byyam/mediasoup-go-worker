@@ -27,6 +27,7 @@ type IConsumer interface {
 	GetKind() mediasoupdata.MediaKind
 	GetConsumableRtpEncodings() []mediasoupdata.RtpEncodingParameters
 	ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
+	ReceiveNack(nackPacket *rtcp.TransportLayerNack)
 }
 
 type Consumer struct {
@@ -206,6 +207,11 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 }
 
 func (c *Consumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Consumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -111,6 +111,10 @@ func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
 	c.rtpStream.ReceiveRtcpReceiverReport(report)
 }
 
+func (c *SimpleConsumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
+	c.rtpStream.ReceiveNack(nackPacket)
+}
+
 func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
 	var jsonData []mediasoupdata.ConsumerStat
 	if c.rtpStream != nil {

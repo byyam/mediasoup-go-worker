@@ -77,7 +77,7 @@ type ProducerStat struct {
 	Kind                 string  `json:"kind,omitempty"`
 	MimeType             string  `json:"mimeType,omitempty"`
 	PacketsLost          uint32  `json:"packetsLost,omitempty"`
-	FractionLost         uint32  `json:"fractionLost,omitempty"`
+	FractionLost         uint8   `json:"fractionLost,omitempty"`
 	PacketsDiscarded     uint32  `json:"packetsDiscarded,omitempty"`
 	PacketsRetransmitted uint32  `json:"packetsRetransmitted,omitempty"`
 	PacketsRepaired      uint32  `json:"packetsRepaired,omitempty"`

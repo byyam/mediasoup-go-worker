@@ -17,7 +17,7 @@ func NewRtpDataCounter(windowSizeMs int) *RtpDataCounter {
 		size = windowSizeMs
 	}
 	return &RtpDataCounter{
-		rate:    ratecalculator.NewRateCalculator(size, 0, 0),
+		rate:    ratecalculator.NewRateCalculator(size, 0, 0, utils.NewLogger("RateCalculator")),
 		packets: 0,
 	}
 }

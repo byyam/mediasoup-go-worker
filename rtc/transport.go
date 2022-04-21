@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtp_probation_generator"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
 	"github.com/byyam/mediasoup-go-worker/monitor"
@@ -365,7 +367,7 @@ func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtpparse
 
 func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
 	c := rtcp.CompoundPacket(packets)
-	t.logger.Info("ReceiveRtcpPacket:\n%+v\nheader:%+v\nCompoundPacket:%v", c.String(), header, c.Validate())
+	t.logger.Info("ReceiveRtcpPacket:\n%+v\nheader:%+v\nCompoundPacket[%d]:%v", c.String(), header, len(packets), c.Validate())
 	for _, packet := range packets {
 		t.HandleRtcpPacket(header, packet)
 	}
@@ -395,6 +397,10 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 			}
 			consumer, ok := t.mapSsrcConsumer.Load(rr.SSRC)
 			if !ok {
+				// Special case for the RTP probator.
+				if rr.SSRC == rtp_probation_generator.RtpProbationSsrc {
+					continue
+				}
 				// Special case for (unused) RTCP-RR from the RTX stream.
 				_, ok := t.mapRtxSsrcConsumer.Load(rr.SSRC)
 				if ok {
@@ -423,6 +429,19 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	case *rtcp.ReceiverEstimatedMaximumBitrate:
 		pkg := packet.(*rtcp.ReceiverEstimatedMaximumBitrate)
 		t.logger.Debug("%s", pkg.String())
+	case *rtcp.TransportLayerNack:
+		pkg := packet.(*rtcp.TransportLayerNack)
+		t.logger.Debug("TransportLayerNack:%+v", pkg)
+		consumer, ok := t.mapSsrcConsumer.Load(pkg.MediaSSRC)
+		if !ok {
+			t.logger.Warn("no Consumer found for received NACK Feedback packet [sender ssrc:%d, media ssrc:%d]", pkg.SenderSSRC, pkg.MediaSSRC)
+			return
+		}
+		consumer.(IConsumer).ReceiveNack(pkg)
+
+	case *rtcp.TransportLayerCC:
+		pkg := packet.(*rtcp.TransportLayerCC)
+		t.logger.Info("TransportLayerCC:%+v", pkg)
 	default:
 		monitor.RtcpRecvCount(monitor.TraceUnknownRtcpType)
 		t.logger.Warn("unhandled RTCP type received %+v", header)

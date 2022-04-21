@@ -72,6 +72,24 @@ func (p *RtpStreamSend) UpdateScore(report *rtcp.ReceptionReport) {
 	p.logger.Debug("update data by RR:%# v", *p.RtpStream)
 }
 
+func (p *RtpStreamSend) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
+	p.nackCount++
+	for _, item := range nackPacket.Nacks {
+		p.nackPacketCount += uint32(len(item.PacketList()))
+		p.FillRetransmissionContainer(item.PacketID, uint16(item.LostPackets))
+		// todo
+	}
+}
+
+// This method looks for the requested RTP packets and inserts them into the
+// RetransmissionContainer vector (and sets to null the next position).
+//
+// If RTX is used the stored packet will be RTX encoded now (if not already
+// encoded in a previous resend).
+func (p *RtpStreamSend) FillRetransmissionContainer(seq, bitmask uint16) {
+
+}
+
 func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
 	nowMs := utils.GetTimeMs()
 	stat.Timestamp = nowMs
@@ -79,6 +97,10 @@ func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
 	stat.Bitrate = p.transmissionCounter.GetBitrate(nowMs)
 	stat.ByteCount = p.transmissionCounter.GetBytes()
 	stat.PacketCount = p.transmissionCounter.GetPacketCount()
+	stat.PacketsLost = p.packetsLost
+	stat.FractionLost = p.fractionLost
+	stat.NackCount = p.nackCount
+	stat.NackPacketCount = p.nackPacketCount
 
 	p.RtpStream.FillJsonStats(stat)
 }

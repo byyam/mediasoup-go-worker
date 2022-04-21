@@ -25,7 +25,7 @@ type WebrtcTransport struct {
 
 	dtlsTransport          *dtlsTransport
 	decryptCtx, encryptCtx *srtp.Context
-	connected              bool
+	connected              *utils.AtomicBool
 }
 
 type webrtcTransportParam struct {
@@ -36,8 +36,9 @@ type webrtcTransportParam struct {
 func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	var err error
 	t := &WebrtcTransport{
-		id:     param.Id,
-		logger: utils.NewLogger("webrtc-transport", param.Id),
+		id:        param.Id,
+		connected: &utils.AtomicBool{},
+		logger:    utils.NewLogger("webrtc-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
@@ -135,14 +136,14 @@ func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions)
 			t.logger.Error("get srtp local/encrypt context error:%v", err)
 			return
 		}
-		t.connected = true
+		t.connected.Set(true)
 	}()
 
 	return t.dtlsTransport.SetRole(options.DtlsParameters)
 }
 
 func (t *WebrtcTransport) OnPacketReceived(data []byte) {
-	if !t.connected {
+	if !t.connected.Get() {
 		t.logger.Warn("webrtc not connected, ignore received packet")
 		return
 	}
@@ -200,7 +201,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 }
 
 func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
-	if !t.connected {
+	if !t.connected.Get() {
 		t.logger.Warn("webrtc not connected, ignore send rtp packet")
 		return
 	}
@@ -218,7 +219,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 }
 
 func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
-	if !t.connected {
+	if !t.connected.Get() {
 		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
 		return
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 func BenchmarkRateCalculator_Update(b *testing.B) {
-	rate := NewRateCalculator(2500, 0, 0)
+	rate := NewRateCalculator(2500, 0, 0, nil)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		nowMs := utils.GetTimeMs()
@@ -19,11 +19,11 @@ func BenchmarkRateCalculator_Update(b *testing.B) {
 
 func TestRateCalculator_Update(t *testing.T) {
 	utils.DefaultLevel = utils.TraceLevel
-	rate := NewRateCalculator(5, 0, 0)
-	for i := 0; i < 100; i++ {
+	rate := NewRateCalculator(100, 0, 10, utils.NewLogger("RateCalculator"))
+	for i := 0; i < 20; i++ {
 		nowMs := utils.GetTimeMs()
-		jitterMs := nowMs + int64(rand.Intn(400))
-		rate.Update(300, jitterMs)
-		time.Sleep(time.Millisecond * 200)
+		jitterMs := nowMs + int64(rand.Intn(10)) - int64(rand.Intn(10))
+		rate.Update(100, jitterMs)
+		time.Sleep(time.Millisecond * 10)
 	}
 }
