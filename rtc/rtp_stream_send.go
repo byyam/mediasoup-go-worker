@@ -9,33 +9,29 @@ import (
 
 type RtpStreamSend struct {
 	*RtpStream
-	logger              utils.Logger
-	bufferSize          int
-	lostPriorScore      uint32 // Packets lost at last interval for score calculation.
-	sentPriorScore      uint32 // Packets sent at last interval for score calculation.
-	buffer              []*StorageItem
-	bufferStartIdx      uint16
-	storage             []StorageItem
-	rtxSeq              uint16
-	transmissionCounter *RtpDataCounter
+	logger                                utils.Logger
+	lostPriorScore                        uint32 // Packets lost at last interval for score calculation.
+	sentPriorScore                        uint32 // Packets sent at last interval for score calculation.
+	rtxSeq                                uint16
+	transmissionCounter                   *RtpDataCounter
+	retransmission                        *Retransmission
+	onRtpStreamRetransmitRtpPacketHandler func(packet *rtpparser.Packet)
 }
 
 type ParamRtpStreamSend struct {
 	*ParamRtpStream
-	bufferSize int
+	bufferSize                     int
+	OnRtpStreamRetransmitRtpPacket func(packet *rtpparser.Packet)
 }
 
 func newRtpStreamSend(param *ParamRtpStreamSend) *RtpStreamSend {
 	r := &RtpStreamSend{
-		RtpStream:           newRtpStream(param.ParamRtpStream, 10),
-		transmissionCounter: NewRtpDataCounter(0), // default
+		RtpStream:                             newRtpStream(param.ParamRtpStream, 10),
+		transmissionCounter:                   NewRtpDataCounter(0), // default
+		retransmission:                        NewRetransmission(param.bufferSize),
+		onRtpStreamRetransmitRtpPacketHandler: param.OnRtpStreamRetransmitRtpPacket,
 	}
 	r.logger = utils.NewLogger("RtpStreamSend", r.GetId())
-	if param.bufferSize > 0 {
-		r.bufferSize = 65536
-	} else {
-		r.bufferSize = 0
-	}
 	return r
 }
 
@@ -76,18 +72,69 @@ func (p *RtpStreamSend) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
 	p.nackCount++
 	for _, item := range nackPacket.Nacks {
 		p.nackPacketCount += uint32(len(item.PacketList()))
-		p.FillRetransmissionContainer(item.PacketID, uint16(item.LostPackets))
-		// todo
+		p.FillRetransmissionContainer(item)
+		for _, storageItem := range p.retransmission.container {
+			if storageItem == nil {
+				break
+			}
+			packet := storageItem.packet
+			p.packetsRetransmitted++
+			if storageItem.sentTimes == 1 {
+				p.packetsRepaired++
+			}
+			p.onRtpStreamRetransmitRtpPacketHandler(packet)
+		}
 	}
 }
 
 // This method looks for the requested RTP packets and inserts them into the
-// RetransmissionContainer vector (and sets to null the next position).
+// Retransmission vector (and sets to null the next position).
 //
 // If RTX is used the stored packet will be RTX encoded now (if not already
 // encoded in a previous resend).
-func (p *RtpStreamSend) FillRetransmissionContainer(seq, bitmask uint16) {
-
+func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
+	if !p.params.UseNack {
+		p.logger.Warn("NACK not supported")
+		return
+	}
+	// Ensure the container's first element is 0.
+	p.retransmission.container[0] = nil
+	containerIdx := 0
+	var lostSeqList []uint16
+	for _, lostSeq := range nackPair.PacketList() {
+		storageItem := p.retransmission.buffer[lostSeq]
+		if storageItem != nil { //
+			// Do nothing.
+			continue
+		}
+		packet := storageItem.packet
+		// Don't resend the packet if older than MaxRetransmissionDelay ms.
+		diffTs := p.maxPacketTs - packet.Timestamp
+		diffMs := diffTs * 1000 / uint32(p.params.ClockRate)
+		if diffMs > MaxRetransmissionDelay {
+			p.logger.Warn("ignoring retransmission for too old packet")
+			continue
+		}
+		// Don't resent the packet if it was resent in the last RTT ms.
+		nowMs := utils.GetTimeMs()
+		rtt := p.rtt
+		if rtt == 0 {
+			rtt = DefaultRtt
+		}
+		if storageItem.resentAtMs != 0 && nowMs-storageItem.resentAtMs <= int64(rtt) {
+			p.logger.Warn("ignoring retransmission for a packet already resent in the last RTT ms")
+			continue
+		}
+		if p.HasRtx() {
+			// todo: encode rtx
+		}
+		storageItem.resentAtMs = nowMs
+		storageItem.sentTimes++
+		p.retransmission.container[containerIdx] = storageItem
+		containerIdx++
+		lostSeqList = append(lostSeqList, lostSeq)
+	}
+	p.logger.Info("retransmission lost list:%+v\nrequest list:[%+v]", lostSeqList, nackPair.PacketList())
 }
 
 func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
@@ -101,6 +148,8 @@ func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
 	stat.FractionLost = p.fractionLost
 	stat.NackCount = p.nackCount
 	stat.NackPacketCount = p.nackPacketCount
+	stat.PacketsRetransmitted = p.packetsRetransmitted
+	stat.PacketsRepaired = p.packetsRepaired
 
 	p.RtpStream.FillJsonStats(stat)
 }

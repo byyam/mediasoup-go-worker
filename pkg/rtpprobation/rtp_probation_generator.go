@@ -1,4 +1,4 @@
-package rtp_probation_generator
+package rtpprobation
 
 const (
 	RtpProbationSsrc             = 1234

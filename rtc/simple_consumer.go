@@ -26,8 +26,9 @@ type SimpleConsumer struct {
 
 type simpleConsumerParam struct {
 	consumerParam
-	OnConsumerSendRtpPacket     func(consumer IConsumer, packet *rtpparser.Packet)
-	OnConsumerKeyFrameRequested func(consumer IConsumer, mappedSsrc uint32)
+	OnConsumerSendRtpPacket       func(consumer IConsumer, packet *rtpparser.Packet)
+	OnConsumerKeyFrameRequested   func(consumer IConsumer, mappedSsrc uint32)
+	OnConsumerRetransmitRtpPacket func(packet *rtpparser.Packet)
 }
 
 func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
@@ -70,8 +71,9 @@ func (c *SimpleConsumer) CreateRtpStream() {
 		TemporalLayers: 0,
 	}
 	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
-		ParamRtpStream: param,
-		bufferSize:     0,
+		ParamRtpStream:                 param,
+		bufferSize:                     0,
+		OnRtpStreamRetransmitRtpPacket: c.OnRtpStreamRetransmitRtpPacket,
 	})
 }
 
@@ -109,6 +111,10 @@ func (c *SimpleConsumer) RequestKeyFrame() {
 
 func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
 	c.rtpStream.ReceiveRtcpReceiverReport(report)
+}
+
+func (c *SimpleConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Packet) {
+
 }
 
 func (c *SimpleConsumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {

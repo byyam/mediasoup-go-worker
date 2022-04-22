@@ -1,11 +1,13 @@
 package rtc
 
-import "github.com/pion/rtp"
+import (
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+)
 
 type StorageItem struct {
-	packet     *rtp.Packet
+	packet     *rtpparser.Packet
 	store      [MtuSize + 100]uint8
-	resentAtMs uint64
+	resentAtMs int64
 	sentTimes  uint8
 	rtxEncoded bool
 }

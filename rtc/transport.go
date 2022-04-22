@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/rtp_probation_generator"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -280,8 +280,9 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 				rtpParameters:          options.RtpParameters,
 				consumableRtpEncodings: options.ConsumableRtpEncodings,
 			},
-			OnConsumerSendRtpPacket:     t.OnConsumerSendRtpPacket,
-			OnConsumerKeyFrameRequested: t.OnConsumerKeyFrameRequested,
+			OnConsumerSendRtpPacket:       t.OnConsumerSendRtpPacket,
+			OnConsumerKeyFrameRequested:   t.OnConsumerKeyFrameRequested,
+			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
 		})
 
 	case mediasoupdata.ConsumerType_Simulcast: // todo...
@@ -365,9 +366,13 @@ func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtpparse
 	t.sendRtpPacketFunc(packet)
 }
 
+func (t *Transport) OnConsumerRetransmitRtpPacket(packet *rtpparser.Packet) {
+	// todo: tcc
+	t.sendRtpPacketFunc(packet)
+}
+
 func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
-	c := rtcp.CompoundPacket(packets)
-	t.logger.Info("ReceiveRtcpPacket:\n%+v\nheader:%+v\nCompoundPacket[%d]:%v", c.String(), header, len(packets), c.Validate())
+	t.logger.Info("ReceiveRtcpPacket[%d]:\n%+v\nheader:%+v", len(packets), packets, header)
 	for _, packet := range packets {
 		t.HandleRtcpPacket(header, packet)
 	}
@@ -398,7 +403,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 			consumer, ok := t.mapSsrcConsumer.Load(rr.SSRC)
 			if !ok {
 				// Special case for the RTP probator.
-				if rr.SSRC == rtp_probation_generator.RtpProbationSsrc {
+				if rr.SSRC == rtpprobation.RtpProbationSsrc {
 					continue
 				}
 				// Special case for (unused) RTCP-RR from the RTX stream.
