@@ -2,6 +2,9 @@ package rtc
 
 import (
 	"encoding/json"
+	"time"
+
+	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -16,8 +19,11 @@ import (
 
 type SimpleConsumer struct {
 	IConsumer
-	logger    utils.Logger
-	rtpStream *RtpStreamSend
+	logger           utils.Logger
+	rtpStream        *RtpStreamSend
+	rtpStreams       []*RtpStreamSend
+	maxRtcpInterval  time.Duration
+	lastRtcpSentTime time.Time
 
 	// handler
 	onConsumerSendRtpPacketHandler     func(consumer IConsumer, packet *rtpparser.Packet)
@@ -34,7 +40,8 @@ type simpleConsumerParam struct {
 func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	var err error
 	c := &SimpleConsumer{
-		logger: utils.NewLogger("simple-consumer", param.id),
+		rtpStreams: make([]*RtpStreamSend, 0),
+		logger:     utils.NewLogger("simple-consumer", param.id),
 	}
 	param.fillJsonStatsFunc = c.FillJsonStats
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
@@ -42,6 +49,12 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	c.onConsumerKeyFrameRequestedHandler = param.OnConsumerKeyFrameRequested
 	if err != nil {
 		return nil, err
+	}
+	// Set the RTCP report generation interval.
+	if c.GetKind() == mediasoupdata.MediaKind_Audio {
+		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
+	} else {
+		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
 	}
 	// Create RtpStreamSend instance for sending a single stream to the remote.
 	c.CreateRtpStream()
@@ -75,6 +88,7 @@ func (c *SimpleConsumer) CreateRtpStream() {
 		bufferSize:                     0,
 		OnRtpStreamRetransmitRtpPacket: c.OnRtpStreamRetransmitRtpPacket,
 	})
+	c.rtpStreams = append(c.rtpStreams, c.rtpStream)
 }
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
@@ -119,6 +133,27 @@ func (c *SimpleConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Packet
 
 func (c *SimpleConsumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
 	c.rtpStream.ReceiveNack(nackPacket)
+}
+
+func (c *SimpleConsumer) GetRtpStreams() []*RtpStreamSend {
+	return c.rtpStreams
+}
+
+func (c *SimpleConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
+	if now.Sub(c.lastRtcpSentTime) < c.maxRtcpInterval {
+		return nil
+	}
+	c.lastRtcpSentTime = now
+	var packets []rtcp.Packet
+	report := rtpStream.GetRtcpSenderReport(now)
+	if report == nil {
+		return nil
+	}
+	packets = append(packets, report)
+	// Build SDES chunk for this sender.
+	sdes := rtpStream.GetRtcpSdesChunk()
+	packets = append(packets, sdes)
+	return packets
 }
 
 func (c *SimpleConsumer) FillJsonStats() json.RawMessage {

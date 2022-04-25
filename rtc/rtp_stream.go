@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -98,6 +99,10 @@ func (r *RtpStream) GetSsrc() uint32 {
 	return r.params.Ssrc
 }
 
+func (r *RtpStream) GetCname() string {
+	return r.params.Cname
+}
+
 func (r *RtpStream) GetRtxSsrc() uint32 {
 	return r.params.RtxSsrc
 }
@@ -113,4 +118,11 @@ func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
 	stat.Rid = r.params.Rid
 	stat.Kind = r.params.MimeType.Type2String()
 	stat.MimeType = r.params.MimeType.MimeType
+}
+
+func (r *RtpStream) GetRtpTimestamp(now time.Time) uint32 {
+	// Calculate TS difference between now and maxPacketMs.
+	diffMs := uint32(now.UnixNano()/1000) - r.maxPacketTs
+	diffTs := diffMs * uint32(r.params.ClockRate) / 1000
+	return diffTs + r.maxPacketTs
 }

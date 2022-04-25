@@ -2,8 +2,10 @@ package rtc
 
 import (
 	"encoding/json"
+	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
 
@@ -47,9 +49,10 @@ type Transport struct {
 	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
 
 	// transport base call sons
-	sendRtpPacketFunc  func(packet *rtpparser.Packet)
-	sendRtcpPacketFunc func(packet rtcp.Packet)
-	notifyCloseFunc    func()
+	sendRtpPacketFunc          func(packet *rtpparser.Packet)
+	sendRtcpPacketFunc         func(packet rtcp.Packet)
+	sendRtcpCompoundPacketFunc func(packets []rtcp.Packet)
+	notifyCloseFunc            func()
 
 	// close
 	closeOnce sync.Once
@@ -131,9 +134,10 @@ type transportParam struct {
 	OnTransportConsumerClosed            func(consumerId, producerId string)
 	OnTransportConsumerKeyFrameRequested func(consumerId string, mappedSsrc uint32)
 	// call webrtcTransport
-	SendRtpPacketFunc  func(packet *rtpparser.Packet)
-	SendRtcpPacketFunc func(packet rtcp.Packet)
-	NotifyCloseFunc    func()
+	SendRtpPacketFunc          func(packet *rtpparser.Packet)
+	SendRtcpPacketFunc         func(packet rtcp.Packet)
+	SendRtcpCompoundPacketFunc func(packets []rtcp.Packet)
+	NotifyCloseFunc            func()
 }
 
 func (t transportParam) valid() bool {
@@ -143,7 +147,7 @@ func (t transportParam) valid() bool {
 	if t.OnTransportNewProducer == nil || t.OnTransportProducerRtpPacketReceived == nil {
 		return false
 	}
-	if t.SendRtpPacketFunc == nil || t.SendRtcpPacketFunc == nil || t.NotifyCloseFunc == nil {
+	if t.SendRtpPacketFunc == nil || t.SendRtcpPacketFunc == nil || t.SendRtcpCompoundPacketFunc == nil || t.NotifyCloseFunc == nil {
 		return false
 	}
 	return true
@@ -166,7 +170,9 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
+	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
 	transport.notifyCloseFunc = param.NotifyCloseFunc
+	go transport.OnTimer()
 	return transport, nil
 }
 
@@ -464,4 +470,32 @@ func (t *Transport) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
 
 func (t *Transport) OnConsumerKeyFrameRequested(consumer IConsumer, mappedSsrc uint32) {
 	t.onTransportConsumerKeyFrameRequestedHandler(consumer.GetId(), mappedSsrc)
+}
+
+func (t *Transport) OnTimer() {
+	rtcpTimer := rand.Int31n(1000) + 500 // 0.5-1.5 s
+	for {
+		// todo: update interval
+		time.Sleep(time.Millisecond * time.Duration(rtcpTimer))
+		now := time.Now()
+		t.SendRtcp(now)
+	}
+}
+
+func (t *Transport) SendRtcp(now time.Time) {
+	t.mapConsumers.Range(func(id, value interface{}) bool {
+		consumer, ok := value.(IConsumer)
+		if !ok || consumer == nil {
+			return true
+		}
+		rtpStreams := consumer.GetRtpStreams()
+		for _, rtpStream := range rtpStreams {
+			packets := consumer.GetRtcp(rtpStream, now)
+			if packets == nil {
+				continue
+			}
+			t.sendRtcpCompoundPacketFunc(packets)
+		}
+		return true
+	})
 }

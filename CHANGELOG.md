@@ -9,6 +9,9 @@
 * add SCTP protocol.
 * implement data-channel interface.
 
+### 1.0.2
+
+* Send out sender-reporter to simple-consumers periodically.
 
 ### 1.0.1
 

@@ -1,6 +1,8 @@
 package rtc
 
 import (
+	"time"
+
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -55,6 +57,32 @@ func (p *RtpStreamSend) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) 
 	p.packetsLost = report.TotalLost
 	p.fractionLost = report.FractionLost
 	p.UpdateScore(report)
+}
+
+func (p *RtpStreamSend) GetRtcpSenderReport(now time.Time) *rtcp.SenderReport {
+	if p.transmissionCounter.GetPacketCount() == 0 {
+		return nil
+	}
+	report := &rtcp.SenderReport{
+		SSRC:        p.GetSsrc(),
+		NTPTime:     uint64(utils.ToNtpTime(now)),
+		RTPTime:     p.GetRtpTimestamp(now),
+		PacketCount: uint32(p.transmissionCounter.GetPacketCount()),
+		OctetCount:  uint32(p.transmissionCounter.GetBytes()),
+	}
+	return report
+}
+
+func (p *RtpStreamSend) GetRtcpSdesChunk() *rtcp.SourceDescription {
+	return &rtcp.SourceDescription{
+		Chunks: []rtcp.SourceDescriptionChunk{{
+			Source: p.GetSsrc(),
+			Items: []rtcp.SourceDescriptionItem{{
+				Type: rtcp.SDESCNAME,
+				Text: p.GetCname(),
+			}},
+		}},
+	}
 }
 
 func (p *RtpStreamSend) ReceivePacket(packet *rtpparser.Packet) bool {

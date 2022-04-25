@@ -8,7 +8,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
@@ -28,6 +27,8 @@ type IConsumer interface {
 	GetConsumableRtpEncodings() []mediasoupdata.RtpEncodingParameters
 	ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
 	ReceiveNack(nackPacket *rtcp.TransportLayerNack)
+	GetRtpStreams() []*RtpStreamSend
+	GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet
 }
 
 type Consumer struct {
@@ -38,7 +39,6 @@ type Consumer struct {
 	mediaSsrcs                 []uint32
 	rtxSsrcs                   []uint32
 	supportedCodecPayloadTypes []uint8
-	maxRtcpInterval            time.Duration
 
 	consumerType           mediasoupdata.ConsumerType
 	rtpParameters          mediasoupdata.RtpParameters
@@ -48,12 +48,19 @@ type Consumer struct {
 	logger utils.Logger
 }
 
+func (c *Consumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
+	panic("implement me")
+}
+
+func (c *Consumer) GetRtpStreams() []*RtpStreamSend {
+	panic("implement me")
+}
+
 func (c *Consumer) GetKind() mediasoupdata.MediaKind {
 	return c.Kind
 }
 
 func (c *Consumer) SendRtpPacket(packet *rtpparser.Packet) {
-	//TODO implement me
 	panic("implement me")
 }
 
@@ -173,17 +180,10 @@ func (c *Consumer) init(param consumerParam) error {
 	// todo: Fill RTX SSRCs vector.
 	//for _, encoding := range c.rtpParameters.Encodings {
 	//}
-	// Set the RTCP report generation interval.
-	if c.Kind == mediasoupdata.MediaKind_Audio {
-		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
-	} else {
-		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
-	}
 	return nil
 }
 
 func (c *Consumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
-	//TODO implement me
 	panic("implement me")
 }
 
@@ -207,11 +207,9 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 }
 
 func (c *Consumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (c *Consumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
-	//TODO implement me
 	panic("implement me")
 }

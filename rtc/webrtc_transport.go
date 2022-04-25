@@ -42,6 +42,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
+	param.SendRtcpCompoundPacketFunc = t.SendRtcpCompoundPacket
 	param.NotifyCloseFunc = t.Close
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
@@ -223,8 +224,29 @@ func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
 		return
 	}
-	t.logger.Debug("SendRtcpPacket")
+	t.logger.Info("SendRtcpPacket:%+v", packet)
 	decryptedRaw, err := packet.Marshal()
+	if err != nil {
+		t.logger.Error("rtcpPacket.Marshal error:%v", err)
+		monitor.RtcpSendCount(monitor.TraceMarshalFailed)
+		return
+	}
+	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, nil)
+	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
+		t.logger.Error("write EncryptRTCP error:%v", err)
+		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
+		return
+	}
+	monitor.RtcpSendCount(monitor.TraceSend)
+}
+
+func (t *WebrtcTransport) SendRtcpCompoundPacket(packets []rtcp.Packet) {
+	if !t.connected.Get() {
+		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
+		return
+	}
+	t.logger.Info("SendRtcpCompoundPacket:%+v", packets)
+	decryptedRaw, err := rtcp.Marshal(packets)
 	if err != nil {
 		t.logger.Error("rtcpPacket.Marshal error:%v", err)
 		monitor.RtcpSendCount(monitor.TraceMarshalFailed)
