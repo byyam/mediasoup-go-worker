@@ -43,7 +43,16 @@ type RtpStream struct {
 	maxPacketTs          uint32
 	packetsRetransmitted uint32
 	packetsRepaired      uint32
-	logger               utils.Logger
+	// Others.
+	//   https://tools.ietf.org/html/rfc3550#appendix-A.1 stuff.
+	maxSeq  uint16 // Highest seq. number seen.
+	cycles  uint32 // Shifted count of seq. number cycles.
+	baseSeq uint32 // Base seq number.
+	badSeq  uint32 // Last 'bad' seq number + 1.
+
+	reportedPacketLost uint32
+
+	logger utils.Logger
 }
 
 func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
@@ -125,4 +134,8 @@ func (r *RtpStream) GetRtpTimestamp(now time.Time) uint32 {
 	diffMs := uint32(now.UnixNano()/1000) - r.maxPacketTs
 	diffTs := diffMs * uint32(r.params.ClockRate) / 1000
 	return diffTs + r.maxPacketTs
+}
+
+func (r *RtpStream) GetExpectedPackets() uint32 {
+	return r.cycles + uint32(r.maxSeq) - r.baseSeq + 1
 }

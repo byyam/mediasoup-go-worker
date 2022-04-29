@@ -40,11 +40,13 @@ type Producer struct {
 
 	keyFrameRequestManager *KeyFrameRequestManager
 	maxRtcpInterval        time.Duration
+	lastRtcpSentTime       time.Time
 
 	// handler
-	onProducerRtpPacketReceivedHandler     atomic.Value
-	onProducerSendRtcpPacketHandler        func(packet rtcp.Packet)
-	onTransportProducerNewRtpStreamHandler func(producerId string, rtpStream *RtpStreamRecv, mappedSsrc uint32)
+	onProducerRtpPacketReceivedHandler           atomic.Value
+	onProducerSendRtcpPacketHandler              func(packet rtcp.Packet)
+	onTransportProducerNewRtpStreamHandler       func(producerId string, rtpStream *RtpStreamRecv, mappedSsrc uint32)
+	onProducerNeedWorstRemoteFractionLostHandler func(producerId string, worstRemoteFractionLost *uint8)
 }
 
 type ReceiveRtpPacketResult int
@@ -56,10 +58,11 @@ const (
 )
 
 type producerParam struct {
-	id                          string
-	options                     mediasoupdata.ProducerOptions
-	OnProducerRtpPacketReceived func(*Producer, *rtpparser.Packet)
-	OnProducerSendRtcpPacket    func(packet rtcp.Packet)
+	id                                    string
+	options                               mediasoupdata.ProducerOptions
+	OnProducerRtpPacketReceived           func(*Producer, *rtpparser.Packet)
+	OnProducerSendRtcpPacket              func(packet rtcp.Packet)
+	OnProducerNeedWorstRemoteFractionLost func(producerId string, worstRemoteFractionLost *uint8)
 }
 
 func newProducer(param producerParam) (*Producer, error) {
@@ -80,6 +83,7 @@ func newProducer(param producerParam) (*Producer, error) {
 	}
 	p.onProducerRtpPacketReceivedHandler.Store(param.OnProducerRtpPacketReceived)
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
+	p.onProducerNeedWorstRemoteFractionLostHandler = param.OnProducerNeedWorstRemoteFractionLost
 
 	p.logger.Info("input param for producer: %# v", pretty.Formatter(param.options))
 
@@ -209,7 +213,7 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 	{
 		payload := packet.GetExtension(p.RtpHeaderExtensionIds.Mid)
 		if payload == nil {
-			p.logger.Warn("set RTP header extension MID failed,mappedSsrc:%d", mappedSsrc)
+			p.logger.Warn("set RTP header extension MID[%d] failed,mappedSsrc:%d", p.RtpHeaderExtensionIds.Mid, mappedSsrc)
 		} else {
 			if err := packet.SetExtension(mediasoupdata.MID, payload); err != nil {
 				p.logger.Warn("set RTP header extension MID failed:%s,mappedSsrc:%d", err, mappedSsrc)
@@ -510,4 +514,37 @@ func (p *Producer) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {
 	}
 	rtpStream := v.(*RtpStreamRecv)
 	rtpStream.ReceiveRtcpSenderReport(report)
+}
+
+func (p *Producer) GetRtcp(now time.Time) []rtcp.Packet {
+	if now.Sub(p.lastRtcpSentTime) < p.maxRtcpInterval {
+		return nil
+	}
+	p.lastRtcpSentTime = now
+	var packets []rtcp.Packet
+
+	p.mapSsrcRtpStream.Range(func(key, value interface{}) bool {
+		rtpStream, ok := value.(*RtpStreamRecv)
+		if !ok || rtpStream == nil {
+			return true
+		}
+		var worstRemoteFractionLost uint8
+		if rtpStream.params.UseInBandFec {
+			// Notify the listener, so we'll get the worst remote fraction lost.
+			p.onProducerNeedWorstRemoteFractionLostHandler(p.id, &worstRemoteFractionLost)
+			if worstRemoteFractionLost > 0 {
+				p.logger.Debug("using worst remote fraction lost:%d", worstRemoteFractionLost)
+			}
+		}
+		report := rtpStream.GetRtcpReceiverReport(now, worstRemoteFractionLost)
+		if report != nil {
+			packets = append(packets, &rtcp.ReceiverReport{
+				Reports: []rtcp.ReceptionReport{*report},
+			})
+		}
+		// todo: rtx
+		return true
+	})
+
+	return packets
 }

@@ -41,12 +41,13 @@ type Transport struct {
 	rtpListener        *RtpListener
 
 	// handler
-	onTransportNewProducerHandler               atomic.Value
-	onTransportProducerClosedHandler            func(producerId string)
-	onTransportProducerRtpPacketReceivedHandler func(*Producer, *rtpparser.Packet)
-	onTransportNewConsumerHandler               func(consumer IConsumer, producerId string) error
-	onTransportConsumerClosedHandler            func(producerId, consumerId string)
-	onTransportConsumerKeyFrameRequestedHandler func(consumerId string, mappedSsrc uint32)
+	onTransportNewProducerHandler                 atomic.Value
+	onTransportProducerClosedHandler              func(producerId string)
+	onTransportProducerRtpPacketReceivedHandler   func(*Producer, *rtpparser.Packet)
+	onTransportNewConsumerHandler                 func(consumer IConsumer, producerId string) error
+	onTransportConsumerClosedHandler              func(producerId, consumerId string)
+	onTransportConsumerKeyFrameRequestedHandler   func(consumerId string, mappedSsrc uint32)
+	onTransportNeedWorstRemoteFractionLostHandler func(producerId string, worstRemoteFractionLost *uint8)
 
 	// transport base call sons
 	sendRtpPacketFunc          func(packet *rtpparser.Packet)
@@ -126,13 +127,14 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 }
 
 type transportParam struct {
-	Id                                   string
-	OnTransportNewProducer               func(producer *Producer) error
-	OnTransportProducerClosed            func(producerId string)
-	OnTransportProducerRtpPacketReceived func(producer *Producer, packet *rtpparser.Packet)
-	OnTransportNewConsumer               func(consumer IConsumer, producerId string) error
-	OnTransportConsumerClosed            func(consumerId, producerId string)
-	OnTransportConsumerKeyFrameRequested func(consumerId string, mappedSsrc uint32)
+	Id                                     string
+	OnTransportNewProducer                 func(producer *Producer) error
+	OnTransportProducerClosed              func(producerId string)
+	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
+	OnTransportNewConsumer                 func(consumer IConsumer, producerId string) error
+	OnTransportConsumerClosed              func(consumerId, producerId string)
+	OnTransportConsumerKeyFrameRequested   func(consumerId string, mappedSsrc uint32)
+	OnTransportNeedWorstRemoteFractionLost func(producerId string, worstRemoteFractionLost *uint8)
 	// call webrtcTransport
 	SendRtpPacketFunc          func(packet *rtpparser.Packet)
 	SendRtcpPacketFunc         func(packet rtcp.Packet)
@@ -168,6 +170,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.onTransportNewConsumerHandler = param.OnTransportNewConsumer
 	transport.onTransportConsumerClosedHandler = param.OnTransportConsumerClosed
 	transport.onTransportConsumerKeyFrameRequestedHandler = param.OnTransportConsumerKeyFrameRequested
+	transport.onTransportNeedWorstRemoteFractionLostHandler = param.OnTransportNeedWorstRemoteFractionLost
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
@@ -325,10 +328,11 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		return nil, mserror.ErrDuplicatedId
 	}
 	producer, err := newProducer(producerParam{
-		id:                          id,
-		options:                     options,
-		OnProducerRtpPacketReceived: t.OnProducerRtpPacketReceived,
-		OnProducerSendRtcpPacket:    t.OnProducerSendRtcpPacket,
+		id:                                    id,
+		options:                               options,
+		OnProducerRtpPacketReceived:           t.OnProducerRtpPacketReceived,
+		OnProducerSendRtcpPacket:              t.OnProducerSendRtcpPacket,
+		OnProducerNeedWorstRemoteFractionLost: t.onTransportNeedWorstRemoteFractionLostHandler,
 	})
 	if err != nil {
 		return nil, err
@@ -491,9 +495,21 @@ func (t *Transport) SendRtcp(now time.Time) {
 		rtpStreams := consumer.GetRtpStreams()
 		for _, rtpStream := range rtpStreams {
 			packets := consumer.GetRtcp(rtpStream, now)
-			if packets == nil {
+			if len(packets) == 0 {
 				continue
 			}
+			t.sendRtcpCompoundPacketFunc(packets)
+		}
+		return true
+	})
+	t.mapProducers.Range(func(id, value interface{}) bool {
+		producer, ok := value.(*Producer)
+		if !ok || producer == nil {
+			return true
+		}
+		// One more RR would exceed the MTU, send the compound packet now.
+		packets := producer.GetRtcp(now)
+		if len(packets) != 0 {
 			t.sendRtcpCompoundPacketFunc(packets)
 		}
 		return true

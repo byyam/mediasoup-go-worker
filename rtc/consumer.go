@@ -29,6 +29,7 @@ type IConsumer interface {
 	ReceiveNack(nackPacket *rtcp.TransportLayerNack)
 	GetRtpStreams() []*RtpStreamSend
 	GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet
+	NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8)
 }
 
 type Consumer struct {
@@ -211,5 +212,9 @@ func (c *Consumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
 }
 
 func (c *Consumer) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
+	panic("implement me")
+}
+
+func (c *Consumer) NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8) {
 	panic("implement me")
 }

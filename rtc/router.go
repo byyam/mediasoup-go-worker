@@ -43,13 +43,14 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
 			options: options,
 			transportParam: transportParam{
-				Id:                                   request.Internal.TransportId,
-				OnTransportNewProducer:               r.OnTransportNewProducer,
-				OnTransportProducerClosed:            r.OnTransportProducerClosed,
-				OnTransportProducerRtpPacketReceived: r.OnTransportProducerRtpPacketReceived,
-				OnTransportNewConsumer:               r.OnTransportNewConsumer,
-				OnTransportConsumerClosed:            r.OnTransportConsumerClosed,
-				OnTransportConsumerKeyFrameRequested: r.OnTransportConsumerKeyFrameRequested,
+				Id:                                     request.Internal.TransportId,
+				OnTransportNewProducer:                 r.OnTransportNewProducer,
+				OnTransportProducerClosed:              r.OnTransportProducerClosed,
+				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:                 r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:              r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested:   r.OnTransportConsumerKeyFrameRequested,
+				OnTransportNeedWorstRemoteFractionLost: r.OnTransportNeedWorstRemoteFractionLost,
 			},
 		})
 		if err != nil {
@@ -201,4 +202,20 @@ func (r *Router) OnTransportConsumerKeyFrameRequested(consumerId string, mappedS
 		return
 	}
 	v.(*Producer).RequestKeyFrame(mappedSsrc)
+}
+
+func (r *Router) OnTransportNeedWorstRemoteFractionLost(producerId string, worstRemoteFractionLost *uint8) {
+	value, ok := r.mapProducerConsumers.Get(producerId)
+	if !ok {
+		r.logger.Trace("no consumers to router RTP")
+		return
+	}
+	consumersMap, ok := value.(map[interface{}]interface{})
+	if !ok {
+		r.logger.Error("mapProducerConsumers get consumers failed")
+		return
+	}
+	for _, v := range consumersMap {
+		v.(IConsumer).NeedWorstRemoteFractionLost(worstRemoteFractionLost)
+	}
 }

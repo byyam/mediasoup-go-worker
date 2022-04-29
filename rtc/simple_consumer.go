@@ -167,3 +167,10 @@ func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
 	c.logger.Debug("getStats:%+v", jsonData)
 	return data
 }
+
+func (c *SimpleConsumer) NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8) {
+	// If our fraction lost is worse than the given one, update it.
+	if c.rtpStream.fractionLost > *worstRemoteFractionLost {
+		*worstRemoteFractionLost = c.rtpStream.fractionLost
+	}
+}
