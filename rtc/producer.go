@@ -210,16 +210,16 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 
 	// Mangle RTP header extensions.
 	// Add urn:ietf:params:rtp-hdrext:sdes:mid.
-	{
-		payload := packet.GetExtension(p.RtpHeaderExtensionIds.Mid)
-		if payload == nil {
-			p.logger.Warn("set RTP header extension MID[%d] failed,mappedSsrc:%d", p.RtpHeaderExtensionIds.Mid, mappedSsrc)
-		} else {
-			if err := packet.SetExtension(mediasoupdata.MID, payload); err != nil {
-				p.logger.Warn("set RTP header extension MID failed:%s,mappedSsrc:%d", err, mappedSsrc)
-			}
-		}
-	}
+	//{
+	//	payload := packet.GetExtension(p.RtpHeaderExtensionIds.Mid)
+	//	if payload == nil {
+	//		p.logger.Warn("set RTP header extension MID[%d] failed,mappedSsrc:%d", p.RtpHeaderExtensionIds.Mid, mappedSsrc)
+	//	} else {
+	//		if err := packet.SetExtension(mediasoupdata.MID, payload); err != nil {
+	//			p.logger.Warn("set RTP header extension MID failed:%s,mappedSsrc:%d", err, mappedSsrc)
+	//		}
+	//	}
+	//}
 	if p.Kind == mediasoupdata.MediaKind_Audio {
 		// Proxy urn:ietf:params:rtp-hdrext:ssrc-audio-level.
 		payload := packet.GetExtension(p.RtpHeaderExtensionIds.SsrcAudioLevel)

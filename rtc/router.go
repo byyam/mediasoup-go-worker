@@ -185,7 +185,14 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 		return
 	}
 	for _, v := range consumersMap {
-		v.(IConsumer).SendRtpPacket(packet)
+		consumer := v.(IConsumer)
+		mid := consumer.GetRtpParameters().Mid
+		if mid != "" {
+			if err := packet.UpdateMid(mid); err != nil {
+				r.logger.Warn("UpdateMid in OnTransportProducerRtpPacketReceived failed:%v", err)
+			}
+		}
+		consumer.SendRtpPacket(packet)
 	}
 }
 

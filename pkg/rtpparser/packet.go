@@ -109,3 +109,7 @@ func (p Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool
 	*length = uint8(extenLen)
 	return true
 }
+
+func (p *Packet) UpdateMid(mid string) error {
+	return p.SetExtension(p.midExtensionId, []byte(mid))
+}
