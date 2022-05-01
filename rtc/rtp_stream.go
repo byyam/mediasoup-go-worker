@@ -4,10 +4,19 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+)
+
+const (
+	MaxDropout           = 3000
+	MaxMisOrder          = 1500
+	RtpSeqMod            = 1 << 16
+	ScoreHistogramLength = 24
 )
 
 type ParamRtpStream struct {
@@ -41,14 +50,19 @@ type RtpStream struct {
 	nackCount            uint32
 	nackPacketCount      uint32
 	maxPacketTs          uint32
+	maxPacketMS          int64
 	packetsRetransmitted uint32
 	packetsRepaired      uint32
+	packetsDiscarded     uint32
+	pliCount             uint32
+	firCount             uint32
 	// Others.
 	//   https://tools.ietf.org/html/rfc3550#appendix-A.1 stuff.
 	maxSeq  uint16 // Highest seq. number seen.
 	cycles  uint32 // Shifted count of seq. number cycles.
 	baseSeq uint32 // Base seq number.
 	badSeq  uint32 // Last 'bad' seq number + 1.
+	started bool
 
 	reportedPacketLost uint32
 
@@ -117,7 +131,24 @@ func (r *RtpStream) GetRtxSsrc() uint32 {
 }
 
 func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
-
+	// If this is the first packet seen, initialize stuff.
+	if !r.started {
+		r.InitSeq(packet.SequenceNumber)
+		r.started = true
+		r.maxSeq = packet.SequenceNumber - 1
+		r.maxPacketTs = packet.Timestamp
+		r.maxPacketMS = utils.GetTimeMs()
+	}
+	// If not a valid packet ignore it.
+	if !r.UpdateSeq(packet) {
+		r.logger.Warn("invalid packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+		return false
+	}
+	// Update highest seen RTP timestamp.
+	if seqmgr.IsSeqHigherThanUint32(packet.Timestamp, r.maxPacketTs) {
+		r.maxPacketTs = packet.Timestamp
+		r.maxPacketMS = utils.GetTimeMs()
+	}
 	return true
 }
 
@@ -127,6 +158,20 @@ func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
 	stat.Rid = r.params.Rid
 	stat.Kind = r.params.MimeType.Type2String()
 	stat.MimeType = r.params.MimeType.MimeType
+	stat.PacketsLost = r.packetsLost
+	stat.FractionLost = r.fractionLost
+	stat.PacketsRepaired = r.packetsRepaired
+	stat.NackCount = r.nackCount
+	stat.NackPacketCount = r.nackPacketCount
+	stat.PliCount = r.pliCount
+	stat.FirCount = r.firCount
+	stat.Score = uint32(r.score)
+	stat.Rid = r.params.Rid
+	stat.RtxSsrc = r.params.RtxSsrc
+	if r.HasRtx() {
+		stat.RtxPacketsDiscarded = r.rtxStream.GetPacketsDiscarded()
+	}
+	stat.RoundTripTime = float32(r.rtt)
 }
 
 func (r *RtpStream) GetRtpTimestamp(now time.Time) uint32 {
@@ -138,4 +183,52 @@ func (r *RtpStream) GetRtpTimestamp(now time.Time) uint32 {
 
 func (r *RtpStream) GetExpectedPackets() uint32 {
 	return r.cycles + uint32(r.maxSeq) - r.baseSeq + 1
+}
+
+func (r *RtpStream) InitSeq(seq uint16) {
+	r.logger.Trace("init seq")
+	// Initialize/reset RTP counters.
+	r.baseSeq = uint32(seq)
+	r.maxSeq = seq
+	r.badSeq = RtpSeqMod + 1
+}
+
+func (r *RtpStream) UpdateSeq(packet *rtpparser.Packet) bool {
+	udelta := packet.SequenceNumber - r.maxSeq
+	// If the new packet sequence number is greater than the max seen but not
+	// "so much bigger", accept it.
+	// NOTE: udelta also handles the case of a new cycle, this is:
+	//    maxSeq:65536, seq:0 => udelta:1
+	if udelta < MaxDropout {
+		// In order, with permissible gap.
+		if packet.SequenceNumber < r.maxSeq {
+			// Sequence number wrapped: count another 64K cycle.
+			r.cycles += RtpSeqMod
+		}
+		r.maxSeq = packet.SequenceNumber
+	} else if udelta <= RtpSeqMod-MaxMisOrder {
+		// Too old packet received (older than the allowed misorder).
+		// Or to new packet (more than acceptable dropout).
+
+		// The sequence number made a very large jump. If two sequential packets
+		// arrive, accept the latter.
+		if uint32(packet.SequenceNumber) == r.badSeq {
+			// Two sequential packets. Assume that the other side restarted without
+			// telling us so just re-sync (i.e., pretend this was the first packet).
+			r.logger.Warn("too bad sequence number, re-syncing RTP [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+			r.InitSeq(packet.SequenceNumber)
+			r.maxPacketTs = packet.Timestamp
+			r.maxPacketMS = utils.GetTimeMs()
+		} else {
+			r.logger.Warn("bad sequence number, ignoring packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+			r.badSeq = (uint32(packet.SequenceNumber) + 1) & (RtpSeqMod - 1)
+			// Packet discarded due to late or early arriving.
+			r.packetsDiscarded++
+			return false
+		}
+	} else {
+		// Acceptable misorder.
+		// Do nothing.
+	}
+	return true
 }

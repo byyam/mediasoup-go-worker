@@ -3,7 +3,6 @@ module github.com/byyam/mediasoup-go-worker
 go 1.16
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/gops v0.3.22
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
@@ -21,7 +20,6 @@ require (
 	github.com/pion/stun v0.3.5
 	github.com/pion/transport v0.13.0
 	github.com/prometheus/client_golang v1.12.1
-	github.com/ragsagar/netstringer v0.0.0-20170823044103-676e6362ea50
 	github.com/rs/zerolog v1.26.1
 	github.com/urfave/cli/v2 v2.3.0
 )

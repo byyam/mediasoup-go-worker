@@ -44,3 +44,7 @@ func (r *RtxStream) ReceivePacket(packet *rtpparser.Packet) bool {
 
 	return true
 }
+
+func (r RtxStream) GetPacketsDiscarded() uint32 {
+	return 0
+}
