@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/byyam/mediasoup-go-worker/monitor"
 	"log"
 	"net/http"
 	"os"
@@ -25,16 +26,22 @@ var (
 )
 
 func main() {
-	go func() {
-		http.HandleFunc("/echo", echo)
-		log.Fatal(http.ListenAndServe("localhost:8080", nil))
-	}()
 	conf.InitCli()
+	logger.Info("argv:%+v", conf.Settings)
+	if conf.Settings.PrometheusPort > 0 {
+		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
+	}
+
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
 	if err := workerapi.CreateRouter(worker, webrtctransport.GetRouterId(worker)); err != nil {
 		panic(err)
 	}
+
+	go func() {
+		http.HandleFunc("/echo", echo)
+		log.Fatal(http.ListenAndServe("localhost:12001", nil))
+	}()
 	// block here
 	listenSignal()
 	worker.Stop()

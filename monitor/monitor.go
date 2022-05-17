@@ -2,12 +2,10 @@ package monitor
 
 import (
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
