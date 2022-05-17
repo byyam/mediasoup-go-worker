@@ -1,10 +1,8 @@
 package conf
 
 import (
-	"io"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"os"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/urfave/cli/v2"
@@ -18,14 +16,15 @@ func InitCli() {
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "logLevel", Value: "warn", Aliases: []string{"l"}},
-			&cli.StringSliceFlag{Name: "logTags", Aliases: []string{"t"}},
+			&cli.StringSliceFlag{Name: "logTag", Aliases: []string{"t"}},
 			&cli.IntFlag{Name: "rtcMinPort", Value: 0, Aliases: []string{"m"}},
 			&cli.IntFlag{Name: "rtcMaxPort", Value: 0, Aliases: []string{"M"}},
 			&cli.StringFlag{Name: "dtlsCertificateFile", Aliases: []string{"c"}},
 			&cli.StringFlag{Name: "dtlsPrivateKeyFile", Aliases: []string{"p"}},
 			&cli.IntFlag{Name: "rtcStaticPort", Value: 0, Aliases: []string{"s"}},
+			&cli.IntFlag{Name: "pipePort", Value: 55555, Aliases: []string{"pipeP"}},
 			&cli.StringFlag{Name: "rtcListenIp", Value: "0.0.0.0", Aliases: []string{"L"}},
-			&cli.StringFlag{Name: "prometheusPath", Value: "metrics", Aliases: []string{"pm"}},
+			&cli.StringFlag{Name: "prometheusPath", Value: "/metrics", Aliases: []string{"pm"}},
 			&cli.IntFlag{Name: "prometheusPort", Value: -1, Aliases: []string{"pp"}},
 		},
 	}
@@ -44,10 +43,8 @@ func InitCli() {
 		Settings.RtcListenIp = c.String("rtcListenIp")
 		Settings.PrometheusPath = c.String("prometheusPath")
 		Settings.PrometheusPort = c.Int("prometheusPort")
+		Settings.PipePort = c.Int("pipePort")
 		return nil
-	}
-	cli.HelpPrinter = func(w io.Writer, tmpl string, data interface{}) {
-		panic("usage helper")
 	}
 	err := app.Run(os.Args)
 	if err != nil {

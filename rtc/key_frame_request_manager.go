@@ -1,9 +1,8 @@
 package rtc
 
 import (
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
 
 type KeyFrameRequestManager struct {

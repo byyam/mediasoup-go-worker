@@ -43,6 +43,7 @@ type WorkerSettings struct {
 	PrometheusPath string `json:"prometheusPath,omitempty"`
 	PrometheusPort int    `json:"prometheusPort,omitempty"`
 
+	PipePort int `json:"pipePort,omitempty"`
 	/**
 	 * Custom application data.
 	 */

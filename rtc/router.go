@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -16,7 +17,7 @@ import (
 
 type Router struct {
 	id                   string
-	logger               utils.Logger
+	logger               utils2.Logger
 	mapTransports        sync.Map
 	mapProducerConsumers *utils.Hashmap
 	mapProducers         sync.Map
@@ -26,7 +27,7 @@ type Router struct {
 func NewRouter(id string) *Router {
 	return &Router{
 		id:                   id,
-		logger:               utils.NewLogger("router", id),
+		logger:               utils2.NewLogger("router", id),
 		mapProducerConsumers: utils.NewHashMap(),
 	}
 }
@@ -54,6 +55,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
+			r.logger.Error("createWebrtcTransport:%s", err.Error())
 			response.Err = mserror.ErrCreateWebrtcTransport
 			return
 		}
@@ -63,8 +65,51 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case mediasoupdata.MethodRouterCreatePlainTransport:
 
 	case mediasoupdata.MethodRouterCreatePipeTransport:
+		var options mediasoupdata.PipeTransportOptions
+		_ = json.Unmarshal(request.Data, &options)
+		pipeTransport, err := newPipeTransport(pipeTransportParam{
+			options: options,
+			transportParam: transportParam{
+				Id:                                     request.Internal.TransportId,
+				OnTransportNewProducer:                 r.OnTransportNewProducer,
+				OnTransportProducerClosed:              r.OnTransportProducerClosed,
+				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:                 r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:              r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested:   r.OnTransportConsumerKeyFrameRequested,
+				OnTransportNeedWorstRemoteFractionLost: r.OnTransportNeedWorstRemoteFractionLost,
+			},
+		})
+		if err != nil {
+			r.logger.Error("createPipeTransport:%s", err.Error())
+			response.Err = mserror.ErrCreatePipeTransport
+			return
+		}
+		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
+		response.Data = pipeTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreateDirectTransport:
+		var options mediasoupdata.DirectTransportOptions
+		_ = json.Unmarshal(request.Data, &options)
+		directTransport, err := newDirectTransport(directTransportParam{
+			options: options,
+			transportParam: transportParam{
+				Id:                                     request.Internal.TransportId,
+				OnTransportNewProducer:                 r.OnTransportNewProducer,
+				OnTransportProducerClosed:              r.OnTransportProducerClosed,
+				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:                 r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:              r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested:   r.OnTransportConsumerKeyFrameRequested,
+				OnTransportNeedWorstRemoteFractionLost: r.OnTransportNeedWorstRemoteFractionLost,
+			},
+		})
+		if err != nil {
+			r.logger.Error("createDirectTransport:%s", err.Error())
+			response.Err = mserror.ErrCreateDirectTransport
+			return
+		}
+		r.mapTransports.Store(request.Internal.TransportId, directTransport)
 
 	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
 

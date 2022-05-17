@@ -12,6 +12,16 @@ func IsSeqLowerThanUint32(lhs, rhs uint32) bool {
 	return isSeqLowerThan(uint64(lhs), uint64(rhs), uint64(maxValue))
 }
 
+func IsSeqHigherThanUint16(lhs, rhs uint16) bool {
+	maxValue := math.MaxUint16
+	return isSeqHigherThan(uint64(lhs), uint64(rhs), uint64(maxValue))
+}
+
+func IsSeqLowerThanUint16(lhs, rhs uint16) bool {
+	maxValue := math.MaxUint16
+	return isSeqLowerThan(uint64(lhs), uint64(rhs), uint64(maxValue))
+}
+
 func isSeqHigherThan(lhs, rhs, maxValue uint64) bool {
 	if ((lhs > rhs) && lhs-rhs <= maxValue/2) || ((rhs > lhs) && rhs-lhs > maxValue/2) {
 		return true

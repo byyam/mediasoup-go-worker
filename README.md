@@ -1,6 +1,8 @@
 # mediasoup-go-worker
 Pure Go implementation of [Mediasoup worker](https://github.com/versatica/mediasoup).
 
+Motivation is to provide a mediasoup APIs implementation of [Pion](https://github.com/pion) WebRTC libraries.
+
 
 <p align="center">
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -24,6 +26,13 @@ BenchmarkNetNative_WriteBuffer-12       39985699                29.73 ns/op     
 BenchmarkNetNative_ReadBuffer-12          269317              4487 ns/op              12 B/op          3 allocs/op
 BenchmarkNetStrings_WriteBuffer-12       7167288               152.0 ns/op           355 B/op          3 allocs/op
 BenchmarkNetStrings_ReadBuffer-12       13219642                88.37 ns/op            4 B/op          1 allocs/op
+
+goos: darwin
+goarch: arm64
+BenchmarkNetNative_WriteBuffer-10       53218015                22.44 ns/op            4 B/op          1 allocs/op
+BenchmarkNetNative_ReadBuffer-10          415128              2861 ns/op              12 B/op          3 allocs/op
+BenchmarkNetStrings_WriteBuffer-10      11343592               105.2 ns/op           355 B/op          3 allocs/op
+BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op            4 B/op          1 allocs/op
 ~~~
 
 #### Mediasoup worker API
@@ -47,7 +56,7 @@ BenchmarkNetStrings_ReadBuffer-12       13219642                88.37 ns/op     
 | router.dump                        | :ballot_box_with_check: |
 | router.createWebRtcTransport       | :ballot_box_with_check: |
 | router.createPlainTransport        |           WIP           |
-| router.createPipeTransport         |           WIP           |
+| router.createPipeTransport         | :ballot_box_with_check: |
 | router.createDirectTransport       |           WIP           |
 | router.createActiveSpeakerObserver |           WIP           |
 | router.createAudioLevelObserver    |           WIP           |

@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -17,12 +18,12 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
 type ITransport interface {
+	Connected()
 	Close()
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
@@ -121,7 +122,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 		RtpPacketLossSent:           0,
 		WebRtcTransportSpecificStat: nil,
 	}
-	data, _ := json.Marshal(&jsonData)
+	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
 	t.logger.Debug("getStats:%+v", jsonData)
 	return data
 }
@@ -483,6 +484,7 @@ func (t *Transport) OnTimer() {
 		time.Sleep(time.Millisecond * time.Duration(rtcpTimer))
 		now := time.Now()
 		t.SendRtcp(now)
+		t.sendNacks()
 	}
 }
 
@@ -514,4 +516,36 @@ func (t *Transport) SendRtcp(now time.Time) {
 		}
 		return true
 	})
+}
+
+func (t *Transport) sendNacks() {
+	t.mapProducers.Range(func(id, value interface{}) bool {
+		producer, ok := value.(*Producer)
+		if !ok || producer == nil {
+			return true
+		}
+		producer.mapSsrcRtpStream.Range(func(key, value interface{}) bool {
+			ssrc := key.(uint32)
+			rtpStream, ok := value.(*RtpStreamRecv)
+			if !ok || rtpStream == nil {
+				return true
+			}
+			pairs, _ := rtpStream.nackGenerator.Pairs()
+			if len(pairs) > 0 {
+				packets := []rtcp.Packet{
+					&rtcp.TransportLayerNack{
+						MediaSSRC: ssrc,
+						Nacks:     pairs,
+					},
+				}
+				t.sendRtcpCompoundPacketFunc(packets)
+			}
+			return true
+		})
+		return true
+	})
+}
+
+func (t *Transport) Connected() {
+
 }

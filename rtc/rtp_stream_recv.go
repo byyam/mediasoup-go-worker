@@ -1,6 +1,8 @@
 package rtc
 
 import (
+	"github.com/byyam/mediasoup-go-worker/pkg/nack"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math"
 	"time"
 
@@ -13,23 +15,26 @@ import (
 
 type RtpStreamRecv struct {
 	*RtpStream
-	score                            uint8
-	expectedPrior                    uint32 // Packets expected at last interval.
-	expectedPriorScore               uint32 // Packets expected at last interval for score calculation.
-	receivedPrior                    uint32 // Packets received at last interval.
-	receivedPriorScore               uint32 // Packets received at last interval for score calculation.
-	lastSrTimestamp                  uint32 // The middle 32 bits out of 64 in the NTP timestamp received in the most recent sender report.
-	lastSrReceived                   int64  // Wallclock time representing the most recent sender report arrival.
-	jitter                           uint32
+	score              uint8
+	expectedPrior      uint32 // Packets expected at last interval.
+	expectedPriorScore uint32 // Packets expected at last interval for score calculation.
+	receivedPrior      uint32 // Packets received at last interval.
+	receivedPriorScore uint32 // Packets received at last interval for score calculation.
+	lastSrTimestamp    uint32 // The middle 32 bits out of 64 in the NTP timestamp received in the most recent sender report.
+	lastSrReceived     int64  // Wallclock time representing the most recent sender report arrival.
+	jitter             uint32
+
+	nackGenerator                    *nack.NackQueue
 	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
 	mediaTransmissionCounter         *RtpDataCounter      // Just valid media.
-	logger                           utils.Logger
+	logger                           utils2.Logger
 	onRtpStreamSendRtcpPacketHandler func(packet rtcp.Packet)
 }
 
 type ParamRtpStreamRecv struct {
 	*ParamRtpStream
 	onRtpStreamSendRtcpPacket func(packet rtcp.Packet)
+	sendNackDelayMs           uint32
 }
 
 func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
@@ -41,9 +46,10 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	if param.UseDtx {
 		windowSize = 6000
 	}
+	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{})
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
-	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())
+	r.logger = utils2.NewLogger("RtpStreamRecv", r.GetId())
 	r.logger.Info("new RtpStreamRecv:%# v", *param.ParamRtpStream)
 	return r
 }
@@ -58,6 +64,16 @@ func (r *RtpStreamRecv) ReceivePacket(packet *rtpparser.Packet) bool {
 	if !r.RtpStream.ReceivePacket(packet) {
 		r.logger.Debug("packet discarded")
 		return false
+	}
+
+	// Pass the packet to the NackGenerator.
+	if r.params.UseNack {
+		// foundNackPkg := r.nackGenerator.ReceivePacket(packet.Packet, packet.IsKeyFrame(), false)
+		r.nackGenerator.Push(packet.SequenceNumber)
+		//if !r.HasRtx() && foundNackPkg {
+		//	r.packetsRetransmitted++
+		//	r.packetsRepaired++
+		//}
 	}
 	// Increase transmission counter.
 	r.transmissionCounter.Update(packet)

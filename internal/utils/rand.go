@@ -3,18 +3,18 @@ package utils
 import "github.com/pion/randutil"
 
 const (
-	runesAlpha                 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	runesDigit                 = "0123456789"
-	runesCandidateIDFoundation = runesAlpha + runesDigit + "+/"
+	RunesAlpha                 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	RunesDigit                 = "0123456789"
+	runesCandidateIDFoundation = RunesAlpha + RunesDigit + "+/"
 
 	lenUFrag = 16
 	lenPwd   = 32
 )
 
 func GeneratePwd() (string, error) {
-	return randutil.GenerateCryptoRandomString(lenPwd, runesAlpha)
+	return randutil.GenerateCryptoRandomString(lenPwd, RunesAlpha)
 }
 
 func GenerateUFrag() (string, error) {
-	return randutil.GenerateCryptoRandomString(lenUFrag, runesAlpha)
+	return randutil.GenerateCryptoRandomString(lenUFrag, RunesAlpha)
 }

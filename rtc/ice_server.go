@@ -3,6 +3,7 @@ package rtc
 import (
 	"errors"
 	"fmt"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"net"
 	"sync"
 	"time"
@@ -20,9 +21,9 @@ import (
 const (
 	maxBufferSize = 1000 * 1000 // 1MB
 	// keepaliveInterval used to keep candidates alive
-	defaultKeepaliveInterval = 2 * time.Second
+	defaultKeepaliveInterval = 5 * time.Second
 	// defaultDisconnectedTimeout is the default time till an Agent transitions disconnected
-	defaultDisconnectedTimeout = 10 * time.Second
+	defaultDisconnectedTimeout = 30 * time.Second
 )
 
 type iceServer struct {
@@ -30,12 +31,13 @@ type iceServer struct {
 	state      mediasoupdata.IceState
 	localUfrag string
 	localPwd   string
-	logger     utils.Logger
+	logger     utils2.Logger
 	udpMux     *ice.UDPMuxDefault
 	udpConn    net.PacketConn
 	buffer     *packetio.Buffer
 	// timestamp
 	lastStunTimestamp   time.Time
+	lastPkgTimestamp    time.Time
 	disconnectedTimeout time.Duration
 	keepaliveInterval   time.Duration
 	// remote info
@@ -61,16 +63,16 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	ufrag, _ := utils.GenerateUFrag()
 	pwd, _ := utils.GeneratePwd()
 	d := &iceServer{
-		iceLite:           param.iceLite, // todo: support full ICE
-		state:             mediasoupdata.IceState_New,
-		logger:            utils.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
-		localUfrag:        ufrag,
-		localPwd:          pwd,
-		udpMux:            global.UdpMuxConn,
-		connDone:          make(chan struct{}),
-		closedChan:        make(chan struct{}),
-		buffer:            packetio.NewBuffer(),
-		lastStunTimestamp: time.Now(), // init stun TS to now.
+		iceLite:          param.iceLite, // todo: support full ICE
+		state:            mediasoupdata.IceState_New,
+		logger:           utils2.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
+		localUfrag:       ufrag,
+		localPwd:         pwd,
+		udpMux:           global.ICEMuxConn,
+		connDone:         make(chan struct{}),
+		closedChan:       make(chan struct{}),
+		buffer:           packetio.NewBuffer(),
+		lastPkgTimestamp: time.Now(), // init stun TS to now.
 	}
 	if param.DisconnectedTimeout == nil {
 		d.disconnectedTimeout = defaultDisconnectedTimeout
@@ -107,9 +109,9 @@ func (d *iceServer) connectivityChecks() {
 		if !d.isConnected() {
 			return
 		}
-		if time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
+		if time.Since(d.lastPkgTimestamp) > d.disconnectedTimeout && time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
 			d.logger.Warn("ice inactive, disconnectedTimeout=%v, ufrag=%s", d.disconnectedTimeout, d.localUfrag)
-			// d.Disconnect()
+			d.Disconnect()
 		}
 	}
 	for {
@@ -170,6 +172,7 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 		return nil
 	}
 	d.onPacketReceivedHandler(buffer[:n])
+	d.lastPkgTimestamp = time.Now()
 	return nil
 }
 
@@ -265,7 +268,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,
 		Protocol:   "udp",
-		Port:       uint32(global.UdpMuxPort),
+		Port:       uint32(global.ICEMuxPort),
 		Type:       "host",
 		TcpType:    "",
 	}

@@ -12,7 +12,8 @@ type SrtpParameters struct {
 	/**
 	 * SRTP keying material (master key and salt) in Base64.
 	 */
-	KeyBase64 string `json:"keyBase64"`
+	KeyBase64  string `json:"keyBase64"`
+	SaltBase64 string `json:"saltBase64"`
 }
 
 /**

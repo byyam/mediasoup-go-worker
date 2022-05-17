@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"time"
 
 	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
@@ -13,8 +14,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
 
 type SimpleConsumer struct {

@@ -62,7 +62,10 @@ type TransportConnectOptions struct {
 }
 
 type TransportConnectData struct {
+	// webrtc transport
 	DtlsLocalRole DtlsRole `json:"dtlsLocalRole,omitempty"`
+	// pipe transport
+	Tuple TransportTuple `json:"tuple,omitempty"`
 }
 
 type TransportType string
