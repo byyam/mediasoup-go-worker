@@ -24,6 +24,13 @@ BenchmarkNetNative_WriteBuffer-12       39985699                29.73 ns/op     
 BenchmarkNetNative_ReadBuffer-12          269317              4487 ns/op              12 B/op          3 allocs/op
 BenchmarkNetStrings_WriteBuffer-12       7167288               152.0 ns/op           355 B/op          3 allocs/op
 BenchmarkNetStrings_ReadBuffer-12       13219642                88.37 ns/op            4 B/op          1 allocs/op
+
+goos: darwin
+goarch: arm64
+BenchmarkNetNative_WriteBuffer-10       53218015                22.44 ns/op            4 B/op          1 allocs/op
+BenchmarkNetNative_ReadBuffer-10          415128              2861 ns/op              12 B/op          3 allocs/op
+BenchmarkNetStrings_WriteBuffer-10      11343592               105.2 ns/op           355 B/op          3 allocs/op
+BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op            4 B/op          1 allocs/op
 ~~~
 
 #### Mediasoup worker API
