@@ -1,6 +1,8 @@
 # mediasoup-go-worker
 Pure Go implementation of [Mediasoup worker](https://github.com/versatica/mediasoup).
 
+Motivation is to provide a mediasoup APIs implementation of [Pion](https://github.com/pion) WebRTC libraries.
+
 
 <p align="center">
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
