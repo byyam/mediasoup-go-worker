@@ -32,7 +32,7 @@ func InitCli() {
 
 	app.Action = func(c *cli.Context) error {
 		Settings.LogLevel = mediasoupdata.WorkerLogLevel(c.String("logLevel"))
-		logTags := c.StringSlice("logTag")
+		logTags := c.StringSlice("logTags")
 		for _, t := range logTags {
 			Settings.LogTags = append(Settings.LogTags, mediasoupdata.WorkerLogTag(t))
 		}
