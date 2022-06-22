@@ -385,6 +385,7 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 	rtpStream := newRtpStreamRecv(&ParamRtpStreamRecv{
 		ParamRtpStream:            params,
 		onRtpStreamSendRtcpPacket: p.OnRtpStreamSendRtcpPacket,
+		sendNackDelayMs:           10,
 	})
 
 	// Insert into the maps.

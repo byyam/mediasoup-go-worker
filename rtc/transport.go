@@ -121,7 +121,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 		RtpPacketLossSent:           0,
 		WebRtcTransportSpecificStat: nil,
 	}
-	data, _ := json.Marshal(&jsonData)
+	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
 	t.logger.Debug("getStats:%+v", jsonData)
 	return data
 }
