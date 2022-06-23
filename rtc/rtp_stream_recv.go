@@ -23,7 +23,7 @@ type RtpStreamRecv struct {
 	lastSrReceived     int64  // Wallclock time representing the most recent sender report arrival.
 	jitter             uint32
 
-	nackGenerator                    *nack.Generator
+	nackGenerator                    *nack.NackQueue
 	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
 	mediaTransmissionCounter         *RtpDataCounter      // Just valid media.
 	logger                           utils.Logger
@@ -45,11 +45,7 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	if param.UseDtx {
 		windowSize = 6000
 	}
-	r.nackGenerator = nack.NewNackGenerator(nack.ParamGenerator{
-		SendNackDelayMs:                 param.sendNackDelayMs,
-		OnNackGeneratorNackRequired:     nil, // todo
-		OnNackGeneratorKeyFrameRequired: nil,
-	})
+	r.nackGenerator = nack.NewNACKQueue()
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
 	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())
@@ -71,11 +67,12 @@ func (r *RtpStreamRecv) ReceivePacket(packet *rtpparser.Packet) bool {
 
 	// Pass the packet to the NackGenerator.
 	if r.params.UseNack {
-		foundNackPkg := r.nackGenerator.ReceivePacket(packet.Packet, packet.IsKeyFrame(), false)
-		if !r.HasRtx() && foundNackPkg {
-			r.packetsRetransmitted++
-			r.packetsRepaired++
-		}
+		// foundNackPkg := r.nackGenerator.ReceivePacket(packet.Packet, packet.IsKeyFrame(), false)
+		r.nackGenerator.Push(packet.SequenceNumber)
+		//if !r.HasRtx() && foundNackPkg {
+		//	r.packetsRetransmitted++
+		//	r.packetsRepaired++
+		//}
 	}
 	// Increase transmission counter.
 	r.transmissionCounter.Update(packet)

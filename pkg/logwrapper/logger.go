@@ -1,4 +1,4 @@
-package ratecalculator
+package logwrapper
 
 import (
 	"log"
@@ -13,7 +13,7 @@ type Logger interface {
 	Trace(format string, args ...interface{})
 }
 
-func newLogger() Logger {
+func NewLogger() Logger {
 	return &logger{
 		log: log.New(os.Stdout, "", log.LstdFlags),
 	}

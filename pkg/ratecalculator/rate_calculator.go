@@ -1,6 +1,7 @@
 package ratecalculator
 
 import (
+	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
 	"math"
 )
 
@@ -35,7 +36,7 @@ type RateCalculator struct {
 	lastRate            uint32       // Last value calculated by GetRate().
 	lastTime            int64        // Last time GetRate() was called.
 
-	logger Logger
+	logger logwrapper.Logger
 }
 
 func (p RateCalculator) GetBytes() int64 {
@@ -158,7 +159,7 @@ func (p *RateCalculator) reset() {
 	}
 }
 
-func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logger Logger) *RateCalculator {
+func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logger logwrapper.Logger) *RateCalculator {
 	if windowSizeMs == 0 {
 		windowSizeMs = DefaultWindowSize
 	}
@@ -169,7 +170,7 @@ func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logge
 		windowItems = DefaultWindowItems
 	}
 	if logger == nil {
-		logger = newLogger()
+		logger = logwrapper.NewLogger()
 	}
 
 	r := &RateCalculator{
