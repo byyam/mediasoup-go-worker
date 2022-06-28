@@ -45,7 +45,7 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	if param.UseDtx {
 		windowSize = 6000
 	}
-	r.nackGenerator = nack.NewNACKQueue()
+	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{})
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
 	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())

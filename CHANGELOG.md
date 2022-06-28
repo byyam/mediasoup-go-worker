@@ -3,11 +3,19 @@
 
 ### WIP
 
-* support RTX and NACK.
-* support TWCC.
+* support REMB.
 * support gcc.
 * add SCTP protocol.
 * implement data-channel interface.
+
+
+### 1.0.4
+
+* Support both NACK in receiver and sender.
+
+### 1.0.3
+
+* Send out receiver-reporter to producer periodically.
 
 ### 1.0.2
 

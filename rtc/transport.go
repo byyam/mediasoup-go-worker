@@ -483,6 +483,7 @@ func (t *Transport) OnTimer() {
 		time.Sleep(time.Millisecond * time.Duration(rtcpTimer))
 		now := time.Now()
 		t.SendRtcp(now)
+		t.sendNacks()
 	}
 }
 
@@ -512,6 +513,34 @@ func (t *Transport) SendRtcp(now time.Time) {
 		if len(packets) != 0 {
 			t.sendRtcpCompoundPacketFunc(packets)
 		}
+		return true
+	})
+}
+
+func (t *Transport) sendNacks() {
+	t.mapProducers.Range(func(id, value interface{}) bool {
+		producer, ok := value.(*Producer)
+		if !ok || producer == nil {
+			return true
+		}
+		producer.mapSsrcRtpStream.Range(func(key, value interface{}) bool {
+			ssrc := key.(uint32)
+			rtpStream, ok := value.(*RtpStreamRecv)
+			if !ok || rtpStream == nil {
+				return true
+			}
+			pairs, _ := rtpStream.nackGenerator.Pairs()
+			if len(pairs) > 0 {
+				packets := []rtcp.Packet{
+					&rtcp.TransportLayerNack{
+						MediaSSRC: ssrc,
+						Nacks:     pairs,
+					},
+				}
+				t.sendRtcpCompoundPacketFunc(packets)
+			}
+			return true
+		})
 		return true
 	})
 }

@@ -70,7 +70,7 @@ func Test_nackQueue_pairs(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue()
+			n := NewNACKQueue(&ParamNackQueue{})
 			for _, sn := range tt.args {
 				n.Push(sn)
 			}
@@ -102,7 +102,7 @@ func Test_nackQueue_push(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue()
+			n := NewNACKQueue(&ParamNackQueue{})
 			for _, sn := range tt.args.sn {
 				n.Push(sn)
 			}
@@ -135,11 +135,44 @@ func Test_nackQueue_remove(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue()
+			n := NewNACKQueue(&ParamNackQueue{})
 			for _, sn := range tt.args.sn {
 				n.Push(sn)
 			}
 			n.Remove(5)
+			var newSN []uint16
+			for _, nack := range n.nacks {
+				newSN = append(newSN, nack.seqNum)
+			}
+			require.Equal(t, tt.want, newSN)
+		})
+	}
+}
+
+func Test_nackQueue_clearOldAge(t *testing.T) {
+	type args struct {
+		sn []uint16
+	}
+	tests := []struct {
+		name string
+		args args
+		want []uint16
+	}{
+		{
+			name: "Must keep packet order",
+			args: args{
+				sn: []uint16{1, 3, 4, 5, 7, 8, 1006},
+			},
+			want: []uint16{7, 8, 1006},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNACKQueue(&ParamNackQueue{})
+			for _, sn := range tt.args.sn {
+				n.Push(sn)
+			}
 			var newSN []uint16
 			for _, nack := range n.nacks {
 				newSN = append(newSN, nack.seqNum)

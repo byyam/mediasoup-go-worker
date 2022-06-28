@@ -1,31 +1,48 @@
 package nack
 
 import (
+	"fmt"
+	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
+	"strings"
 	"time"
 
 	"github.com/pion/rtcp"
 )
 
 const (
-	maxTries      = 5                      // Max number of times a packet will be NACKed
+	maxTries      = 3                      // Max number of times a packet will be NACKed
 	cacheSize     = 100                    // Max NACK sn the sfu will keep reference
+	maxPackageAge = 1000                   // Max diff seq stored in the nack queue
 	minInterval   = 20 * time.Millisecond  // minimum interval between NACK tries for the same sequence number
 	maxInterval   = 400 * time.Millisecond // maximum interval between NACK tries for the same sequence number
-	initialDelay  = 10 * time.Millisecond  // delay before NACKing a sequence number to allow for out-of-order packets
+	initialDelay  = 10                     // delay(ms) before NACKing a sequence number to allow for out-of-order packets
 	backoffFactor = float64(1.25)
 )
 
 type NackQueue struct {
-	nacks []*nack
-	rtt   uint32
+	nacks  []*nack
+	rtt    uint32
+	logger logwrapper.Logger
 }
 
-func NewNACKQueue() *NackQueue {
-	return &NackQueue{
-		nacks: make([]*nack, 0, cacheSize),
+type ParamNackQueue struct {
+	logger logwrapper.Logger
+}
+
+func NewNACKQueue(param *ParamNackQueue) *NackQueue {
+	n := &NackQueue{
+		nacks:  make([]*nack, 0, cacheSize),
+		rtt:    initialDelay,
+		logger: param.logger,
 	}
+	if n.logger == nil {
+		n.logger = logwrapper.NewLogger()
+	}
+
+	return n
 }
 
+// todo: update rtt
 func (n *NackQueue) SetRTT(rtt uint32) {
 	n.rtt = rtt
 }
@@ -42,7 +59,22 @@ func (n *NackQueue) Remove(sn uint16) {
 	}
 }
 
+func (n *NackQueue) clearOldAge(lastSeq uint16) {
+	var removeIdx []uint32
+	for idx, nack := range n.nacks {
+		if lastSeq-nack.seqNum > maxPackageAge {
+			removeIdx = append(removeIdx, uint32(idx))
+			n.logger.Trace("clear old age seqNum: [%d]%d", idx, nack.seqNum)
+		}
+	}
+	for idx := len(removeIdx) - 1; idx >= 0; idx-- {
+		copy(n.nacks[idx:], n.nacks[idx+1:])
+		n.nacks = n.nacks[:len(n.nacks)-1]
+	}
+}
+
 func (n *NackQueue) Push(sn uint16) {
+	n.clearOldAge(sn)
 	// if at capacity, pop the first one
 	if len(n.nacks) == cap(n.nacks) {
 		copy(n.nacks[0:], n.nacks[1:])
@@ -50,6 +82,15 @@ func (n *NackQueue) Push(sn uint16) {
 	}
 
 	n.nacks = append(n.nacks, newNack(sn))
+	n.print()
+}
+
+func (n *NackQueue) print() {
+	var str []string
+	for idx, nack := range n.nacks {
+		str = append(str, fmt.Sprintf("[%d]%d", idx, nack.seqNum))
+	}
+	n.logger.Trace("nack list: %s", strings.Join(str, " "))
 }
 
 func (n *NackQueue) Pairs() ([]rtcp.NackPair, int) {
