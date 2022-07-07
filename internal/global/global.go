@@ -60,6 +60,9 @@ func initUdpMuxPort() {
 
 func bindingMuxUdp(addr string) (err error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return
+	}
 	udpConn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return

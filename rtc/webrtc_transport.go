@@ -97,7 +97,7 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 	case mediasoupdata.MethodTransportConnect:
 		var options mediasoupdata.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Connect(options)
+		data, err := t.connect(options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
@@ -108,7 +108,7 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 	}
 }
 
-func (t *WebrtcTransport) Connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
+func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
 	if options.DtlsParameters == nil {
 		return nil, mserror.ErrInvalidParam
 	}
