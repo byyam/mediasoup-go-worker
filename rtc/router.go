@@ -63,6 +63,27 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case mediasoupdata.MethodRouterCreatePlainTransport:
 
 	case mediasoupdata.MethodRouterCreatePipeTransport:
+		var options mediasoupdata.PipeTransportOptions
+		_ = json.Unmarshal(request.Data, &options)
+		pipeTransport, err := newPipeTransport(pipeTransportParam{
+			options: options,
+			transportParam: transportParam{
+				Id:                                     request.Internal.TransportId,
+				OnTransportNewProducer:                 r.OnTransportNewProducer,
+				OnTransportProducerClosed:              r.OnTransportProducerClosed,
+				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:                 r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:              r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested:   r.OnTransportConsumerKeyFrameRequested,
+				OnTransportNeedWorstRemoteFractionLost: r.OnTransportNeedWorstRemoteFractionLost,
+			},
+		})
+		if err != nil {
+			response.Err = mserror.ErrCreatePipeTransport
+			return
+		}
+		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
+		response.Data = pipeTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreateDirectTransport:
 

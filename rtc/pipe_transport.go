@@ -1,18 +1,26 @@
 package rtc
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/kr/pretty"
+	"github.com/pion/dtls/v2"
+	"github.com/pion/randutil"
 	"net"
 	"strconv"
 )
 
 const (
 	PipeTransportProtocol = "udp"
+
+	srtpMasterLength      = 44
+	srtpCryptoSuite       = dtls.SRTP_AEAD_AES_256_GCM
+	srtpCryptoSuiteString = "AEAD_AES_256_GCM"
 )
 
 type PipeTransport struct {
@@ -24,9 +32,13 @@ type PipeTransport struct {
 	rtx    bool
 
 	udpSocket *net.UDPConn
-	udpHost   string
-	udpPort   uint16
 	connected *utils.AtomicBool
+
+	srtpKey       string
+	srtpKeyBase64 string
+
+	tuple      mediasoupdata.TransportTuple
+	remoteAddr string
 }
 
 type pipeTransportParam struct {
@@ -53,6 +65,13 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	}
 	// other options
 	t.rtx = param.options.EnableRtx
+	if param.options.EnableSrtp {
+		t.srtpKey, err = randutil.GenerateCryptoRandomString(srtpMasterLength, utils.RunesAlpha)
+		if err != nil {
+			return nil, err
+		}
+		t.srtpKeyBase64 = base64.StdEncoding.EncodeToString([]byte(t.srtpKey))
+	}
 
 	return t, nil
 }
@@ -82,8 +101,8 @@ func (t *PipeTransport) create(options *mediasoupdata.PipeTransportOptions) erro
 		return err
 	}
 
-	t.udpPort = uint16(port)
-	t.udpHost = host
+	t.tuple.LocalPort = uint16(port)
+	t.tuple.LocalIp = host
 	t.logger.Info("create pipe-transport addr:%s", t.udpSocket.LocalAddr())
 	return nil
 }
@@ -94,20 +113,24 @@ func (t *PipeTransport) Close() {
 
 func (t *PipeTransport) FillJson() json.RawMessage {
 	transportData := mediasoupdata.PipeTransportData{
-		Tuple: mediasoupdata.TransportTuple{
-			LocalIp:   t.udpHost,
-			LocalPort: t.udpPort,
-			Protocol:  PipeTransportProtocol,
-		},
-		SctpParameters: mediasoupdata.SctpParameters{},
-		SctpState:      "",
-		Rtx:            t.rtx,
-		SrtpParameters: nil,
+		Tuple: t.tuple,
+		Rtx:   t.rtx,
+	}
+	// enable srtp
+	if t.hasSrtp() {
+		transportData.SrtpParameters = &mediasoupdata.SrtpParameters{
+			CryptoSuite: srtpCryptoSuiteString,
+			KeyBase64:   t.srtpKeyBase64,
+		}
 	}
 
 	data, _ := json.Marshal(&transportData)
 	t.logger.Debug("transportData:%+v", transportData)
 	return data
+}
+
+func (t *PipeTransport) hasSrtp() bool {
+	return t.srtpKey != ""
 }
 
 func (t *PipeTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -127,15 +150,66 @@ func (t *PipeTransport) HandleRequest(request workerchannel.RequestData, respons
 }
 
 func (t *PipeTransport) connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
-	data := &mediasoupdata.TransportConnectData{
-		Tuple: mediasoupdata.TransportTuple{
-			LocalIp:    t.udpHost,
-			LocalPort:  t.udpPort,
-			RemoteIp:   "",
-			RemotePort: 0,
-			Protocol:   PipeTransportProtocol,
-		},
+	if !t.hasSrtp() && options.SrtpParameters != nil {
+		return nil, fmt.Errorf("connect error: invalid srtpParameters (SRTP not enabled)")
+	} else if t.hasSrtp() && options.SrtpParameters == nil {
+		return nil, fmt.Errorf("connect error: invalid srtpParameters (SRTP enabled)")
+	} else if !t.hasSrtp() && options.SrtpParameters.KeyBase64 == t.srtpKeyBase64 {
+		t.logger.Debug("srtp disabled")
+	} else { // srtp enabled and srtp params exists
+		if options.SrtpParameters.CryptoSuite != srtpCryptoSuiteString {
+			return nil, fmt.Errorf("connect error: invalid/unsupported srtpParameters.cryptoSuite")
+		}
+		if options.SrtpParameters.KeyBase64 == "" {
+			return nil, fmt.Errorf("connect error: missing srtpParameters.keyBase64)")
+		}
+		srtpKey, err := base64.StdEncoding.DecodeString(options.SrtpParameters.KeyBase64)
+		if err != nil {
+			return nil, err
+		}
+		if len(srtpKey) != srtpMasterLength {
+			return nil, fmt.Errorf("connect error: invalid decoded SRTP key length")
+		}
+		// set srtp session
+	}
+	if net.ParseIP(options.Ip) == nil {
+		return nil, fmt.Errorf("connect error: invalid ip:[%s]", options.Ip)
+	}
+	if options.Port == 0 {
+		return nil, fmt.Errorf("connect error: invalid port:[%d]", options.Port)
 	}
 
+	t.tuple.Protocol = PipeTransportProtocol
+	t.tuple.RemoteIp = options.Ip
+	t.tuple.RemotePort = options.Port
+	t.remoteAddr = fmt.Sprintf("%s:%d", options.Ip, options.Port)
+
+	go t.udpSocketPacketReceived()
+
+	t.ITransport.Connected()
+
+	data := &mediasoupdata.TransportConnectData{
+		Tuple: t.tuple,
+	}
 	return data, nil
+}
+
+func (t *PipeTransport) udpSocketPacketReceived() {
+	for {
+		buf := make([]byte, global.ReceiveMTU)
+		n, addr, err := t.udpSocket.ReadFromUDPAddrPort(buf)
+		if err != nil {
+			t.logger.Warn("udpSocketPacketReceived error:%s", err.Error())
+			continue
+		}
+		if addr.String() != t.remoteAddr {
+			t.logger.Warn("udpSocketPacketReceived error: invalid addr:[%s]", addr.String())
+			continue
+		}
+		t.OnPacketReceived(buf[:n])
+	}
+}
+
+func (t *PipeTransport) OnPacketReceived(data []byte) {
+
 }

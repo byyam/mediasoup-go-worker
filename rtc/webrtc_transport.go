@@ -140,6 +140,8 @@ func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions)
 		t.connected.Set(true)
 	}()
 
+	t.ITransport.Connected()
+
 	return t.dtlsTransport.SetRole(options.DtlsParameters)
 }
 

@@ -8,6 +8,7 @@ var (
 	ErrRouterNotFound          = errors.New("router not found")
 	ErrTransportNotFound       = errors.New("transport not found")
 	ErrCreateWebrtcTransport   = errors.New("create webrtc-transport failed")
+	ErrCreatePipeTransport     = errors.New("create pipe-transport failed")
 	ErrDuplicatedId            = errors.New("duplicated id")
 	ErrProducerExist           = errors.New("producer already exist")
 	ErrProducerNotFound        = errors.New("producer not found")

@@ -23,6 +23,7 @@ import (
 )
 
 type ITransport interface {
+	Connected()
 	Close()
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
@@ -543,4 +544,8 @@ func (t *Transport) sendNacks() {
 		})
 		return true
 	})
+}
+
+func (t *Transport) Connected() {
+
 }
