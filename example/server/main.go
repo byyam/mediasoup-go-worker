@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/byyam/mediasoup-go-worker/example/server/pipetransport"
+	utils2 "github.com/byyam/mediasoup-go-worker/example/server/utils"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"log"
 	"net/http"
@@ -25,6 +27,13 @@ var (
 	worker *mediasoup_go_worker.SimpleWorker
 )
 
+const (
+	localWsAddr             = "localhost:12001"
+	localHttpAddr           = "localhost:12002"
+	pathWebrtcTransport     = "/webrtc_transport"
+	pathPipeTransportCreate = "/pipe_transport/create"
+)
+
 func main() {
 	conf.InitCli()
 	logger.Info("argv:%+v", conf.Settings)
@@ -34,20 +43,35 @@ func main() {
 
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
-	if err := workerapi.CreateRouter(worker, webrtctransport.GetRouterId(worker)); err != nil {
+	if err := workerapi.CreateRouter(worker, utils2.GetRouterId(worker)); err != nil {
 		panic(err)
 	}
 
 	go func() {
-		http.HandleFunc("/echo", echo)
-		log.Fatal(http.ListenAndServe("localhost:12001", nil))
+		http.HandleFunc(pathWebrtcTransport, handleWebrtcTransport)
+		log.Fatal(http.ListenAndServe(localWsAddr, nil))
+	}()
+
+	go func() {
+		h := pipetransport.NewHandler(worker)
+		server := http.Server{
+			Addr:        localHttpAddr,
+			Handler:     &myHandler{},
+			ReadTimeout: 5 * time.Second,
+		}
+		mux = make(map[string]func(http.ResponseWriter, *http.Request))
+		mux[pathPipeTransportCreate] = h.HandleCreatePipeTransport
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 	// block here
 	listenSignal()
 	worker.Stop()
 }
 
-func echo(w http.ResponseWriter, r *http.Request) {
+func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
 	var upgrader = websocket.Upgrader{} // use default options
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

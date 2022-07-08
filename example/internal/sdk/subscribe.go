@@ -30,12 +30,14 @@ func (c *Client) Subscribe(opt SubscribeOpt) (net.Conn, *isignal.SubscribeRespon
 		},
 	}
 	req := isignal.SubscribeRequest{
-		StreamId:        opt.StreamId,
-		TransportId:     "",
-		Offer:           webRtcTransportOffer,
-		Kind:            mediasoupdata.MediaKind_Video,
-		AppData:         nil,
-		RtpCapabilities: &rtpCapabilities,
+		StreamId:    opt.StreamId,
+		TransportId: "",
+		Offer:       webRtcTransportOffer,
+		SubscribeOffer: isignal.SubscribeOffer{
+			Kind:            mediasoupdata.MediaKind_Video,
+			AppData:         nil,
+			RtpCapabilities: &rtpCapabilities,
+		},
 	}
 	rsp, err := wsconn.NewWsClient(c.wsOpt).Subscribe(req)
 	if err != nil {

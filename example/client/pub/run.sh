@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ./pub --wsAddr localhost:12001 \
---wsPath /echo \
+--wsPath /webrtc_transport \
 --peerId peerIdPub \
 --roomId roomId2005 \
 --appId 3 \

@@ -12,6 +12,7 @@
 ### 1.0.4
 
 * Support both NACK in receiver and sender.
+* PipeTransport support.
 
 ### 1.0.3
 

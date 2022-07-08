@@ -82,12 +82,14 @@ func (c *Client) Publish(opt PublishOpt) (net.Conn, error) {
 		},
 	}
 	req := isignal.PublishRequest{
-		StreamId:      opt.StreamId,
-		TransportId:   "",
-		Offer:         webRtcTransportOffer,
-		Kind:          mediasoupdata.MediaKind_Video,
-		RtpParameters: rtpParameters,
-		AppData:       nil,
+		StreamId:    opt.StreamId,
+		TransportId: "",
+		Offer:       webRtcTransportOffer,
+		PublishOffer: isignal.PublishOffer{
+			Kind:          mediasoupdata.MediaKind_Video,
+			RtpParameters: rtpParameters,
+			AppData:       nil,
+		},
 	}
 	rsp, err := wsconn.NewWsClient(c.wsOpt).Publish(req)
 	if err != nil {

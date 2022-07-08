@@ -56,7 +56,7 @@ BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op     
 | router.dump                        | :ballot_box_with_check: |
 | router.createWebRtcTransport       | :ballot_box_with_check: |
 | router.createPlainTransport        |           WIP           |
-| router.createPipeTransport         |           WIP           |
+| router.createPipeTransport         | :ballot_box_with_check: |
 | router.createDirectTransport       |           WIP           |
 | router.createActiveSpeakerObserver |           WIP           |
 | router.createAudioLevelObserver    |           WIP           |

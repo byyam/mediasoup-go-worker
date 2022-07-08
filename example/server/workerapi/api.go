@@ -163,3 +163,27 @@ func ConsumerClose(w *mediasoup_go_worker.SimpleWorker, internal workerchannel.I
 	}
 	return nil
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// pipe-transport api
+
+type ParamCreatePipeTransport struct {
+	RouterId    string
+	TransportId string
+	Options     mediasoupdata.PipeTransportOptions
+}
+
+func CreatePipeTransport(w *mediasoup_go_worker.SimpleWorker, param ParamCreatePipeTransport) (*mediasoupdata.PipeTransportData, error) {
+	rsp, err := request(w, mediasoupdata.MethodRouterCreatePipeTransport, workerchannel.InternalData{
+		RouterId:    param.RouterId,
+		TransportId: param.TransportId,
+	}, param.Options)
+	if err != nil {
+		return nil, err
+	}
+	var rspData mediasoupdata.PipeTransportData
+	if err := json.Unmarshal(rsp.Data, &rspData); err != nil {
+		return nil, err
+	}
+	return &rspData, nil
+}

@@ -2,6 +2,7 @@ package webrtctransport
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/example/server/utils"
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
@@ -23,7 +24,7 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 	webrtcTransportOptions := democonf.WebrtcTransportOptions
 	webrtcTransportOptions.ListenIps = append(webrtcTransportOptions.ListenIps, listenIp)
 	transportData, err := workerapi.CreateWebRtcTransport(h.worker, workerapi.ParamCreateWebRtcTransport{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils.GetRouterId(h.worker),
 		TransportId: transportId,
 		Options:     democonf.WebrtcTransportOptions,
 	})
@@ -36,7 +37,7 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 		DtlsParameters: &dtlsParameters,
 	}
 	if err := workerapi.TransportConnect(h.worker, workerapi.ParamTransportConnect{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils.GetRouterId(h.worker),
 		TransportId: transportId,
 		Options:     transportConnectOptions,
 	}); err != nil {
@@ -48,19 +49,19 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.Error) {
 	var req isignal.PublishRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 	transportId := uuid.New().String()
 	transportData, err := h.newTransport(req.Offer.DtlsParameters, transportId)
 	if err != nil {
 		h.logger.Error("new transport on publish failed:%v", err)
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 	// produce
 	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(democonf.RouterOptions.MediaCodecs)
 	if err != nil {
 		h.logger.Error("GenerateRouterRtpCapabilities failed:%+v", err)
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 	for _, c := range routerRtpCapabilities.Codecs {
 		h.logger.Debug("routerRtpCapabilities:%+v", c)
@@ -69,11 +70,11 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 		req.RtpParameters, routerRtpCapabilities)
 	if err != nil {
 		h.logger.Error("GetProducerRtpParametersMapping:%+v", err)
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 
 	produceOptions := mediasoupdata.ProducerOptions{
-		Id:                   GetProducerId(req.StreamId),
+		Id:                   utils.GetProducerId(req.StreamId),
 		Kind:                 req.Kind,
 		RtpParameters:        req.RtpParameters,
 		Paused:               false,
@@ -82,12 +83,12 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 		RtpMapping:           rtpMapping,
 	}
 	if err := workerapi.TransportProduce(h.worker, workerapi.ParamTransportProduce{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils.GetRouterId(h.worker),
 		TransportId: transportId,
 		ProducerId:  produceOptions.Id,
 		Options:     produceOptions,
 	}); err != nil {
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 
 	return isignal.PublishResponse{
@@ -103,20 +104,20 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 func (h *Handler) unPublishHandler(message protoo.Message) (interface{}, *protoo.Error) {
 	var req isignal.UnPublishRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 	// get producer data
-	transportData, producerData, err := h.findProducer(GetProducerId(req.StreamId))
+	transportData, producerData, err := h.findProducer(utils.GetProducerId(req.StreamId))
 	if err != nil {
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 
 	if err := workerapi.ProducerClose(h.worker, workerchannel.InternalData{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils.GetRouterId(h.worker),
 		TransportId: transportData.Id,
 		ProducerId:  producerData.Id,
 	}); err != nil {
-		return nil, ServerError(err)
+		return nil, utils.ServerError(err)
 	}
 	return nil, nil
 }

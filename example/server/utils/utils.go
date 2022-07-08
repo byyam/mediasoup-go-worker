@@ -1,16 +1,11 @@
-package webrtctransport
+package utils
 
 import (
 	"fmt"
+	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 
 	"github.com/jiyeyuran/go-protoo"
-
-	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 )
-
-func GetRouterId(w *mediasoup_go_worker.SimpleWorker) string {
-	return fmt.Sprintf("router-%d", w.GetPid())
-}
 
 const (
 	ErrCodeServer = 10000
@@ -27,4 +22,8 @@ var (
 
 func GetProducerId(streamId uint64) string {
 	return fmt.Sprintf("%d", streamId)
+}
+
+func GetRouterId(w *mediasoup_go_worker.SimpleWorker) string {
+	return fmt.Sprintf("router-%d", w.GetPid())
 }

@@ -2,6 +2,7 @@ package webrtctransport
 
 import (
 	"errors"
+	utils2 "github.com/byyam/mediasoup-go-worker/example/server/utils"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
@@ -37,7 +38,7 @@ func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
 	case isignal.MethodUnSubscribe:
 		data, err = h.unSubscribeHandler(req)
 	default:
-		err = ErrUnknownMethod
+		err = utils2.ErrUnknownMethod
 	}
 	// create response protoo message
 	if err != nil {
@@ -50,7 +51,7 @@ func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
 }
 
 func (h *Handler) findProducer(targetId string) (*mediasoupdata.TransportDump, *mediasoupdata.ProducerDump, error) {
-	routerDump, err := workerapi.RouterDump(h.worker, workerchannel.InternalData{RouterId: GetRouterId(h.worker)})
+	routerDump, err := workerapi.RouterDump(h.worker, workerchannel.InternalData{RouterId: utils2.GetRouterId(h.worker)})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +76,7 @@ func (h *Handler) findProducer(targetId string) (*mediasoupdata.TransportDump, *
 
 func (h *Handler) getTransportDump(transportId string) (*mediasoupdata.TransportDump, error) {
 	transportDump, err := workerapi.TransportDump(h.worker, workerchannel.InternalData{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils2.GetRouterId(h.worker),
 		TransportId: transportId,
 	})
 	return transportDump, err
@@ -83,7 +84,7 @@ func (h *Handler) getTransportDump(transportId string) (*mediasoupdata.Transport
 
 func (h *Handler) getProducerDump(transportId, producerId string) (*mediasoupdata.ProducerDump, error) {
 	producerDump, err := workerapi.ProducerDump(h.worker, workerchannel.InternalData{
-		RouterId:    GetRouterId(h.worker),
+		RouterId:    utils2.GetRouterId(h.worker),
 		TransportId: transportId,
 		ProducerId:  producerId,
 	})

@@ -21,6 +21,9 @@ func request(worker *mediasoup_go_worker.SimpleWorker, method string, internal w
 		req.Data = rawData
 	}
 	rsp := worker.OnChannelRequest(req)
-	logger.Info("request done, req:%+v, rsp:%+v", req, rsp)
+	logger.Info("request done, req:[%+v] rsp:[%+v]", req, rsp)
+	if rsp.Err != nil {
+		return nil, rsp.Err
+	}
 	return &rsp, nil
 }

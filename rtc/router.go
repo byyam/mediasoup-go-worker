@@ -54,6 +54,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
+			r.logger.Error("createWebrtcTransport:%s", err.Error())
 			response.Err = mserror.ErrCreateWebrtcTransport
 			return
 		}
@@ -79,6 +80,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
+			r.logger.Error("createPipeTransport:%s", err.Error())
 			response.Err = mserror.ErrCreatePipeTransport
 			return
 		}

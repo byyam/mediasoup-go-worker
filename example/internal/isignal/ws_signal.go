@@ -14,14 +14,14 @@ type PublishRequest struct {
 	TransportId string               `json:"transportId,omitempty"`
 	Offer       WebRtcTransportOffer `json:"webrtcTransportOffer"`
 
-	Kind          mediasoupdata.MediaKind     `json:"kind"`
-	RtpParameters mediasoupdata.RtpParameters `json:"rtpParameters"`
-	AppData       interface{}                 `json:"appData"`
+	PublishOffer
 }
 
 type PublishResponse struct {
 	TransportId string                `json:"transportId,omitempty"`
 	Answer      WebRtcTransportAnswer `json:"webrtcTransportAnswer"`
+
+	PublishAnswer
 }
 
 type UnPublishRequest struct {
@@ -31,21 +31,19 @@ type UnPublishRequest struct {
 type UnPublishResponse struct{}
 
 type SubscribeRequest struct {
-	StreamId        uint64                         `json:"streamId"`
-	TransportId     string                         `json:"transportId,omitempty"`
-	Offer           WebRtcTransportOffer           `json:"webrtcTransportOffer"`
-	Kind            mediasoupdata.MediaKind        `json:"kind"`
-	RtpCapabilities *mediasoupdata.RtpCapabilities `json:"rtpCapabilities"`
-	AppData         interface{}                    `json:"appData"`
+	StreamId    uint64               `json:"streamId"`
+	TransportId string               `json:"transportId,omitempty"`
+	Offer       WebRtcTransportOffer `json:"webrtcTransportOffer"`
+
+	SubscribeOffer
 }
 
 type SubscribeResponse struct {
-	SubscribeId   string                      `json:"subscribeId"`
-	TransportId   string                      `json:"transportId,omitempty"`
-	Answer        WebRtcTransportAnswer       `json:"webrtcTransportAnswer"`
-	Kind          mediasoupdata.MediaKind     `json:"kind"`
-	RtpParameters mediasoupdata.RtpParameters `json:"rtpParameters"`
-	AppData       interface{}                 `json:"appData"`
+	SubscribeId string                `json:"subscribeId"`
+	TransportId string                `json:"transportId,omitempty"`
+	Answer      WebRtcTransportAnswer `json:"webrtcTransportAnswer"`
+
+	SubscribeAnswer
 }
 
 type UnSubscribeRequest struct {
