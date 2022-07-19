@@ -2,8 +2,7 @@ package webrtctransport
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/example/server/utils"
-
+	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
@@ -17,40 +16,40 @@ import (
 func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo.Error) {
 	var req isignal.SubscribeRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	transportId := uuid.New().String()
 	transportData, err := h.newTransport(req.Offer.DtlsParameters, transportId)
 	if err != nil {
 		h.logger.Error("new transport on publish failed:%v", err)
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	// get producer data
-	_, producerData, err := h.findProducer(utils.GetProducerId(req.StreamId))
+	_, producerData, err := h.findProducer(demoutils.GetProducerId(req.StreamId))
 	if err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 
 	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(democonf.RouterOptions.MediaCodecs)
 	if err != nil {
 		h.logger.Error("GenerateRouterRtpCapabilities failed:%+v", err)
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	consumableRtpParameters, err := mediasoupdata.GetConsumableRtpParameters(
 		mediasoupdata.MediaKind(producerData.Kind), producerData.RtpParameters, routerRtpCapabilities, producerData.RtpMapping)
 	if err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 
 	rtpParameters, err := mediasoupdata.GetConsumerRtpParameters(consumableRtpParameters, *req.RtpCapabilities, false)
 	if err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 
 	// consume
 	consumerId := uuid.New().String()
 	consumerOptions := mediasoupdata.ConsumerOptions{
-		ProducerId:             utils.GetProducerId(req.StreamId),
+		ProducerId:             demoutils.GetProducerId(req.StreamId),
 		RtpCapabilities:        mediasoupdata.RtpCapabilities{},
 		Paused:                 false,
 		Mid:                    "",
@@ -63,14 +62,14 @@ func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo
 		ConsumableRtpEncodings: nil,
 	}
 	consumerData, err := workerapi.TransportConsume(h.worker, workerapi.ParamTransportConsume{
-		RouterId:    utils.GetRouterId(h.worker),
+		RouterId:    demoutils.GetRouterId(h.worker),
 		TransportId: transportId,
 		ProducerId:  consumerOptions.ProducerId,
 		ConsumerId:  consumerId,
 		Options:     consumerOptions,
 	})
 	if err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	h.logger.Info("consumer data:%+v", consumerData)
 
@@ -93,21 +92,21 @@ func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo
 func (h *Handler) unSubscribeHandler(message protoo.Message) (interface{}, *protoo.Error) {
 	var req isignal.UnSubscribeRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	// get producer data
-	transportData, producerData, err := h.findProducer(utils.GetProducerId(req.StreamId))
+	transportData, producerData, err := h.findProducer(demoutils.GetProducerId(req.StreamId))
 	if err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 
 	if err := workerapi.ConsumerClose(h.worker, workerchannel.InternalData{
-		RouterId:    utils.GetRouterId(h.worker),
+		RouterId:    demoutils.GetRouterId(h.worker),
 		TransportId: transportData.Id,
 		ProducerId:  producerData.Id,
 		ConsumerId:  req.SubscribeId,
 	}); err != nil {
-		return nil, utils.ServerError(err)
+		return nil, demoutils.ServerError(err)
 	}
 	return nil, nil
 }

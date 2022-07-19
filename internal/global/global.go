@@ -2,10 +2,10 @@ package global
 
 import (
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
 	"net"
 	"os"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 
@@ -23,22 +23,38 @@ var (
 
 var (
 	Pid        = os.Getpid()
-	UdpMuxConn *ice.UDPMuxDefault
-	UdpMuxPort uint16
+	ICEMuxConn *ice.UDPMuxDefault
+	ICEMuxPort uint16
+
+	UdpMuxConn *udpmux.UdpMux
 )
 
 func InitGlobal() {
+	initICEMuxPort()
 	initUdpMuxPort()
 }
 
 func initUdpMuxPort() {
+	var err error
+	port := conf.Settings.PipePort
+	if port < 0 {
+		UdpMuxConn = nil
+	}
+	UdpMuxConn, err = udpmux.NewUdpMux(conf.Settings.RtcListenIp, uint16(port), nil)
+	if err != nil {
+		panic(err)
+	}
+	logger.Info("banding mux UDP addr:[%s:%d] success", UdpMuxConn.IP(), UdpMuxConn.Port())
+}
+
+func initICEMuxPort() {
 	//UdpAddr = &net.UDPAddr{Port: int(conf.Settings.RtcStaticPort)}
 	if conf.Settings.RtcStaticPort != 0 { // use static port
-		UdpMuxPort = conf.Settings.RtcStaticPort
+		ICEMuxPort = conf.Settings.RtcStaticPort
 
-		addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, UdpMuxPort)
+		addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, ICEMuxPort)
 		logger.Info("start binding static udp:%s", addr)
-		if err := bindingMuxUdp(addr); err != nil {
+		if err := bindingICEMux(addr); err != nil {
 			panic(err)
 		}
 	} else { // use port range
@@ -46,8 +62,8 @@ func initUdpMuxPort() {
 		for port := conf.Settings.RtcMinPort; port <= conf.Settings.RtcMaxPort; port++ {
 			addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, port)
 			logger.Debug("try to binding udp:%s", addr)
-			if err := bindingMuxUdp(addr); err == nil {
-				UdpMuxPort = port
+			if err := bindingICEMux(addr); err == nil {
+				ICEMuxPort = port
 				break
 			}
 			if port == conf.Settings.RtcMaxPort {
@@ -55,10 +71,10 @@ func initUdpMuxPort() {
 			}
 		}
 	}
-	logger.Info("banding mux UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, UdpMuxPort)
+	logger.Info("banding mux ICE UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, ICEMuxPort)
 }
 
-func bindingMuxUdp(addr string) (err error) {
+func bindingICEMux(addr string) (err error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return
@@ -68,7 +84,7 @@ func bindingMuxUdp(addr string) (err error) {
 		return
 	}
 	loggerFactory := logging.NewDefaultLoggerFactory()
-	UdpMuxConn = ice.NewUDPMuxDefault(ice.UDPMuxParams{
+	ICEMuxConn = ice.NewUDPMuxDefault(ice.UDPMuxParams{
 		Logger:  loggerFactory.NewLogger("udpMux"),
 		UDPConn: udpConn,
 	})

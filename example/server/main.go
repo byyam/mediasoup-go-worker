@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/server/pipetransport"
-	utils2 "github.com/byyam/mediasoup-go-worker/example/server/utils"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"log"
 	"net/http"
@@ -28,10 +28,10 @@ var (
 )
 
 const (
-	localWsAddr             = "localhost:12001"
-	localHttpAddr           = "localhost:12002"
-	pathWebrtcTransport     = "/webrtc_transport"
-	pathPipeTransportCreate = "/pipe_transport/create"
+	localWsAddr                       = "localhost:12001"
+	localHttpAddr                     = "localhost:12002"
+	pathWebrtcTransport               = "/webrtc_transport"
+	pathPipeTransportCreateAndConnect = "/pipe_transport/create_and_connect"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
-	if err := workerapi.CreateRouter(worker, utils2.GetRouterId(worker)); err != nil {
+	if err := workerapi.CreateRouter(worker, demoutils.GetRouterId(worker)); err != nil {
 		panic(err)
 	}
 
@@ -62,7 +62,7 @@ func main() {
 			MaxHeaderBytes: 1 << 20,
 		}
 		mux = make(map[string]func(http.ResponseWriter, *http.Request))
-		mux[pathPipeTransportCreate] = h.HandleCreatePipeTransport
+		mux[pathPipeTransportCreateAndConnect] = h.HandlePipeTransportCreateAndConnect
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)

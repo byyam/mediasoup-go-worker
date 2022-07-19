@@ -13,8 +13,8 @@ type CreatePipeTransportResponse struct {
 
 type PipeTransportOffer struct {
 	mediasoupdata.PipeTransportOptions
-	RemoteIp   string `json:"remoteIp"`
-	RemotePort uint16 `json:"remotePort"`
+	EndPointIp   string `json:"endPointIpIp"`
+	EndPointPort uint16 `json:"endPointPort"`
 }
 
 type PipeTransportAnswer struct {

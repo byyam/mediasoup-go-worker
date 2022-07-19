@@ -3,8 +3,8 @@ package pipetransport
 import (
 	"encoding/json"
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
+	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
-	utils2 "github.com/byyam/mediasoup-go-worker/example/server/utils"
 	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -24,17 +24,17 @@ func NewHandler(worker *mediasoup_go_worker.SimpleWorker) *Handler {
 	}
 }
 
-func (h *Handler) HandleCreatePipeTransport(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandlePipeTransportCreateAndConnect(w http.ResponseWriter, r *http.Request) {
 	var req isignal.CreatePipeTransportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	h.logger.Info("HandleCreatePipeTransport:%+v", req)
+	h.logger.Info("HandlePipeTransportCreateAndConnect:%+v", req)
 	transportId := uuid.New().String()
 	// create pipe transport
 	transportData, err := workerapi.CreatePipeTransport(h.worker, workerapi.ParamCreatePipeTransport{
-		RouterId:    utils2.GetRouterId(h.worker),
+		RouterId:    demoutils.GetRouterId(h.worker),
 		TransportId: transportId,
 		Options:     req.PipeTransportOptions,
 	})
@@ -46,11 +46,11 @@ func (h *Handler) HandleCreatePipeTransport(w http.ResponseWriter, r *http.Reque
 	h.logger.Debug("create pipe-transport done, data:%+v", transportData)
 	// connect pipe transport
 	transportConnectOptions := mediasoupdata.TransportConnectOptions{
-		Ip:   req.RemoteIp,
-		Port: req.RemotePort,
+		Ip:   req.EndPointIp,
+		Port: req.EndPointPort,
 	}
 	if err := workerapi.TransportConnect(h.worker, workerapi.ParamTransportConnect{
-		RouterId:    utils2.GetRouterId(h.worker),
+		RouterId:    demoutils.GetRouterId(h.worker),
 		TransportId: transportId,
 		Options:     transportConnectOptions,
 	}); err != nil {

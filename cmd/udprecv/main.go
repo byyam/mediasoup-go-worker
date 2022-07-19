@@ -24,6 +24,9 @@ func main() {
 
 	udpSocket, err := net.ListenUDP(protocol, udpAddr)
 	checkErr(err)
+	defer func() {
+		_ = udpSocket.Close()
+	}()
 
 	buf := make([]byte, global.ReceiveMTU)
 	rtpPacket := &rtp.Packet{}

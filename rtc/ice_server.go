@@ -67,7 +67,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 		logger:           utils.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
-		udpMux:           global.UdpMuxConn,
+		udpMux:           global.ICEMuxConn,
 		connDone:         make(chan struct{}),
 		closedChan:       make(chan struct{}),
 		buffer:           packetio.NewBuffer(),
@@ -267,7 +267,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,
 		Protocol:   "udp",
-		Port:       uint32(global.UdpMuxPort),
+		Port:       uint32(global.ICEMuxPort),
 		Type:       "host",
 		TcpType:    "",
 	}
