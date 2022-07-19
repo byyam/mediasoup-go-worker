@@ -55,9 +55,11 @@ func main() {
 	go func() {
 		h := pipetransport.NewHandler(worker)
 		server := http.Server{
-			Addr:        localHttpAddr,
-			Handler:     &myHandler{},
-			ReadTimeout: 5 * time.Second,
+			Addr:           localHttpAddr,
+			Handler:        &myHandler{},
+			ReadTimeout:    30 * time.Second,
+			WriteTimeout:   30 * time.Second,
+			MaxHeaderBytes: 1 << 20,
 		}
 		mux = make(map[string]func(http.ResponseWriter, *http.Request))
 		mux[pathPipeTransportCreate] = h.HandleCreatePipeTransport

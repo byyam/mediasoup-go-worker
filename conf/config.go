@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"io"
 	"os"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
@@ -45,9 +44,6 @@ func InitCli() {
 		Settings.PrometheusPath = c.String("prometheusPath")
 		Settings.PrometheusPort = c.Int("prometheusPort")
 		return nil
-	}
-	cli.HelpPrinter = func(w io.Writer, tmpl string, data interface{}) {
-		panic("usage helper")
 	}
 	err := app.Run(os.Args)
 	if err != nil {
