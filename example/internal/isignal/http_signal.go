@@ -38,5 +38,6 @@ type SubscribeOnPipeTransportRequest struct {
 }
 
 type SubscribeOnPipeTransportResponse struct {
+	SubscribeId string `json:"subscribeId"`
 	SubscribeAnswer
 }

@@ -1,25 +1,24 @@
 package webrtctransport
 
 import (
-	"errors"
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
-	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
+	"github.com/byyam/mediasoup-go-worker/example/server/basehandler"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/jiyeyuran/go-protoo"
 )
 
 type Handler struct {
-	worker *mediasoup_go_worker.SimpleWorker
+	basehandler.BaseHandler
 	logger utils.Logger
 }
 
 func NewHandler(worker *mediasoup_go_worker.SimpleWorker) *Handler {
 	return &Handler{
-		worker: worker,
+		BaseHandler: basehandler.BaseHandler{
+			Worker: worker,
+		},
 		logger: utils.NewLogger("websocket-handler"),
 	}
 }
@@ -47,45 +46,4 @@ func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
 		rsp := protoo.CreateSuccessResponse(req, data)
 		return &rsp
 	}
-}
-
-func (h *Handler) findProducer(targetId string) (*mediasoupdata.TransportDump, *mediasoupdata.ProducerDump, error) {
-	routerDump, err := workerapi.RouterDump(h.worker, workerchannel.InternalData{RouterId: demoutils.GetRouterId(h.worker)})
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, transportId := range routerDump.TransportIds {
-		transportDump, err := h.getTransportDump(transportId)
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, producerId := range transportDump.ProducerIds {
-			if targetId != producerId {
-				continue
-			}
-			producerDump, err := h.getProducerDump(transportId, producerId)
-			if err != nil {
-				return nil, nil, err
-			}
-			return transportDump, producerDump, nil
-		}
-	}
-	return nil, nil, errors.New("producer not found")
-}
-
-func (h *Handler) getTransportDump(transportId string) (*mediasoupdata.TransportDump, error) {
-	transportDump, err := workerapi.TransportDump(h.worker, workerchannel.InternalData{
-		RouterId:    demoutils.GetRouterId(h.worker),
-		TransportId: transportId,
-	})
-	return transportDump, err
-}
-
-func (h *Handler) getProducerDump(transportId, producerId string) (*mediasoupdata.ProducerDump, error) {
-	producerDump, err := workerapi.ProducerDump(h.worker, workerchannel.InternalData{
-		RouterId:    demoutils.GetRouterId(h.worker),
-		TransportId: transportId,
-		ProducerId:  producerId,
-	})
-	return producerDump, err
 }

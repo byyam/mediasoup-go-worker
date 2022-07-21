@@ -6,9 +6,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
-	"github.com/byyam/mediasoup-go-worker/example/server/democonf"
 	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/google/uuid"
 	"github.com/jiyeyuran/go-protoo"
 )
@@ -24,49 +22,17 @@ func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo
 		h.logger.Error("new transport on publish failed:%v", err)
 		return nil, demoutils.ServerError(err)
 	}
-	// get producer data
-	_, producerData, err := h.findProducer(demoutils.GetProducerId(req.StreamId))
-	if err != nil {
-		return nil, demoutils.ServerError(err)
-	}
-
-	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(democonf.RouterOptions.MediaCodecs)
-	if err != nil {
-		h.logger.Error("GenerateRouterRtpCapabilities failed:%+v", err)
-		return nil, demoutils.ServerError(err)
-	}
-	consumableRtpParameters, err := mediasoupdata.GetConsumableRtpParameters(
-		mediasoupdata.MediaKind(producerData.Kind), producerData.RtpParameters, routerRtpCapabilities, producerData.RtpMapping)
-	if err != nil {
-		return nil, demoutils.ServerError(err)
-	}
-
-	rtpParameters, err := mediasoupdata.GetConsumerRtpParameters(consumableRtpParameters, *req.RtpCapabilities, false)
-	if err != nil {
-		return nil, demoutils.ServerError(err)
-	}
-
-	// consume
 	consumerId := uuid.New().String()
-	consumerOptions := mediasoupdata.ConsumerOptions{
-		ProducerId:             demoutils.GetProducerId(req.StreamId),
-		RtpCapabilities:        mediasoupdata.RtpCapabilities{},
-		Paused:                 false,
-		Mid:                    "",
-		PreferredLayers:        nil,
-		Pipe:                   false,
-		AppData:                nil,
-		Kind:                   mediasoupdata.MediaKind(producerData.Kind),
-		Type:                   mediasoupdata.ConsumerType(producerData.Type),
-		RtpParameters:          rtpParameters,
-		ConsumableRtpEncodings: nil,
+	consumerOptions, err := h.ConsumerOptions(req.StreamId, req.RtpCapabilities)
+	if err != nil {
+		return nil, demoutils.ServerError(err)
 	}
-	consumerData, err := workerapi.TransportConsume(h.worker, workerapi.ParamTransportConsume{
-		RouterId:    demoutils.GetRouterId(h.worker),
+	consumerData, err := workerapi.TransportConsume(h.Worker, workerapi.ParamTransportConsume{
+		RouterId:    demoutils.GetRouterId(h.Worker),
 		TransportId: transportId,
 		ProducerId:  consumerOptions.ProducerId,
 		ConsumerId:  consumerId,
-		Options:     consumerOptions,
+		Options:     *consumerOptions,
 	})
 	if err != nil {
 		return nil, demoutils.ServerError(err)
@@ -82,7 +48,7 @@ func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo
 			DtlsParameters: transportData.DtlsParameters,
 		},
 		SubscribeAnswer: isignal.SubscribeAnswer{
-			Kind:          mediasoupdata.MediaKind(producerData.Kind),
+			Kind:          consumerOptions.Kind,
 			RtpParameters: consumerOptions.RtpParameters,
 			AppData:       nil,
 		},
@@ -95,13 +61,13 @@ func (h *Handler) unSubscribeHandler(message protoo.Message) (interface{}, *prot
 		return nil, demoutils.ServerError(err)
 	}
 	// get producer data
-	transportData, producerData, err := h.findProducer(demoutils.GetProducerId(req.StreamId))
+	transportData, producerData, err := h.FindProducer(demoutils.GetProducerId(req.StreamId))
 	if err != nil {
 		return nil, demoutils.ServerError(err)
 	}
 
-	if err := workerapi.ConsumerClose(h.worker, workerchannel.InternalData{
-		RouterId:    demoutils.GetRouterId(h.worker),
+	if err := workerapi.ConsumerClose(h.Worker, workerchannel.InternalData{
+		RouterId:    demoutils.GetRouterId(h.Worker),
 		TransportId: transportData.Id,
 		ProducerId:  producerData.Id,
 		ConsumerId:  req.SubscribeId,
