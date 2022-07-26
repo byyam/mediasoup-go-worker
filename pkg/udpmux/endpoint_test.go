@@ -7,11 +7,11 @@ import (
 )
 
 func TestNewEndPoint(t *testing.T) {
-	mux, err := NewUdpMux("127.0.0.1", "40000", nil)
+	mux, err := NewUdpMux("udp", "127.0.0.1", 40000, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	e, err := mux.AddEndPoint("127.0.0.1", "40001")
+	e, err := mux.AddEndPoint("127.0.0.1", 40001)
 	if err != nil {
 		t.Error(err)
 	}

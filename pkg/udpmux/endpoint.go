@@ -1,6 +1,9 @@
 package udpmux
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 type EndPoint struct {
 	remoteAddr     *net.UDPAddr
@@ -11,12 +14,16 @@ type EndPoint struct {
 
 type paramEndPoint struct {
 	remoteAddr string
+	network    string
 	onClose    func()
 	onWrite    func(data []byte, remoteAddr *net.UDPAddr) (int, error)
 }
 
 func newEndPoint(param *paramEndPoint) (*EndPoint, error) {
-	remoteAddr, err := net.ResolveUDPAddr(protocol, param.remoteAddr)
+	if param.network == "" {
+		return nil, fmt.Errorf("network is empty")
+	}
+	remoteAddr, err := net.ResolveUDPAddr(param.network, param.remoteAddr)
 	if err != nil {
 		return nil, err
 	}

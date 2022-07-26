@@ -28,8 +28,8 @@ var (
 )
 
 const (
-	localWsAddr                       = "localhost:12001"
-	localHttpAddr                     = "localhost:12002"
+	localWsAddr                       = ":12001"
+	localHttpAddr                     = ":12002"
 	pathWebrtcTransport               = "/webrtc_transport"
 	pathPipeTransportCreateAndConnect = "/pipe_transport/create_and_connect"
 )

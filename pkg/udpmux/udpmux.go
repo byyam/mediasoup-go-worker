@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	protocol = "udp"
-	mtu      = 8192
+	mtu = 8192
 )
 
 type UdpMux struct {
@@ -21,15 +20,15 @@ type UdpMux struct {
 	logger    logwrapper.Logger
 }
 
-func NewUdpMux(ip string, port uint16, logger logwrapper.Logger) (*UdpMux, error) {
+func NewUdpMux(network string, ip string, port uint16, logger logwrapper.Logger) (*UdpMux, error) {
 	if logger == nil {
 		logger = logwrapper.NewLogger()
 	}
-	udpAddr, err := net.ResolveUDPAddr(protocol, net.JoinHostPort(ip, strconv.Itoa(int(port))))
+	udpAddr, err := net.ResolveUDPAddr(network, net.JoinHostPort(ip, strconv.Itoa(int(port))))
 	if err != nil {
 		return nil, err
 	}
-	udpSocket, err := net.ListenUDP(protocol, udpAddr)
+	udpSocket, err := net.ListenUDP(network, udpAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +65,7 @@ func (p *UdpMux) AddEndPoint(ip string, port uint16) (*EndPoint, error) {
 	endPoint, err := newEndPoint(
 		&paramEndPoint{
 			remoteAddr: remoteAddr,
+			network:    p.localAddr.Network(),
 			onClose: func() {
 				p.endPoints.Delete(remoteAddr)
 			},

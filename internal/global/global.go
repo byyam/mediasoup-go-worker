@@ -15,6 +15,7 @@ import (
 
 const (
 	ReceiveMTU = 8192
+	Network    = "udp4"
 )
 
 var (
@@ -40,7 +41,7 @@ func initUdpMuxPort() {
 	if port < 0 {
 		UdpMuxConn = nil
 	}
-	UdpMuxConn, err = udpmux.NewUdpMux(conf.Settings.RtcListenIp, uint16(port), nil)
+	UdpMuxConn, err = udpmux.NewUdpMux(Network, conf.Settings.RtcListenIp, uint16(port), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -75,11 +76,11 @@ func initICEMuxPort() {
 }
 
 func bindingICEMux(addr string) (err error) {
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr(Network, addr)
 	if err != nil {
 		return
 	}
-	udpConn, err := net.ListenUDP("udp", udpAddr)
+	udpConn, err := net.ListenUDP(Network, udpAddr)
 	if err != nil {
 		return
 	}
