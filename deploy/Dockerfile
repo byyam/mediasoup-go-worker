@@ -1,19 +1,26 @@
-FROM golang:1.18 AS builder
+FROM golang:1.18 as builder
 
-WORKDIR /data/src
+ARG TARGETPLATFORM
+ARG TARGETARCH
+RUN echo building for "$TARGETPLATFORM"
+
+WORKDIR /workspace
 
 COPY . .
-
 RUN go mod download
-RUN CGO_ENABLED=0  GOOS=linux  GOARCH=amd64 go build -o server example/server/main.go
 
-FROM --platform=amd64 ubuntu:latest 
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH GO111MODULE=on go build -o server example/server/main.go
+
+FROM --platform=$TARGETARCH ubuntu:latest 
 
 WORKDIR /data/bin
 
-COPY --from=builder /data/src/server .
-COPY --from=builder /data/src/deploy/entrypoint.sh ./entrypoint.sh
+COPY --from=builder /workspace/server /data/bin/server
 
-RUN chmod +x entrypoint.sh
+ARG RTC_STATIC_PORT
+ARG PIPE_PORT
+ENV RTC_STATIC_PORT=$RTC_STATIC_PORT PIPE_PORT=$PIPE_PORT 
 
-CMD ["./entrypoint.sh"]
+COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

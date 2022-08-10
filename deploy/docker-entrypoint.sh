@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -x
 
 
 # Set environment variables
@@ -7,7 +7,7 @@ set -e
 #export PIPE_PORT=50001
 
 
-exec ./server --rtcListenIp 127.0.0.1 \
+exec ./server --rtcListenIp 0.0.0.0 \
 --logLevel trace \
 --rtcStaticPort ${RTC_STATIC_PORT} \
 --pipePort ${PIPE_PORT} \
