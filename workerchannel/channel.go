@@ -77,21 +77,21 @@ func (c *Channel) processPayload(nsPayload []byte) {
 		c.logger.Error("messages length invalid:[%s]", nsPayload)
 		return
 	}
-
+	c.processMessage(messages)
 }
 
 func (c *Channel) OnRequest(fn func(request RequestData) ResponseData) {
 	c.OnRequestHandler.Store(fn)
 }
 
-func (c *Channel) processMessage(message []string) error {
+func (c *Channel) processMessage(messages []string) error {
 	//reqData := channelData{
 	//	Id:       0, // todo
-	//	Method:   message[1],
+	//	Method:   messages[1],
 	//	Internal: nil,
 	//	Data:     nil,
 	//}
-	c.logger("message:%v", message)
+	c.logger.Info("messages:%v", messages)
 	return nil
 }
 
