@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/internal/constant"
 	"log"
 	"os"
 	"os/signal"
@@ -18,15 +19,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/google/gops/agent"
 	"github.com/hashicorp/go-version"
-)
-
-const (
-	ConsumerChannelFd        = 3 // read fd
-	ProducerChannelFd        = 4 // write fd
-	PayloadConsumerChannelFd = 5
-	PayloadProducerChannelFd = 6
-
-	NativeVersion = "3.9.0"
 )
 
 var (
@@ -54,13 +46,19 @@ func main() {
 
 	// prepare write/read channel
 	var netParser netparser.INetParser
-	nativeVersion, _ := version.NewVersion(NativeVersion)
-	if currentLatest.GreaterThanOrEqual(nativeVersion) {
+	nativeJsonVersion, _ := version.NewVersion(constant.NativeJsonVersion)
+	nativeVersion, _ := version.NewVersion(constant.NativeVersion)
+	jsonFormat := true
+	if currentLatest.GreaterThanOrEqual(nativeJsonVersion) {
 		order := netparser.HostByteOrder()
-		netParser, err = netparser.NewNetNativeFd(ProducerChannelFd, ConsumerChannelFd, order)
+		netParser, err = netparser.NewNetNativeFd(constant.ProducerChannelFd, constant.ConsumerChannelFd, order)
 		logger.Info("create native codec, host order:%s", order)
+		// https://github.com/versatica/mediasoup/pull/870
+		if currentLatest.GreaterThanOrEqual(nativeVersion) {
+			jsonFormat = false
+		}
 	} else {
-		netParser, err = netparser.NewNetStringsFd(ProducerChannelFd, ConsumerChannelFd)
+		netParser, err = netparser.NewNetStringsFd(constant.ProducerChannelFd, constant.ConsumerChannelFd)
 		logger.Info("create netstrings codec")
 	}
 	checkError(err)
@@ -68,7 +66,7 @@ func main() {
 		_ = netParser.Close()
 	}()
 
-	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("pid=%d,cfd=%d,pfd=%d", global.Pid, ConsumerChannelFd, ProducerChannelFd))
+	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("pid=%d,cfd=%d,pfd=%d", global.Pid, constant.ConsumerChannelFd, constant.ProducerChannelFd), jsonFormat)
 	payloadChannel := workerchannel.NewPayloadChannel()
 
 	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
