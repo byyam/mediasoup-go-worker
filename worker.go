@@ -23,7 +23,7 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	w.logger.Debug("method=%s,internal=%+v", request.Method, request.Internal)
+	w.logger.Info("method=%s,internal=%+v", request.Method, request.Internal)
 
 	switch request.Method {
 	case mediasoupdata.MethodWorkerCreateRouter:
@@ -46,7 +46,7 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 		router := r.(*rtc.Router)
 		router.HandleRequest(request, &response)
 	}
-	w.logger.Debug("method:%s, response:%s", request.Method, response)
+	w.logger.Info("method:%s, response:%s", request.Method, response)
 	return
 }
 

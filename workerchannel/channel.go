@@ -72,12 +72,15 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 func (c *Channel) processPayload(nsPayload []byte) {
 	// https://github.com/versatica/mediasoup/commit/ed15a863a5ed095f58a16d972c8e25bf24f17933
 	// const request = `${id}:${method}:${handlerId}:${JSON.stringify(data)}`;
-	messages := strings.Split(string(nsPayload), ":")
+	messages := strings.SplitN(string(nsPayload), ":", 4)
+	c.logger.Info("messages:%+v", messages)
 	if len(messages) != 4 {
-		c.logger.Error("messages length invalid:[%s]", nsPayload)
+		c.logger.Error("messages length invalid,nsPayload:[%s]", nsPayload)
 		return
 	}
-	c.processMessage(messages)
+	if err := c.processMessage(messages); err != nil {
+		c.logger.Error("process message failed:%s", err.Error())
+	}
 }
 
 func (c *Channel) OnRequest(fn func(request RequestData) ResponseData) {
@@ -85,17 +88,40 @@ func (c *Channel) OnRequest(fn func(request RequestData) ResponseData) {
 }
 
 func (c *Channel) processMessage(messages []string) error {
-	//reqData := channelData{
-	//	Id:       0, // todo
-	//	Method:   messages[1],
-	//	Internal: nil,
-	//	Data:     nil,
-	//}
-	c.logger.Info("messages:%v", messages)
+	// decode
+	id, err := strconv.Atoi(messages[0])
+	if err != nil {
+		return err
+	}
+	var internal InternalData
+	if err := internal.Unmarshal(json.RawMessage(messages[3])); err != nil {
+		return err
+	}
+	reqData := channelData{
+		Id:       int64(id), // todo
+		Method:   messages[1],
+		Internal: nil,
+		Data:     nil,
+	}
+
+	// handle
+	rspData, _ := c.handleMessage(&reqData, &internal)
+	c.logger.Info("rspData:%+v", rspData)
+
+	// encode
+	var rspMsg []string
+	rspMsg = append(rspMsg, messages[0], reqData.Method, messages[2], messages[3])
+	rspBuf := strings.Join(rspMsg, ":")
+	c.logger.Info("rspMsg:%+v,rspBuf:[%s]", rspMsg, rspBuf)
+	if err := c.netParser.WriteBuffer([]byte(rspBuf)); err != nil {
+		return err
+	}
+	c.logger.Info("response Id=%d,err=[%v]", rspData.Id, rspData.Error)
 	return nil
 }
 
 func (c *Channel) processJsonMessage(nsPayload []byte) error {
+	// decode
 	var reqData channelData
 	if err := json.Unmarshal(nsPayload, &reqData); err != nil {
 		return err
@@ -104,8 +130,10 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	_ = internal.Unmarshal(reqData.Internal)
 	c.logger.Info("request Id=%d, Method=%s", reqData.Id, reqData.Method)
 
+	// handle
 	rspData, _ := c.handleMessage(&reqData, &internal)
 
+	// encode
 	jsonByte, _ := json.Marshal(&rspData)
 
 	if len(jsonByte) > NS_MESSAGE_MAX_LEN {
@@ -123,6 +151,7 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	var ret ResponseData
 	rspData := new(channelData)
 	rspData.Id = reqData.Id
+	rspData.Method = reqData.Method
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		ret = handler(RequestData{
 			Method:   reqData.Method,
