@@ -18,6 +18,10 @@ const (
 	NS_PAYLOAD_MAX_LEN = 4194304
 )
 
+const (
+	UNDEFINED = "undefined"
+)
+
 type Channel struct {
 	logger     utils.Logger
 	netParser  netparser.INetParser
@@ -93,12 +97,16 @@ func (c *Channel) processMessage(messages []string) error {
 	if err != nil {
 		return err
 	}
+	// handlerId := messages[2]
 	var internal InternalData
-	if err := internal.Unmarshal(json.RawMessage(messages[3])); err != nil {
-		return err
+	if messages[3] != UNDEFINED {
+		if err := internal.Unmarshal(json.RawMessage(messages[3])); err != nil {
+			return err
+		}
 	}
+	internal.RouterId = messages[2]
 	reqData := channelData{
-		Id:       int64(id), // todo
+		Id:       int64(id),
 		Method:   messages[1],
 		Internal: nil,
 		Data:     nil,
@@ -109,14 +117,9 @@ func (c *Channel) processMessage(messages []string) error {
 	c.logger.Info("rspData:%+v", rspData)
 
 	// encode
-	var rspMsg []string
-	rspMsg = append(rspMsg, messages[0], reqData.Method, messages[2], messages[3])
-	rspBuf := strings.Join(rspMsg, ":")
-	c.logger.Info("rspMsg:%+v,rspBuf:[%s]", rspMsg, rspBuf)
-	if err := c.netParser.WriteBuffer([]byte(rspBuf)); err != nil {
-		return err
+	if err := c.returnMessage(rspData); err != nil {
+		c.logger.Error("return message failed:%s", err.Error())
 	}
-	c.logger.Info("response Id=%d,err=[%v]", rspData.Id, rspData.Error)
 	return nil
 }
 
@@ -134,6 +137,13 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	rspData, _ := c.handleMessage(&reqData, &internal)
 
 	// encode
+	if err := c.returnMessage(rspData); err != nil {
+		c.logger.Error("return message failed:%s", err.Error())
+	}
+	return nil
+}
+
+func (c *Channel) returnMessage(rspData *channelData) error {
 	jsonByte, _ := json.Marshal(&rspData)
 
 	if len(jsonByte) > NS_MESSAGE_MAX_LEN {
