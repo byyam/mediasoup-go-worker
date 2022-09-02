@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -91,25 +92,43 @@ func (c *Channel) OnRequest(fn func(request RequestData) ResponseData) {
 	c.OnRequestHandler.Store(fn)
 }
 
+func (c *Channel) setHandlerId(method, handlerId, data string, internal *InternalData) error {
+	if handlerId == UNDEFINED {
+		if err := internal.Unmarshal(json.RawMessage(data)); err != nil {
+			return err
+		}
+		return nil
+	}
+	switch method {
+	case mediasoupdata.MethodWorkerCreateRouter, mediasoupdata.MethodRouterCreateAudioLevelObserver, mediasoupdata.MethodRouterCreateDirectTransport:
+		internal.RouterId = handlerId
+	default:
+		return errors.New("unknown method")
+	}
+	return nil
+}
+
 func (c *Channel) processMessage(messages []string) error {
+	idStr := messages[0]
+	method := messages[1]
+	handlerId := messages[2]
+	data := messages[3]
 	// decode
-	id, err := strconv.Atoi(messages[0])
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		return err
 	}
-	// handlerId := messages[2]
 	var internal InternalData
-	if messages[3] != UNDEFINED {
-		if err := internal.Unmarshal(json.RawMessage(messages[3])); err != nil {
-			return err
-		}
+
+	if err := c.setHandlerId(method, handlerId, data, &internal); err != nil {
+		return err
 	}
-	internal.RouterId = messages[2]
+
 	reqData := channelData{
 		Id:       int64(id),
-		Method:   messages[1],
+		Method:   method,
 		Internal: nil,
-		Data:     nil,
+		Data:     json.RawMessage(data),
 	}
 
 	// handle
