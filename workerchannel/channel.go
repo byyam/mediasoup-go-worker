@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"strconv"
 	"strings"
 	"sync/atomic"
+
+	"github.com/tidwall/gjson"
+
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
@@ -99,11 +102,20 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		}
 		return nil
 	}
+	// set handlerId
 	switch method {
 	case mediasoupdata.MethodWorkerCreateRouter, mediasoupdata.MethodRouterCreateAudioLevelObserver, mediasoupdata.MethodRouterCreateDirectTransport:
 		internal.RouterId = handlerId
+	case mediasoupdata.MethodTransportProduceData:
+		internal.TransportId = handlerId
 	default:
 		return errors.New("unknown method")
+	}
+	// set objectId
+	switch method {
+	case mediasoupdata.MethodRouterCreateDirectTransport:
+		value := gjson.Get(data, "transportId")
+		internal.TransportId = value.String()
 	}
 	return nil
 }

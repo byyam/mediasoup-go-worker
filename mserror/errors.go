@@ -9,6 +9,7 @@ var (
 	ErrTransportNotFound       = errors.New("transport not found")
 	ErrCreateWebrtcTransport   = errors.New("create webrtc-transport failed")
 	ErrCreatePipeTransport     = errors.New("create pipe-transport failed")
+	ErrCreateDirectTransport   = errors.New("create direct-transport failed")
 	ErrDuplicatedId            = errors.New("duplicated id")
 	ErrProducerExist           = errors.New("producer already exist")
 	ErrProducerNotFound        = errors.New("producer not found")

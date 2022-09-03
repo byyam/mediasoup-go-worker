@@ -88,6 +88,27 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		response.Data = pipeTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreateDirectTransport:
+		var options mediasoupdata.DirectTransportOptions
+		_ = json.Unmarshal(request.Data, &options)
+		directTransport, err := newDirectTransport(directTransportParam{
+			options: options,
+			transportParam: transportParam{
+				Id:                                     request.Internal.TransportId,
+				OnTransportNewProducer:                 r.OnTransportNewProducer,
+				OnTransportProducerClosed:              r.OnTransportProducerClosed,
+				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
+				OnTransportNewConsumer:                 r.OnTransportNewConsumer,
+				OnTransportConsumerClosed:              r.OnTransportConsumerClosed,
+				OnTransportConsumerKeyFrameRequested:   r.OnTransportConsumerKeyFrameRequested,
+				OnTransportNeedWorstRemoteFractionLost: r.OnTransportNeedWorstRemoteFractionLost,
+			},
+		})
+		if err != nil {
+			r.logger.Error("createDirectTransport:%s", err.Error())
+			response.Err = mserror.ErrCreateDirectTransport
+			return
+		}
+		r.mapTransports.Store(request.Internal.TransportId, directTransport)
 
 	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
 
