@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )

@@ -1,9 +1,8 @@
 package conf
 
 import (
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"os"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/urfave/cli/v2"

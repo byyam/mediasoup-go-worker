@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"github.com/byyam/mediasoup-go-worker/pkg/nack"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math"
 	"time"
 
@@ -26,7 +27,7 @@ type RtpStreamRecv struct {
 	nackGenerator                    *nack.NackQueue
 	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
 	mediaTransmissionCounter         *RtpDataCounter      // Just valid media.
-	logger                           utils.Logger
+	logger                           utils2.Logger
 	onRtpStreamSendRtcpPacketHandler func(packet rtcp.Packet)
 }
 
@@ -48,7 +49,7 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{})
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
-	r.logger = utils.NewLogger("RtpStreamRecv", r.GetId())
+	r.logger = utils2.NewLogger("RtpStreamRecv", r.GetId())
 	r.logger.Info("new RtpStreamRecv:%# v", *param.ParamRtpStream)
 	return r
 }

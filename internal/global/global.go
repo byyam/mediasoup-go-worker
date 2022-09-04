@@ -2,8 +2,8 @@ package global
 
 import (
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"net"
 	"os"
 
@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	logger = utils.NewLogger("mediasoup-worker")
+	logger = logger2.NewLogger("mediasoup-worker")
 )
 
 var (

@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"

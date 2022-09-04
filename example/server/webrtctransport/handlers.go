@@ -5,7 +5,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
 	"github.com/byyam/mediasoup-go-worker/example/server/basehandler"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/jiyeyuran/go-protoo"
 )
 

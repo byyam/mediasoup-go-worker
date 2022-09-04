@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"time"
 
 	"github.com/jiyeyuran/go-protoo"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
 
 type WsServer struct {

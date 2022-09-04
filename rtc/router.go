@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -16,7 +17,7 @@ import (
 
 type Router struct {
 	id                   string
-	logger               utils.Logger
+	logger               utils2.Logger
 	mapTransports        sync.Map
 	mapProducerConsumers *utils.Hashmap
 	mapProducers         sync.Map
@@ -26,7 +27,7 @@ type Router struct {
 func NewRouter(id string) *Router {
 	return &Router{
 		id:                   id,
-		logger:               utils.NewLogger("router", id),
+		logger:               utils2.NewLogger("router", id),
 		mapProducerConsumers: utils.NewHashMap(),
 	}
 }

@@ -7,8 +7,8 @@ import (
 	"github.com/byyam/mediasoup-go-worker/example/internal/isignal"
 	"github.com/byyam/mediasoup-go-worker/example/server/basehandler"
 	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/google/uuid"
 	"net/http"
 )

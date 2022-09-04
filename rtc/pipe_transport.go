@@ -10,6 +10,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/kr/pretty"
 	"github.com/pion/randutil"
@@ -32,7 +33,7 @@ const (
 type PipeTransport struct {
 	ITransport
 	id     string
-	logger utils.Logger
+	logger utils2.Logger
 
 	listen mediasoupdata.TransportListenIp
 	rtx    bool
@@ -63,7 +64,7 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	t := &PipeTransport{
 		id:        param.Id,
 		connected: &utils.AtomicBool{},
-		logger:    utils.NewLogger("pipe-transport", param.Id),
+		logger:    utils2.NewLogger("pipe-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket

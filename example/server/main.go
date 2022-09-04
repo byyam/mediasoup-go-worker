@@ -4,6 +4,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/server/pipetransport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"io"
 	"log"
 	"net/http"
@@ -19,12 +20,11 @@ import (
 	"github.com/byyam/mediasoup-go-worker/example/internal/wsconn"
 	"github.com/byyam/mediasoup-go-worker/example/server/webrtctransport"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/gorilla/websocket"
 )
 
 var (
-	logger = utils.NewLogger("server")
+	logger = logger2.NewLogger("server")
 	worker *mediasoup_go_worker.SimpleWorker
 )
 

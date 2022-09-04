@@ -6,13 +6,13 @@ import (
 	"github.com/byyam/mediasoup-go-worker/example/internal/demoutils"
 	"github.com/byyam/mediasoup-go-worker/example/server/democonf"
 	"github.com/byyam/mediasoup-go-worker/example/server/workerapi"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
 var (
-	logger = utils.NewLogger("base-handler")
+	logger = logger2.NewLogger("base-handler")
 )
 
 type BaseHandler struct {

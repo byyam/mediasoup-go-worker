@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -19,7 +20,7 @@ import (
 type WebrtcTransport struct {
 	ITransport
 	id     string
-	logger utils.Logger
+	logger utils2.Logger
 
 	iceServer *iceServer
 
@@ -38,7 +39,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	t := &WebrtcTransport{
 		id:        param.Id,
 		connected: &utils.AtomicBool{},
-		logger:    utils.NewLogger("webrtc-transport", param.Id),
+		logger:    utils2.NewLogger("webrtc-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket

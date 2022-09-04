@@ -1,6 +1,7 @@
 package rtc
 
 import (
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
 	"time"
 
@@ -66,7 +67,7 @@ type RtpStream struct {
 
 	reportedPacketLost uint32
 
-	logger utils.Logger
+	logger utils2.Logger
 }
 
 func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
@@ -75,7 +76,7 @@ func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
 		id:     id,
 		score:  initialScore,
 		params: param,
-		logger: utils.NewLogger("RtpStream", id),
+		logger: utils2.NewLogger("RtpStream", id),
 	}
 }
 

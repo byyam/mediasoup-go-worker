@@ -2,14 +2,14 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 )
 
 var (
-	logger = utils.NewLogger("prometheus")
+	logger = logger2.NewLogger("prometheus")
 )
 
 type monitorOpt struct {

@@ -1,6 +1,7 @@
 package rtc
 
 import (
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"time"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
@@ -11,7 +12,7 @@ import (
 
 type RtpStreamSend struct {
 	*RtpStream
-	logger                                utils.Logger
+	logger                                utils2.Logger
 	lostPriorScore                        uint32 // Packets lost at last interval for score calculation.
 	sentPriorScore                        uint32 // Packets sent at last interval for score calculation.
 	rtxSeq                                uint16
@@ -33,7 +34,7 @@ func newRtpStreamSend(param *ParamRtpStreamSend) *RtpStreamSend {
 		retransmission:                        NewRetransmission(param.bufferSize),
 		onRtpStreamRetransmitRtpPacketHandler: param.OnRtpStreamRetransmitRtpPacket,
 	}
-	r.logger = utils.NewLogger("RtpStreamSend", r.GetId())
+	r.logger = utils2.NewLogger("RtpStreamSend", r.GetId())
 	return r
 }
 

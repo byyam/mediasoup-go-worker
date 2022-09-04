@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
 )
 

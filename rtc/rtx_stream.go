@@ -1,9 +1,9 @@
 package rtc
 
 import (
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"

@@ -2,8 +2,7 @@ package workerapi
 
 import (
 	"encoding/json"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -11,7 +10,7 @@ import (
 )
 
 var (
-	logger = utils.NewLogger("worker-api")
+	logger = logger2.NewLogger("worker-api")
 )
 
 func CreateRouter(w *mediasoup_go_worker.SimpleWorker, routerId string) error {

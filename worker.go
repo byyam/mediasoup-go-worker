@@ -2,9 +2,9 @@ package mediasoup_go_worker
 
 import (
 	"encoding/json"
+	"github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/rtc"

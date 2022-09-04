@@ -3,6 +3,7 @@ package rtc
 import (
 	"errors"
 	"fmt"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"net"
 	"sync"
 	"time"
@@ -30,7 +31,7 @@ type iceServer struct {
 	state      mediasoupdata.IceState
 	localUfrag string
 	localPwd   string
-	logger     utils.Logger
+	logger     utils2.Logger
 	udpMux     *ice.UDPMuxDefault
 	udpConn    net.PacketConn
 	buffer     *packetio.Buffer
@@ -64,7 +65,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	d := &iceServer{
 		iceLite:          param.iceLite, // todo: support full ICE
 		state:            mediasoupdata.IceState_New,
-		logger:           utils.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
+		logger:           utils2.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
 		udpMux:           global.ICEMuxConn,

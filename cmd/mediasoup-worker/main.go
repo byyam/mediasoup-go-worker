@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/byyam/mediasoup-go-worker/internal/constant"
+	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"log"
 	"os"
 	"os/signal"
@@ -15,14 +16,13 @@ import (
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 	"github.com/google/gops/agent"
 	"github.com/hashicorp/go-version"
 )
 
 var (
-	logger = utils.NewLogger("mediasoup-worker")
+	logger = logger2.NewLogger("mediasoup-worker")
 )
 
 func checkError(err error) {
