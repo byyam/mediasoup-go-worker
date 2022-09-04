@@ -8,6 +8,8 @@
 * add SCTP protocol.
 * implement data-channel interface.
 
+### 1.0.5
+* Support mediasoup-3.10.6 channel message format.
 
 ### 1.0.4
 
