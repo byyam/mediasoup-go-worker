@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/go-version"
 
 	"github.com/byyam/mediasoup-go-worker/internal/constant"
-	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
 	"github.com/byyam/mediasoup-go-worker/utils"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -57,7 +56,7 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 		_ = netParser.Close()
 	}()
 
-	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("pid=%d,cfd=%d,pfd=%d", global.Pid, constant.ConsumerChannelFd, constant.ProducerChannelFd), jsonFormat)
+	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("cfd=%d,pfd=%d", constant.ConsumerChannelFd, constant.ProducerChannelFd), jsonFormat)
 	payloadChannel := workerchannel.NewPayloadChannel()
 	return channel, payloadChannel, nil
 }

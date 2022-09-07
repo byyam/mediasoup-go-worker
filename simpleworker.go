@@ -1,6 +1,8 @@
 package mediasoup_go_worker
 
 import (
+	"os"
+
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/utils"
 )
@@ -10,10 +12,11 @@ type SimpleWorker struct {
 }
 
 func NewSimpleWorker() *SimpleWorker {
+	pid := os.Getpid()
 	w := &SimpleWorker{
 		workerBase: workerBase{
-			pid:    global.Pid,
-			logger: utils.NewLogger("worker"),
+			pid:    pid,
+			logger: utils.NewLogger("worker", pid),
 		},
 	}
 	return w

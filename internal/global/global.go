@@ -2,10 +2,10 @@ package global
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
 	logger2 "github.com/byyam/mediasoup-go-worker/utils"
-	"net"
-	"os"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ReceiveMTU = 8192
+	ReceiveMTU = 1200
 	Network    = "udp4"
 )
 
@@ -23,7 +23,6 @@ var (
 )
 
 var (
-	Pid        = os.Getpid()
 	ICEMuxConn *ice.UDPMuxDefault
 	ICEMuxPort uint16
 

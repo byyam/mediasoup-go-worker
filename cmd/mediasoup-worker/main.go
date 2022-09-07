@@ -15,11 +15,11 @@ import (
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/conf"
-	"github.com/byyam/mediasoup-go-worker/internal/global"
 )
 
 var (
 	logger = utils.NewLogger("mediasoup-worker")
+	pid    int
 )
 
 func checkError(err error) {
@@ -42,7 +42,8 @@ func main() {
 	checkError(err)
 
 	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
-	w.Start()
+	pid = w.Start()
+	logger.Info("worker[%d] start", pid)
 
 	if err := agent.Listen(agent.Options{}); err != nil {
 		log.Fatal(err)
@@ -57,5 +58,5 @@ func listenSignal() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-signals
-	logger.Warn("[pid=%d]stop worker", global.Pid)
+	logger.Warn("[pid=%d]stop worker", pid)
 }
