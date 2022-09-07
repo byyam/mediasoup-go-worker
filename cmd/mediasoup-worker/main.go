@@ -1,28 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"github.com/byyam/mediasoup-go-worker/internal/constant"
-	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/byyam/mediasoup-go-worker/cmd/mediasoup-worker/config"
+	"github.com/byyam/mediasoup-go-worker/utils"
+
 	"github.com/byyam/mediasoup-go-worker/monitor"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
+	"github.com/google/gops/agent"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/workerchannel"
-	"github.com/google/gops/agent"
-	"github.com/hashicorp/go-version"
 )
 
 var (
-	logger = logger2.NewLogger("mediasoup-worker")
+	logger = utils.NewLogger("mediasoup-worker")
 )
 
 func checkError(err error) {
@@ -33,41 +30,16 @@ func checkError(err error) {
 
 func main() {
 	// init configurations
-	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")
-	currentLatest, err := version.NewVersion(mediasoupVersion)
-	checkError(err)
-	logger.Info("MEDIASOUP_VERSION:%s", mediasoupVersion)
-
-	conf.InitCli()
+	config.InitConfig()
 	logger.Info("argv:%+v", conf.Settings)
 	if conf.Settings.PrometheusPort > 0 {
 		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
 	}
 
-	// prepare write/read channel
-	var netParser netparser.INetParser
-	nativeJsonVersion, _ := version.NewVersion(constant.NativeJsonVersion)
-	nativeVersion, _ := version.NewVersion(constant.NativeVersion)
-	jsonFormat := true
-	if currentLatest.GreaterThanOrEqual(nativeJsonVersion) {
-		order := netparser.HostByteOrder()
-		netParser, err = netparser.NewNetNativeFd(constant.ProducerChannelFd, constant.ConsumerChannelFd, order)
-		logger.Info("create native codec, host order:%s", order)
-		// https://github.com/versatica/mediasoup/pull/870
-		if currentLatest.GreaterThanOrEqual(nativeVersion) {
-			jsonFormat = false
-		}
-	} else {
-		netParser, err = netparser.NewNetStringsFd(constant.ProducerChannelFd, constant.ConsumerChannelFd)
-		logger.Info("create netstrings codec")
-	}
+	// init worker
+	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")
+	channel, payloadChannel, err := mediasoup_go_worker.InitWorker(mediasoupVersion)
 	checkError(err)
-	defer func() {
-		_ = netParser.Close()
-	}()
-
-	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("pid=%d,cfd=%d,pfd=%d", global.Pid, constant.ConsumerChannelFd, constant.ProducerChannelFd), jsonFormat)
-	payloadChannel := workerchannel.NewPayloadChannel()
 
 	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
 	w.Start()
