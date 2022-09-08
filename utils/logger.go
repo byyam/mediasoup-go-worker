@@ -2,11 +2,8 @@ package utils
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -35,30 +32,30 @@ var (
 	// NewLogger defines function to create logger instance.
 	NewLogger = newDefaultLogger
 	// NewLoggerWriter defines function to create logger writer.
-	NewLoggerWriter = func() io.Writer {
-		writer := zerolog.ConsoleWriter{
-			Out:        os.Stdout,
-			TimeFormat: time.RFC3339,
-		}
-
-		if hideDate := os.Getenv("DEBUG_HIDE_DATE"); len(hideDate) > 0 {
-			val, err := strconv.ParseBool(hideDate)
-			if err == nil && val {
-				writer.FormatTimestamp = func(interface{}) string {
-					return ""
-				}
-			}
-		}
-
-		if color := os.Getenv("DEBUG_COLORS"); len(color) > 0 {
-			val, err := strconv.ParseBool(color)
-			if err == nil {
-				writer.NoColor = !val
-			}
-		}
-
-		return writer
-	}
+	//NewLoggerWriter = func() io.Writer {
+	//	writer := zerolog.ConsoleWriter{
+	//		Out:        os.Stdout,
+	//		TimeFormat: time.RFC3339,
+	//	}
+	//
+	//	if hideDate := os.Getenv("DEBUG_HIDE_DATE"); len(hideDate) > 0 {
+	//		val, err := strconv.ParseBool(hideDate)
+	//		if err == nil && val {
+	//			writer.FormatTimestamp = func(interface{}) string {
+	//				return ""
+	//			}
+	//		}
+	//	}
+	//
+	//	if color := os.Getenv("DEBUG_COLORS"); len(color) > 0 {
+	//		val, err := strconv.ParseBool(color)
+	//		if err == nil {
+	//			writer.NoColor = !val
+	//		}
+	//	}
+	//
+	//	return writer
+	//}
 )
 
 func SetScopes(scopes ...string) {
@@ -80,8 +77,13 @@ type defaultLogger struct {
 }
 
 func newDefaultLogger(scope string, ids ...interface{}) Logger {
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000"}
+	output.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+	}
 
-	context := zerolog.New(NewLoggerWriter()).With().Timestamp()
+	// context := zerolog.New(NewLoggerWriter()).With().Timestamp()
+	context := zerolog.New(output).With().Timestamp()
 
 	var caller string
 	if len(ids) > 0 {

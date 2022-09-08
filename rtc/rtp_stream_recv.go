@@ -1,16 +1,18 @@
 package rtc
 
 import (
-	"github.com/byyam/mediasoup-go-worker/pkg/nack"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math"
 	"time"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/nack"
+	utils2 "github.com/byyam/mediasoup-go-worker/utils"
+
+	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-	"github.com/pion/rtcp"
 )
 
 type RtpStreamRecv struct {
@@ -46,10 +48,12 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	if param.UseDtx {
 		windowSize = 6000
 	}
-	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{})
+	r.logger = utils2.NewLogger("RtpStreamRecv", r.GetId())
+	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{
+		Logger: r.logger,
+	})
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
-	r.logger = utils2.NewLogger("RtpStreamRecv", r.GetId())
 	r.logger.Info("new RtpStreamRecv:%# v", *param.ParamRtpStream)
 	return r
 }

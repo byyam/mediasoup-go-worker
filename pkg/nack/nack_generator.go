@@ -2,9 +2,10 @@ package nack
 
 import (
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
 	"strings"
 	"time"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
 
 	"github.com/pion/rtcp"
 )
@@ -26,14 +27,14 @@ type NackQueue struct {
 }
 
 type ParamNackQueue struct {
-	logger logwrapper.Logger
+	Logger logwrapper.Logger
 }
 
 func NewNACKQueue(param *ParamNackQueue) *NackQueue {
 	n := &NackQueue{
 		nacks:  make([]*nack, 0, cacheSize),
 		rtt:    initialDelay,
-		logger: param.logger,
+		logger: param.Logger,
 	}
 	if n.logger == nil {
 		n.logger = logwrapper.NewLogger()
