@@ -108,6 +108,21 @@ func newDefaultLogger(scope string, ids ...interface{}) Logger {
 	//if Scopes[scope] {
 	//	logLevel = ScopeLevel
 	//}
+	setLevel := os.Getenv("WORKER_LOG")
+	switch setLevel {
+	case "i":
+		DefaultLevel = InfoLevel
+	case "d":
+		DefaultLevel = DebugLevel
+	case "e":
+		DefaultLevel = ErrorLevel
+	case "t":
+		DefaultLevel = TraceLevel
+	case "w":
+		DefaultLevel = WarnLevel
+	case "off":
+		DefaultLevel = Disabled
+	}
 	return &defaultLogger{
 		logger: context.Logger().Level(DefaultLevel),
 	}
