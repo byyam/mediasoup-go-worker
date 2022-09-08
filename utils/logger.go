@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 const (
@@ -26,9 +27,9 @@ const (
 var (
 	// DefaultLevel defines default log level.
 	DefaultLevel = InfoLevel
-	ScopeLevel   = DefaultLevel
+	//ScopeLevel   = DefaultLevel
 	// Scopes defines default log scopes.
-	Scopes = make(map[string]bool)
+	//Scopes = make(map[string]bool)
 	// NewLogger defines function to create logger instance.
 	NewLogger = newDefaultLogger
 	// NewLoggerWriter defines function to create logger writer.
@@ -58,11 +59,11 @@ var (
 	//}
 )
 
-func SetScopes(scopes ...string) {
-	for _, s := range scopes {
-		Scopes[s] = true
-	}
-}
+//func SetScopes(scopes ...string) {
+//	for _, s := range scopes {
+//		Scopes[s] = true
+//	}
+//}
 
 type Logger interface {
 	Trace(format string, v ...interface{})
@@ -76,7 +77,10 @@ type defaultLogger struct {
 	logger zerolog.Logger
 }
 
+// ids set to context
 func newDefaultLogger(scope string, ids ...interface{}) Logger {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMicro
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05.000000"}
 	output.FormatLevel = func(i interface{}) string {
 		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
@@ -100,12 +104,12 @@ func newDefaultLogger(scope string, ids ...interface{}) Logger {
 		context = context.Str(zerolog.CallerFieldName, caller)
 	}
 
-	logLevel := DefaultLevel
-	if Scopes[scope] {
-		logLevel = ScopeLevel
-	}
+	//logLevel := DefaultLevel
+	//if Scopes[scope] {
+	//	logLevel = ScopeLevel
+	//}
 	return &defaultLogger{
-		logger: context.Logger().Level(logLevel),
+		logger: context.Logger().Level(DefaultLevel),
 	}
 }
 
