@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
-	logger2 "github.com/byyam/mediasoup-go-worker/utils"
+	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
+	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
+	"github.com/byyam/mediasoup-go-worker/pkg/zlog"
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/logging"
@@ -19,7 +20,7 @@ const (
 )
 
 var (
-	logger = logger2.NewLogger("mediasoup-worker")
+	logger = zlog.GetLogger().With(zap.String("scope", "mediasoup-worker"))
 )
 
 var (
@@ -44,7 +45,7 @@ func initUdpMuxPort() {
 	if err != nil {
 		panic(err)
 	}
-	logger.Info("banding mux UDP addr:[%s:%d] success", UdpMuxConn.IP(), UdpMuxConn.Port())
+	logger.Info("banding mux UDP addr success", zap.String("ip", UdpMuxConn.IP()), zap.Uint16("port", UdpMuxConn.Port()))
 }
 
 func initICEMuxPort() {
@@ -53,15 +54,15 @@ func initICEMuxPort() {
 		ICEMuxPort = conf.Settings.RtcStaticPort
 
 		addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, ICEMuxPort)
-		logger.Info("start binding static udp:%s", addr)
+		logger.Info("start binding static udp", zap.String("addr", addr))
 		if err := bindingICEMux(addr); err != nil {
 			panic(err)
 		}
 	} else { // use port range
-		logger.Info("start binding from port range:[%d-%d]", conf.Settings.RtcMinPort, conf.Settings.RtcMaxPort)
+		logger.Info(fmt.Sprintf("start binding from port range:[%d-%d]", conf.Settings.RtcMinPort, conf.Settings.RtcMaxPort))
 		for port := conf.Settings.RtcMinPort; port <= conf.Settings.RtcMaxPort; port++ {
 			addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, port)
-			logger.Debug("try to binding udp:%s", addr)
+			logger.Debug("try to binding udp", zap.String("addr", addr))
 			if err := bindingICEMux(addr); err == nil {
 				ICEMuxPort = port
 				break
@@ -71,7 +72,7 @@ func initICEMuxPort() {
 			}
 		}
 	}
-	logger.Info("banding mux ICE UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, ICEMuxPort)
+	logger.Info(fmt.Sprintf("banding mux ICE UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, ICEMuxPort))
 }
 
 func bindingICEMux(addr string) (err error) {

@@ -30,3 +30,4 @@ go.sum
 
 */mediasoup-worker/mediasoup-worker
 bin/
+log/
