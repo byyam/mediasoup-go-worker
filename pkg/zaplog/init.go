@@ -1,4 +1,4 @@
-package zlog
+package zaplog
 
 import (
 	"io"
@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	logger   *zap.Logger
-	initOnce sync.Once
+	logger, _    = zap.NewProduction() // set default production for using before init.
+	initOnce     sync.Once
+	defaultLevel = zap.InfoLevel
 )
 
 // Config - Configuration for logging
@@ -48,7 +49,7 @@ func Init(config Config) {
 		core := zapcore.NewCore(
 			zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
 			w,
-			zap.InfoLevel,
+			defaultLevel,
 		)
 		logger = zap.New(core)
 	})

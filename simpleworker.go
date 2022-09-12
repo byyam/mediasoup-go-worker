@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 type SimpleWorker struct {
@@ -16,7 +16,7 @@ func NewSimpleWorker() *SimpleWorker {
 	w := &SimpleWorker{
 		workerBase: workerBase{
 			pid:    pid,
-			logger: utils.NewLogger("worker", pid),
+			logger: zerowrapper.NewScope("worker", pid),
 		},
 	}
 	return w
@@ -24,5 +24,5 @@ func NewSimpleWorker() *SimpleWorker {
 
 func (w *SimpleWorker) Start() {
 	global.InitGlobal()
-	w.logger.Info("worker[%d] start", w.pid)
+	w.logger.Info().Int("pid", w.pid).Msg("worker start")
 }

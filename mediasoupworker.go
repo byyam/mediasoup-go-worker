@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -19,7 +19,7 @@ func NewMediasoupWorker(channel *workerchannel.Channel, payloadChannel *workerch
 	w := &MediasoupWorker{
 		workerBase: workerBase{
 			pid:    pid,
-			logger: utils.NewLogger("worker", pid),
+			logger: zerowrapper.NewScope("worker", pid),
 		},
 		channel:        channel,
 		payloadChannel: payloadChannel,

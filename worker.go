@@ -2,8 +2,9 @@ package mediasoup_go_worker
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
+
+	"github.com/rs/zerolog"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
@@ -13,7 +14,7 @@ import (
 
 type workerBase struct {
 	pid       int
-	logger    utils.Logger
+	logger    zerolog.Logger
 	routerMap sync.Map
 }
 
@@ -23,7 +24,7 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	w.logger.Info("method=%s,internal=%+v", request.Method, request.Internal)
+	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
 
 	switch request.Method {
 	case mediasoupdata.MethodWorkerCreateRouter:
@@ -46,7 +47,7 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 		router := r.(*rtc.Router)
 		router.HandleRequest(request, &response)
 	}
-	w.logger.Info("method:%s, response:%s", request.Method, response)
+	w.logger.Info().Str("request", request.String()).Msg("handle channel request done")
 	return
 }
 
@@ -56,7 +57,7 @@ func (w *workerBase) Stop() {
 		router.Close()
 		return true
 	})
-	w.logger.Warn("pid:%d is killed", w.pid)
+	w.logger.Warn().Int("pid", w.pid).Msg("worker is killed")
 }
 
 func (w *workerBase) FillJson() json.RawMessage {
@@ -70,7 +71,7 @@ func (w *workerBase) FillJson() json.RawMessage {
 		RouterIds: routerIds,
 	}
 	data, _ := json.Marshal(&dumpData)
-	w.logger.Debug("dumpData:%+v", dumpData)
+	w.logger.Debug().Msgf("dumpData:%+v", dumpData)
 	return data
 }
 

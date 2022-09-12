@@ -1,4 +1,4 @@
-package zlog
+package zaplog
 
 import (
 	"testing"

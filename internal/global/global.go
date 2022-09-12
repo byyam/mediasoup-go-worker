@@ -7,8 +7,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
+	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
-	"github.com/byyam/mediasoup-go-worker/pkg/zlog"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/logging"
@@ -20,7 +21,7 @@ const (
 )
 
 var (
-	logger = zlog.GetLogger().With(zap.String("scope", "mediasoup-worker"))
+	logger = zaplog.GetLogger().With(zap.String("scope", "mediasoup-worker"))
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 )
 
 func InitGlobal() {
+	mediasoupdata.Init()
 	initICEMuxPort()
 	initUdpMuxPort()
 }

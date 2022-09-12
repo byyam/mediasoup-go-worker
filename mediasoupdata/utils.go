@@ -3,18 +3,21 @@ package mediasoupdata
 import (
 	"encoding/binary"
 	"encoding/json"
-	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
 	"unsafe"
 
+	"go.uber.org/zap"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+
 	"github.com/imdario/mergo"
 )
 
 var (
-	logger = logger2.NewLogger("mediasoup-data")
+	logger = zaplog.GetLogger().With(zap.String("scope", "mediasoup-data"))
 )
 
 func init() {
