@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"go.uber.org/zap"
-
 	"github.com/byyam/mediasoup-go-worker/h264"
 )
 
@@ -897,7 +895,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 			selectedProfileLevelId, err := h264.GenerateProfileLevelIdForAnswer(
 				aParameters.RtpParameter, bParameters.RtpParameter)
 			if err != nil {
-				logger.Error("h264.GenerateProfileLevelIdForAnswer failed", zap.Error(err))
+				logger.Error().Err(err).Msg("h264.GenerateProfileLevelIdForAnswer failed")
 				return
 			}
 

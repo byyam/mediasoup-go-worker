@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -18,8 +17,7 @@ import (
 var (
 	logLevel = zerolog.InfoLevel
 	initOnce sync.Once
-	initDone atomic.Value
-	logger   zerolog.Logger
+	logger   = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: TimeFormatRFC3339}).With().Timestamp().Logger() // set default logger
 )
 
 const (
@@ -72,8 +70,8 @@ func InitLog(config Config) {
 			Int("maxAgeInDays", config.MaxAge).
 			Str("logTimeFormat", config.LogTimeFieldFormat).
 			Bool("errorStackMarshaler", config.ErrorStackMarshaler).
-			Msg("logging configured")
-		initDone.Store(true)
+			Str("logLevel", logLevel.String()).
+			Msg("zero logging configured")
 	})
 }
 
@@ -96,9 +94,6 @@ func getLevel() {
 }
 
 func NewScope(scope string, ids ...interface{}) zerolog.Logger {
-	if v := initDone.Load(); v == nil || !v.(bool) {
-		panic("logger not init")
-	}
 	logCtx := logger.With().Timestamp()
 
 	var caller string

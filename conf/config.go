@@ -3,21 +3,19 @@ package conf
 import (
 	"sync"
 
-	"go.uber.org/zap"
-
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 var (
 	Settings mediasoupdata.WorkerSettings
 	initOnce sync.Once
-	logger   = zaplog.GetLogger().With(zap.String("scope", "config"))
+	logger   = zerowrapper.NewScope("config")
 )
 
 func InitCli() {
 	initOnce.Do(func() {
-		logger.Info("config init", zap.Any("settings", Settings))
+		logger.Info().Msgf("config init, settings:%+v", Settings)
 		checkPort()
 	})
 }

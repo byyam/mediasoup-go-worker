@@ -7,9 +7,8 @@ import (
 	"syscall"
 
 	"github.com/byyam/mediasoup-go-worker/cmd/mediasoup-worker/config"
-	"github.com/byyam/mediasoup-go-worker/utils"
-
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/google/gops/agent"
 
@@ -18,7 +17,7 @@ import (
 )
 
 var (
-	logger = utils.NewLogger("mediasoup-worker")
+	logger = zerowrapper.NewScope("mediasoup-worker")
 	pid    int
 )
 
@@ -31,7 +30,7 @@ func checkError(err error) {
 func main() {
 	// init configurations
 	config.InitConfig()
-	logger.Info("argv:%+v", conf.Settings)
+	logger.Info().Msgf("argv:%+v", conf.Settings)
 	if conf.Settings.PrometheusPort > 0 {
 		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
 	}
@@ -43,7 +42,7 @@ func main() {
 
 	w := mediasoup_go_worker.NewMediasoupWorker(channel, payloadChannel)
 	pid = w.Start()
-	logger.Info("worker[%d] start", pid)
+	logger.Info().Msgf("worker[%d] start", pid)
 
 	if err := agent.Listen(agent.Options{}); err != nil {
 		log.Fatal(err)
@@ -58,5 +57,5 @@ func listenSignal() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-signals
-	logger.Warn("[pid=%d]stop worker", pid)
+	logger.Warn().Msgf("[pid=%d]stop worker", pid)
 }

@@ -9,15 +9,13 @@ import (
 	"time"
 	"unsafe"
 
-	"go.uber.org/zap"
-
-	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/imdario/mergo"
 )
 
 var (
-	logger = zaplog.GetLogger().With(zap.String("scope", "mediasoup-data"))
+	logger = zerowrapper.NewScope("mediasoup-data")
 )
 
 func init() {

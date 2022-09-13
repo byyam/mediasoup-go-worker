@@ -7,12 +7,12 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/internal/constant"
 	"github.com/byyam/mediasoup-go-worker/pkg/netparser"
-	"github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
 var (
-	logger = utils.NewLogger("mediasoup-worker-init")
+	logger = zerowrapper.NewScope("mediasoup-worker-init")
 )
 
 func checkError(err error) {
@@ -31,7 +31,7 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 
 	currentLatest, err := version.NewVersion(mediasoupVersion)
 	checkError(err)
-	logger.Info("MEDIASOUP_VERSION:%s", mediasoupVersion)
+	logger.Info().Msgf("MEDIASOUP_VERSION:%s", mediasoupVersion)
 
 	// prepare write/read channel
 	var netParser netparser.INetParser
@@ -41,14 +41,14 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 	if currentLatest.GreaterThanOrEqual(nativeJsonVersion) {
 		order := netparser.HostByteOrder()
 		netParser, err = netparser.NewNetNativeFd(constant.ProducerChannelFd, constant.ConsumerChannelFd, order)
-		logger.Info("create native codec, host order:%s", order)
+		logger.Info().Msgf("create native codec, host order:%s", order)
 		// https://github.com/versatica/mediasoup/pull/870
 		if currentLatest.GreaterThanOrEqual(nativeVersion) {
 			jsonFormat = false
 		}
 	} else {
 		netParser, err = netparser.NewNetStringsFd(constant.ProducerChannelFd, constant.ConsumerChannelFd)
-		logger.Info("create netstrings codec")
+		logger.Info().Msg("create netstrings codec")
 	}
 	checkError(err)
 
