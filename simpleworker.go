@@ -22,7 +22,8 @@ func NewSimpleWorker() *SimpleWorker {
 	return w
 }
 
-func (w *SimpleWorker) Start() {
+func (w *SimpleWorker) Start() int {
 	global.InitGlobal()
 	w.logger.Info().Int("pid", w.pid).Msg("worker start")
+	return w.pid
 }

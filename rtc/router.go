@@ -2,10 +2,12 @@ package rtc
 
 import (
 	"encoding/json"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
 
+	"github.com/rs/zerolog"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
@@ -17,7 +19,7 @@ import (
 
 type Router struct {
 	id                   string
-	logger               utils2.Logger
+	logger               zerolog.Logger
 	mapTransports        sync.Map
 	mapProducerConsumers *utils.Hashmap
 	mapProducers         sync.Map
@@ -27,14 +29,14 @@ type Router struct {
 func NewRouter(id string) *Router {
 	return &Router{
 		id:                   id,
-		logger:               utils2.NewLogger("router", id),
+		logger:               zerowrapper.NewScope("router", id),
 		mapProducerConsumers: utils.NewHashMap(),
 	}
 }
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
-		r.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+		r.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
 	}()
 
 	switch request.Method {
@@ -55,7 +57,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			r.logger.Error("createWebrtcTransport:%s", err.Error())
+			r.logger.Error().Err(err).Msg("createWebrtcTransport")
 			response.Err = mserror.ErrCreateWebrtcTransport
 			return
 		}
@@ -81,7 +83,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			r.logger.Error("createPipeTransport:%s", err.Error())
+			r.logger.Error().Err(err).Msg("createPipeTransport")
 			response.Err = mserror.ErrCreatePipeTransport
 			return
 		}
@@ -105,7 +107,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			r.logger.Error("createDirectTransport:%s", err.Error())
+			r.logger.Error().Err(err).Msg("createDirectTransport")
 			response.Err = mserror.ErrCreateDirectTransport
 			return
 		}
@@ -142,7 +144,7 @@ func (r *Router) Close() {
 		producer.Close()
 		return true
 	})
-	r.logger.Warn("router:%s stop", r.id)
+	r.logger.Warn().Msg("router stop")
 }
 
 func (r *Router) FillJson() json.RawMessage {
@@ -162,7 +164,7 @@ func (r *Router) FillJson() json.RawMessage {
 		MapDataConsumerIdDataProducerId:  nil,
 	}
 	data, _ := json.Marshal(&dumpData)
-	r.logger.Debug("dumpData:%+v", dumpData)
+	r.logger.Debug().Msgf("dumpData:%+v", dumpData)
 	return data
 }
 
@@ -183,7 +185,7 @@ func (r *Router) OnTransportProducerClosed(producerId string) {
 	}
 	consumersMap, ok := value.(map[interface{}]interface{})
 	if !ok {
-		r.logger.Error("mapProducerConsumers get consumers failed")
+		r.logger.Error().Msg("mapProducerConsumers get consumers failed")
 		return
 	}
 	for _, v := range consumersMap {
@@ -200,7 +202,9 @@ func (r *Router) OnTransportNewConsumer(consumer IConsumer, producerId string) e
 	}
 	r.mapProducerConsumers.Store(producerId, consumer.GetId(), consumer)
 	r.mapConsumerProducer.Store(consumer.GetId(), producerId)
-	r.logger.Debug("OnTransportNewConsumer store mapProducerConsumers, producerId:%s, consumerId:%s", producerId, consumer.GetId())
+	r.logger.Debug().Str("producerId", producerId).
+		Str("consumerId", consumer.GetId()).
+		Msg("OnTransportNewConsumer store mapProducerConsumers")
 
 	return nil
 }
@@ -211,7 +215,10 @@ func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
 	// clear mapProducerConsumers
 	v, ok := r.mapProducerConsumers.Load(producerId, consumerId)
 	if !ok {
-		r.logger.Error("consumer not found in mapProducerConsumers[producerId:%s][consumerId:%s]", producerId, consumerId)
+		r.logger.Error().Str("producerId", producerId).
+			Str("consumerId", consumerId).
+			Msg("consumer not found in mapProducerConsumers")
+
 	} else {
 		v.(IConsumer).Close()
 		r.mapProducerConsumers.Delete(producerId, consumerId)
@@ -221,12 +228,12 @@ func (r *Router) OnTransportConsumerClosed(producerId, consumerId string) {
 func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet *rtpparser.Packet) {
 	value, ok := r.mapProducerConsumers.Get(producer.id)
 	if !ok {
-		r.logger.Trace("no consumers to router RTP")
+		r.logger.Trace().Msg("no consumers to router RTP")
 		return
 	}
 	consumersMap, ok := value.(map[interface{}]interface{})
 	if !ok {
-		r.logger.Error("mapProducerConsumers get consumers failed")
+		r.logger.Error().Msg("mapProducerConsumers get consumers failed")
 		return
 	}
 	for _, v := range consumersMap {
@@ -234,7 +241,7 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 		mid := consumer.GetRtpParameters().Mid
 		if mid != "" {
 			if err := packet.UpdateMid(mid); err != nil {
-				r.logger.Warn("UpdateMid in OnTransportProducerRtpPacketReceived failed:%v", err)
+				r.logger.Warn().Err(err).Msg("UpdateMid in OnTransportProducerRtpPacketReceived failed")
 			}
 		}
 		consumer.SendRtpPacket(packet)
@@ -244,13 +251,13 @@ func (r *Router) OnTransportProducerRtpPacketReceived(producer *Producer, packet
 func (r *Router) OnTransportConsumerKeyFrameRequested(consumerId string, mappedSsrc uint32) {
 	v, ok := r.mapConsumerProducer.Load(consumerId)
 	if !ok {
-		r.logger.Error("OnTransportConsumerKeyFrameRequested producer not found,consumerId:%s", consumerId)
+		r.logger.Error().Str("consumerId", consumerId).Msg("OnTransportConsumerKeyFrameRequested producer not found")
 		return
 	}
 	producerId := v.(string)
 	v, ok = r.mapProducers.Load(producerId)
 	if !ok {
-		r.logger.Error("OnTransportConsumerKeyFrameRequested producerId not found:%s", producerId)
+		r.logger.Error().Str("producerId", producerId).Msg("OnTransportConsumerKeyFrameRequested producerId not found")
 		return
 	}
 	v.(*Producer).RequestKeyFrame(mappedSsrc)
@@ -259,12 +266,12 @@ func (r *Router) OnTransportConsumerKeyFrameRequested(consumerId string, mappedS
 func (r *Router) OnTransportNeedWorstRemoteFractionLost(producerId string, worstRemoteFractionLost *uint8) {
 	value, ok := r.mapProducerConsumers.Get(producerId)
 	if !ok {
-		r.logger.Trace("no consumers to router RTP")
+		r.logger.Trace().Msg("no consumers to router RTP")
 		return
 	}
 	consumersMap, ok := value.(map[interface{}]interface{})
 	if !ok {
-		r.logger.Error("mapProducerConsumers get consumers failed")
+		r.logger.Error().Msg("mapProducerConsumers get consumers failed")
 		return
 	}
 	for _, v := range consumersMap {
