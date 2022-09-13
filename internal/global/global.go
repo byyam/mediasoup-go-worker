@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"go.uber.org/zap"
-
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
@@ -56,7 +54,7 @@ func initICEMuxPort() {
 		ICEMuxPort = conf.Settings.RtcStaticPort
 
 		addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, ICEMuxPort)
-		logger.Info().Msgf("start binding static udp", zap.String("addr", addr))
+		logger.Info().Msgf("start binding static udp,addr:%s", addr)
 		if err := bindingICEMux(addr); err != nil {
 			panic(err)
 		}
@@ -64,7 +62,7 @@ func initICEMuxPort() {
 		logger.Info().Msgf("start binding from port range:[%d-%d]", conf.Settings.RtcMinPort, conf.Settings.RtcMaxPort)
 		for port := conf.Settings.RtcMinPort; port <= conf.Settings.RtcMaxPort; port++ {
 			addr := fmt.Sprintf("%s:%d", conf.Settings.RtcListenIp, port)
-			logger.Info().Msgf("try to binding udp", zap.String("addr", addr))
+			logger.Info().Msgf("try to binding udp,addr:%s", addr)
 			if err := bindingICEMux(addr); err == nil {
 				ICEMuxPort = port
 				break
