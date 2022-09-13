@@ -6,9 +6,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"net"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/pion/dtls/v2"
 	"github.com/pion/dtls/v2/pkg/crypto/fingerprint"
@@ -46,7 +49,7 @@ type dtlsTransport struct {
 	fingerPrints           []mediasoupdata.DtlsFingerprint
 	role                   mediasoupdata.DtlsRole
 	tlsCerts               []tls.Certificate
-	logger                 utils.Logger
+	logger                 zerolog.Logger
 	connTimeout            time.Duration
 	fingerprintAlgorithms  []crypto.Hash
 	sRTPProtectionProfiles []dtls.SRTPProtectionProfile
@@ -63,7 +66,7 @@ func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	d := &dtlsTransport{
 		state:                  mediasoupdata.DtlsState_New,
 		role:                   param.role,
-		logger:                 utils.NewLogger(string(mediasoupdata.WorkerLogTag_DTLS), param.transportId),
+		logger:                 zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_DTLS), param.transportId),
 		fingerprintAlgorithms:  defaultFingerprintAlgorithms,
 		sRTPProtectionProfiles: defaultSRTPProtectionProfiles,
 	}
@@ -101,7 +104,7 @@ func (d *dtlsTransport) selfSignCerts() error {
 		return err
 	}
 	d.tlsCerts = append(d.tlsCerts, certificate)
-	d.logger.Debug("x509 length:%d", len(x509cert.Raw))
+	d.logger.Debug().Msgf("x509 length:%d", len(x509cert.Raw))
 	// set fingerprint
 	for i, algo := range d.fingerprintAlgorithms {
 		name, err := fingerprint.StringFromHash(algo)
@@ -151,10 +154,10 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 	defer func() {
 		if err != nil {
 			d.state = mediasoupdata.DtlsState_Failed
-			d.logger.Error("dtls connecting failed:%v", err)
+			d.logger.Error().Msgf("dtls connecting failed:%v", err)
 		}
 	}()
-	d.logger.Debug("dtlsRole=%s,iceConn=%s|%s", d.role, iceConn.LocalAddr(), iceConn.RemoteAddr())
+	d.logger.Debug().Msgf("dtlsRole=%s,iceConn=%s|%s", d.role, iceConn.LocalAddr(), iceConn.RemoteAddr())
 	if d.role == mediasoupdata.DtlsRole_Client {
 		d.config.InsecureSkipVerify = true
 		if d.dtlsConn, err = dtls.Client(iceConn, d.config); err != nil {
@@ -167,7 +170,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
 	d.state = mediasoupdata.DtlsState_Connected
-	d.logger.Info("DtlsState_Connected")
+	d.logger.Info().Msg("DtlsState_Connected")
 	return nil
 }
 
@@ -198,5 +201,5 @@ func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 }
 
 func (d *dtlsTransport) Disconnect() {
-	d.logger.Info("dtls disconnect")
+	d.logger.Info().Msg("dtls disconnect")
 }
