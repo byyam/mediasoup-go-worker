@@ -4,21 +4,26 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
+	"strconv"
+
+	"github.com/kr/pretty"
+	"github.com/pion/randutil"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/srtp/v2"
+	"github.com/rs/zerolog"
+	"go.uber.org/zap"
+
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
-	"github.com/kr/pretty"
-	"github.com/pion/randutil"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-	"github.com/pion/srtp/v2"
-	"net"
-	"strconv"
 )
 
 const (
@@ -33,7 +38,7 @@ const (
 type PipeTransport struct {
 	ITransport
 	id     string
-	logger utils2.Logger
+	logger zerolog.Logger
 
 	listen mediasoupdata.TransportListenIp
 	rtx    bool
@@ -64,7 +69,7 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	t := &PipeTransport{
 		id:        param.Id,
 		connected: &utils.AtomicBool{},
-		logger:    utils2.NewLogger("pipe-transport", param.Id),
+		logger:    zerowrapper.NewScope("pipe-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
@@ -72,11 +77,11 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	param.NotifyCloseFunc = t.Close
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
-		t.logger.Error("newTransport error:%s", err.Error())
+		t.logger.Error().Err(err).Msg("newTransport error")
 		return nil, err
 	}
 	// init pipe-transport
-	t.logger.Info("newPipeTransport options:%# v", pretty.Formatter(param.options))
+	t.logger.Info().Msgf("newPipeTransport options:%# v", pretty.Formatter(param.options))
 	if err = t.create(&param.options); err != nil {
 		return nil, err
 	}
@@ -126,7 +131,7 @@ func (t *PipeTransport) create(options *mediasoupdata.PipeTransportOptions) erro
 
 		t.tuple.LocalPort = uint16(port)
 		t.tuple.LocalIp = host
-		t.logger.Info("create pipe-transport addr:[%s]", t.udpSocket.LocalAddr())
+		t.logger.Info().Msgf("create pipe-transport addr:[%s]", t.udpSocket.LocalAddr())
 	} else {
 		t.udpMuxMode = true
 		t.listen = mediasoupdata.TransportListenIp{
@@ -139,7 +144,7 @@ func (t *PipeTransport) create(options *mediasoupdata.PipeTransportOptions) erro
 }
 
 func (t *PipeTransport) Close() {
-	t.logger.Warn("pipe-transport closed")
+	t.logger.Warn().Msg("pipe-transport closed")
 }
 
 func (t *PipeTransport) FillJson() json.RawMessage {
@@ -157,7 +162,7 @@ func (t *PipeTransport) FillJson() json.RawMessage {
 	}
 
 	data, _ := json.Marshal(&transportData)
-	t.logger.Debug("transportData:%+v", transportData)
+	t.logger.Debug().Msgf("transportData:%+v", transportData)
 	return data
 }
 
@@ -166,7 +171,7 @@ func (t *PipeTransport) hasSrtp() bool {
 }
 
 func (t *PipeTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	t.logger.Debug("method=%s,internal=%+v", request.Method, request.Internal)
+	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
 	switch request.Method {
 	case mediasoupdata.MethodTransportConnect:
@@ -188,7 +193,7 @@ func (t *PipeTransport) connect(options mediasoupdata.TransportConnectOptions) (
 	} else if t.hasSrtp() && options.SrtpParameters == nil {
 		return nil, fmt.Errorf("connect error: invalid srtpParameters (SRTP enabled)")
 	} else if !t.hasSrtp() && options.SrtpParameters == nil {
-		t.logger.Debug("srtp disabled")
+		t.logger.Debug().Msg("srtp disabled")
 	} else { // srtp enabled and srtp params exists
 		if options.SrtpParameters.CryptoSuite != srtpCryptoSuiteString {
 			return nil, fmt.Errorf("connect error: invalid/unsupported srtpParameters.cryptoSuite")
@@ -210,12 +215,12 @@ func (t *PipeTransport) connect(options mediasoupdata.TransportConnectOptions) (
 		// set srtp session
 		t.decryptCtx, err = srtp.CreateContext(srtpKey, srtpSalt, srtpCryptoSuite)
 		if err != nil {
-			t.logger.Error("get srtp remote/decrypt context error:%v", err)
+			t.logger.Error().Err(err).Msg("get srtp remote/decrypt context error")
 			return nil, err
 		}
 		t.encryptCtx, err = srtp.CreateContext([]byte(t.srtpKey), []byte(t.srtpSalt), srtpCryptoSuite)
 		if err != nil {
-			t.logger.Error("get srtp local/encrypt context error:%v", err)
+			t.logger.Error().Err(err).Msg("get srtp local/encrypt context error")
 			return nil, err
 		}
 	}
@@ -237,7 +242,7 @@ func (t *PipeTransport) connect(options mediasoupdata.TransportConnectOptions) (
 	t.tuple.RemotePort = options.Port
 	t.remoteAddrString = net.JoinHostPort(options.Ip, strconv.Itoa(int(options.Port)))
 	t.remoteAddr, err = net.ResolveUDPAddr(PipeTransportProtocol, t.remoteAddrString)
-	t.logger.Info("pipe-transport connect addr:[%s],udpMuxMode:%v", t.remoteAddr, t.udpMuxMode)
+	t.logger.Info().Str("remote", t.remoteAddrString).Bool("mux", t.udpMuxMode).Msg("pipe-transport connect")
 
 	if !t.udpMuxMode {
 		go t.udpSocketPacketReceived()
@@ -261,11 +266,11 @@ func (t *PipeTransport) udpSocketPacketReceived() {
 	for {
 		n, addr, err := t.udpSocket.ReadFromUDPAddrPort(buf)
 		if err != nil {
-			t.logger.Warn("udpSocketPacketReceived error:%s", err.Error())
+			t.logger.Warn().Err(err).Msg("udpSocketPacketReceived error")
 			continue
 		}
 		if addr.String() != t.remoteAddrString {
-			t.logger.Warn("udpSocketPacketReceived error: invalid addr:[%s]", addr.String())
+			t.logger.Warn().Str("addr", addr.String()).Msg("udpSocketPacketReceived error,invalid addr")
 			continue
 		}
 		t.OnPacketReceived(buf[:n])
@@ -274,7 +279,7 @@ func (t *PipeTransport) udpSocketPacketReceived() {
 
 func (t *PipeTransport) OnPacketReceived(data []byte) {
 	if !t.connected.Get() {
-		t.logger.Warn("pipe not connected, ignore received packet")
+		t.logger.Warn().Msg("pipe not connected, ignore received packet")
 		return
 	}
 	if utils.MatchSRTPOrSRTCP(data) {
@@ -286,34 +291,34 @@ func (t *PipeTransport) OnPacketReceived(data []byte) {
 			t.OnRtcpDataReceived(data) // RTCP
 		}
 	} else {
-		t.logger.Warn("ignoring received packet of unknown type")
+		t.logger.Warn().Msg("ignoring received packet of unknown type")
 	}
 }
 
 func (t *PipeTransport) SendRtpPacket(packet *rtpparser.Packet) {
 	if !t.connected.Get() {
-		t.logger.Warn("pipe not connected, ignore send rtp packet")
+		t.logger.Warn().Msg("pipe not connected, ignore send rtp packet")
 		return
 	}
-	t.logger.Trace("SendRtpPacket:%+v", packet.Header)
+	zaplog.NewLogger().Info("SendRtpPacket", zap.String("rtpPacket", packet.String()))
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
-		t.logger.Error("rtpPacket.Marshal error:%v", err)
+		t.logger.Error().Err(err).Msg("rtpPacket.Marshal error")
 		return
 	}
 	if t.hasSrtp() {
 		encrypted, err := t.encryptCtx.EncryptRTP(nil, decryptedRaw, &packet.Header)
 		if err != nil {
-			t.logger.Error("srtp encrypt error:%v", err)
+			t.logger.Error().Err(err).Msg("srtp encrypt error")
 			return
 		}
 		if _, err := t.write(encrypted); err != nil {
-			t.logger.Error("write EncryptRTP error:%v", err)
+			t.logger.Error().Err(err).Msg("write EncryptRTP error")
 			return
 		}
 	} else {
 		if _, err := t.write(decryptedRaw); err != nil {
-			t.logger.Error("write error:%v", err)
+			t.logger.Error().Err(err).Msg("write error")
 			return
 		}
 	}
@@ -342,13 +347,13 @@ func (t *PipeTransport) OnRtpDataReceived(rawData []byte) {
 		actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
 		if err != nil {
 			monitor.RtpRecvCount(monitor.TraceDecryptFailed)
-			t.logger.Error("DecryptRTP failed:%v", err)
+			t.logger.Error().Err(err).Msg("DecryptRTP failed")
 			return
 		}
 		rtpPacket, err = rtpparser.Parse(actualDecrypted)
 		if err != nil {
 			monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
-			t.logger.Error("rtpPacket.Unmarshal error:%v", err)
+			t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 			return
 		}
 	} else {
@@ -356,14 +361,12 @@ func (t *PipeTransport) OnRtpDataReceived(rawData []byte) {
 		rtpPacket, err = rtpparser.Parse(rawData)
 		if err != nil {
 			monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
-			t.logger.Error("rtpPacket.Unmarshal error:%v", err)
+			t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 			return
-		} // else {
-		//	t.logger.Trace("rtpPacket.Unmarshal success, rtpPacket:%+v", rtpPacket.String())
-		//}
+		}
 	}
 
-	t.logger.Trace("OnRtpDataReceived header%+v", rtpPacket.Header)
+	zaplog.NewLogger().Info("OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
 
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }
@@ -376,13 +379,13 @@ func (t *PipeTransport) OnRtcpDataReceived(rawData []byte) {
 		actualDecrypted, err := t.decryptCtx.DecryptRTCP(decryptInput, rawData, decryptHeader)
 		if err != nil {
 			monitor.RtcpRecvCount(monitor.TraceDecryptFailed)
-			t.logger.Error("DecryptRTCP failed:%v", err)
+			t.logger.Error().Err(err).Msg("DecryptRTCP failed")
 			return
 		}
 		packets, err = rtcp.Unmarshal(actualDecrypted)
 		if err != nil {
 			monitor.RtcpRecvCount(monitor.TraceUnmarshalFailed)
-			t.logger.Error("rtcp.Unmarshal failed:%v", err)
+			t.logger.Error().Err(err).Msg("rtcp.Unmarshal failed")
 			return
 		}
 	} else {
@@ -390,7 +393,7 @@ func (t *PipeTransport) OnRtcpDataReceived(rawData []byte) {
 		packets, err = rtcp.Unmarshal(rawData)
 		if err != nil {
 			monitor.RtcpRecvCount(monitor.TraceUnmarshalFailed)
-			t.logger.Error("rtcp.Unmarshal failed:%v", err)
+			t.logger.Error().Err(err).Msg("rtcp.Unmarshal failed")
 			return
 		}
 	}
