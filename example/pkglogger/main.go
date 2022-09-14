@@ -37,8 +37,7 @@ func main() {
 		MaxAge:                2,
 		LogTimeFieldFormat:    zerolog.TimeFormatUnixMicro,
 	})
-	logger = zaplog.GetLogger()
-	logger.Info("this is logger")
+	zaplog.NewLogger().Info("this is logger")
 	server()
 
 	select {}

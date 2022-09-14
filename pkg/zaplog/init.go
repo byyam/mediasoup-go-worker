@@ -15,6 +15,7 @@ var (
 	logger, _    = zap.NewProduction() // set default production for using before init.
 	initOnce     sync.Once
 	defaultLevel = zap.InfoLevel
+	NewLogger    = getLogger
 )
 
 // Config - Configuration for logging
@@ -55,8 +56,8 @@ func Init(config Config) {
 	})
 }
 
-// GetLogger for middleware like gin recovery or log print
-func GetLogger() *zap.Logger { // no need to protect nil pointer if not init logger, low error
+// getLogger for middleware like gin recovery or log print
+func getLogger() *zap.Logger { // no need to protect nil pointer if not init logger, low error
 	return logger
 }
 
