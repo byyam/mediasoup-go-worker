@@ -29,6 +29,7 @@ func InitLog(config Config) {
 	initOnce.Do(func() {
 		// set from os.env
 		getLevel()
+		zerolog.SetGlobalLevel(logLevel)
 		// set format from config
 		zerolog.TimeFieldFormat = config.LogTimeFieldFormat
 		if config.ErrorStackMarshaler {
@@ -58,7 +59,6 @@ func InitLog(config Config) {
 		mw := io.MultiWriter(writers...)
 
 		logger = zerolog.New(mw)
-		logger.Level(logLevel)
 
 		newLogger := logger.With().Timestamp().Logger()
 		newLogger.Info().
