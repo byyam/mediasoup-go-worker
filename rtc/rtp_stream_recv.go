@@ -4,10 +4,12 @@ import (
 	"math"
 	"time"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/nack"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
+	"go.uber.org/zap"
 
 	"github.com/pion/rtcp"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/nack"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
@@ -29,7 +31,7 @@ type RtpStreamRecv struct {
 	nackGenerator                    *nack.NackQueue
 	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
 	mediaTransmissionCounter         *RtpDataCounter      // Just valid media.
-	logger                           utils2.Logger
+	logger                           *zap.Logger
 	onRtpStreamSendRtcpPacketHandler func(packet rtcp.Packet)
 }
 
@@ -48,13 +50,13 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 	if param.UseDtx {
 		windowSize = 6000
 	}
-	r.logger = utils2.NewLogger("RtpStreamRecv", r.GetId())
+	r.logger = zaplog.NewLogger()
 	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{
-		Logger: r.logger,
+		Logger: nil, // todo
 	})
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
-	r.logger.Info("new RtpStreamRecv:%# v", *param.ParamRtpStream)
+	r.logger.Info("new RtpStreamRecv", zap.Any("ParamRtpStream", *param.ParamRtpStream))
 	return r
 }
 
@@ -92,12 +94,12 @@ func (r *RtpStreamRecv) ReceiveRtxPacket(packet *rtpparser.Packet) bool {
 		return false
 	}
 	if packet.SSRC != r.params.RtxSsrc {
-		r.logger.Warn("invalid ssrc:%d on RTX packet,expect:%d", packet.SSRC, r.params.RtxSsrc)
+		r.logger.Warn("invalid ssrc on RTX packet", zap.Uint32("ssrc", packet.SSRC), zap.Uint32("rtx ssrc", r.params.RtxSsrc))
 		return false
 	}
 	// Check that the payload type corresponds to the one negotiated.
 	if packet.PayloadType != r.params.RtxPayloadType {
-		r.logger.Warn("ignoring RTX packet with invalid payload type [ssrc:%d,seq:%d,pt:%d]", packet.SSRC, packet.SequenceNumber, packet.PayloadType)
+		r.logger.Warn("ignoring RTX packet with invalid payload type", zap.Uint32("ssrc", packet.SSRC), zap.Uint16("seq", packet.SequenceNumber), zap.Uint8("pt", packet.PayloadType))
 		return false
 	}
 	if r.HasRtx() {

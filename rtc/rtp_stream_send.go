@@ -1,18 +1,22 @@
 package rtc
 
 import (
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+
+	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-	"github.com/pion/rtcp"
 )
 
 type RtpStreamSend struct {
 	*RtpStream
-	logger                                utils2.Logger
+	logger                                *zap.Logger
 	lostPriorScore                        uint32 // Packets lost at last interval for score calculation.
 	sentPriorScore                        uint32 // Packets sent at last interval for score calculation.
 	rtxSeq                                uint16
@@ -34,7 +38,7 @@ func newRtpStreamSend(param *ParamRtpStreamSend) *RtpStreamSend {
 		retransmission:                        NewRetransmission(param.bufferSize),
 		onRtpStreamRetransmitRtpPacketHandler: param.OnRtpStreamRetransmitRtpPacket,
 	}
-	r.logger = utils2.NewLogger("RtpStreamSend", r.GetId())
+	r.logger = zaplog.NewLogger()
 	return r
 }
 
@@ -94,7 +98,7 @@ func (p *RtpStreamSend) ReceivePacket(packet *rtpparser.Packet) bool {
 
 func (p *RtpStreamSend) UpdateScore(report *rtcp.ReceptionReport) {
 	// todo
-	p.logger.Debug("update data by RR:%# v", *p.RtpStream)
+	p.logger.Debug("update data by RR")
 }
 
 func (p *RtpStreamSend) ReceiveNack(nackPacket *rtcp.TransportLayerNack) {
@@ -163,7 +167,7 @@ func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
 		containerIdx++
 		lostSeqList = append(lostSeqList, lostSeq)
 	}
-	p.logger.Info("retransmission lost list:%+v\nrequest list:[%+v]", lostSeqList, nackPair.PacketList())
+	p.logger.Info("retransmission", zap.Uint16s("lost", lostSeqList), zap.Uint16s("request", nackPair.PacketList()))
 }
 
 func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {

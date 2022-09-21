@@ -1,8 +1,11 @@
 package ratecalculator
 
 import (
-	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
 	"math"
+
+	"go.uber.org/zap"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 )
 
 const (
@@ -36,7 +39,7 @@ type RateCalculator struct {
 	lastRate            uint32       // Last value calculated by GetRate().
 	lastTime            int64        // Last time GetRate() was called.
 
-	logger logwrapper.Logger
+	logger *zap.Logger
 }
 
 func (p RateCalculator) GetBytes() int64 {
@@ -57,7 +60,7 @@ func (p *RateCalculator) GetRate(nowMs int64) uint32 {
 }
 
 func (p *RateCalculator) Update(size int, nowMs int64) {
-	p.logger.Trace("update size=%d,nowMs=%d\n%+v", size, nowMs, *p)
+	p.logger.Debug("update", zap.Int("size", size), zap.Int64("nowMs", nowMs))
 	// Ignore too old data. Should never happen.
 	if nowMs < p.oldestItemStartTime {
 		return
@@ -72,12 +75,12 @@ func (p *RateCalculator) Update(size int, nowMs int64) {
 		p.newestItemIndex++
 		p.newestItemStartTime = nowMs
 		if p.newestItemIndex >= p.windowItems {
-			p.logger.Trace("set newestItemIndex=0")
+			p.logger.Debug("set newestItemIndex=0")
 			p.newestItemIndex = 0
 		}
 		// Newest index overlaps with the oldest one, remove it.
 		if p.newestItemIndex == p.oldestItemIndex && p.oldestItemIndex != -1 {
-			p.logger.Warn("calculation buffer full, windowSizeMs:%d ms windowItems:%d", p.windowSizeMs, p.windowItems)
+			p.logger.Warn("calculation buffer full", zap.Int("windowSizeMs", p.windowSizeMs), zap.Int32("windowItems", p.windowItems))
 
 			oldestItem := &p.buffer[p.oldestItemIndex]
 			p.totalCount -= oldestItem.count
@@ -118,7 +121,7 @@ func (p *RateCalculator) removeOldData(nowMs int64) {
 	newOldestTime := nowMs - int64(p.windowSizeMs)
 	// Oldest item already removed.
 	if newOldestTime <= p.oldestItemStartTime {
-		p.logger.Trace("oldest item already removed")
+		p.logger.Debug("oldest item already removed")
 		return
 	}
 	// A whole window size time has elapsed since last entry. reset the buffer.
@@ -128,7 +131,7 @@ func (p *RateCalculator) removeOldData(nowMs int64) {
 	}
 
 	for p.oldestItemStartTime < newOldestTime {
-		p.logger.Trace("oldestItemStartTime=%d,newOldestTime=%d", p.oldestItemStartTime, newOldestTime)
+		p.logger.Debug("oldestItemStartTime<newOldestTime", zap.Int64("oldestItemStartTime", p.oldestItemStartTime), zap.Int64("newOldestTime", newOldestTime))
 		oldestItem := p.buffer[p.oldestItemIndex]
 		p.totalCount -= oldestItem.count
 		oldestItem.reset()
@@ -141,12 +144,12 @@ func (p *RateCalculator) removeOldData(nowMs int64) {
 
 		newOldestItem := p.buffer[p.oldestItemIndex]
 		p.oldestItemStartTime = newOldestItem.time
-		p.logger.Trace("update oldestItemStartTime=%d", p.oldestItemStartTime)
+		p.logger.Debug("update", zap.Int64("oldestItemStartTime", p.oldestItemStartTime))
 	}
 }
 
 func (p *RateCalculator) reset() {
-	p.logger.Trace("reset %+v", *p)
+	p.logger.Debug("reset")
 	p.newestItemStartTime = 0
 	p.newestItemIndex = -1
 	p.oldestItemStartTime = 0
@@ -159,7 +162,7 @@ func (p *RateCalculator) reset() {
 	}
 }
 
-func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logger logwrapper.Logger) *RateCalculator {
+func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logger *zap.Logger) *RateCalculator {
 	if windowSizeMs == 0 {
 		windowSizeMs = DefaultWindowSize
 	}
@@ -170,7 +173,7 @@ func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logge
 		windowItems = DefaultWindowItems
 	}
 	if logger == nil {
-		logger = logwrapper.NewLogger()
+		logger = zaplog.NewLogger()
 	}
 
 	r := &RateCalculator{
@@ -183,6 +186,6 @@ func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logge
 		oldestItemIndex: -1,
 		logger:          logger,
 	}
-	r.logger.Trace("NewRateCalculator:%+v", *r)
+	r.logger.Debug("NewRateCalculator", zap.Any("param", *r))
 	return r
 }
