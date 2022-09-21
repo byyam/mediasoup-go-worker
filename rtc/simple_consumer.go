@@ -2,8 +2,11 @@ package rtc
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 
@@ -18,7 +21,7 @@ import (
 
 type SimpleConsumer struct {
 	IConsumer
-	logger           utils.Logger
+	logger           zerolog.Logger
 	rtpStream        *RtpStreamSend
 	rtpStreams       []*RtpStreamSend
 	maxRtcpInterval  time.Duration
@@ -40,7 +43,7 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	var err error
 	c := &SimpleConsumer{
 		rtpStreams: make([]*RtpStreamSend, 0),
-		logger:     utils.NewLogger("simple-consumer", param.id),
+		logger:     zerowrapper.NewScope("simple-consumer", param.id),
 	}
 	param.fillJsonStatsFunc = c.FillJsonStats
 	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
@@ -102,11 +105,11 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
 	}
 	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
-	c.logger.Trace("SendRtpPacket:%+v", packet.Header)
+	c.logger.Trace().Msgf("SendRtpPacket:%+v", packet.Header)
 }
 
 func (c *SimpleConsumer) Close() {
-	c.logger.Info("%s closed", c.GetId())
+	c.logger.Info().Msg("closed")
 }
 
 func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
@@ -163,7 +166,7 @@ func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
 		jsonData = append(jsonData, stat)
 	}
 	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug("getStats:%+v", jsonData)
+	c.logger.Debug().Msgf("getStats:%+v", jsonData)
 	return data
 }
 
