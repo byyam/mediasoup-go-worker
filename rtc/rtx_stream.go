@@ -1,18 +1,20 @@
 package rtc
 
 import (
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
+
+	"github.com/rs/zerolog"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 type RtxStream struct {
 	id     string
 	params *ParamRtxStream
-	logger utils.Logger
+	logger zerolog.Logger
 }
 
 type ParamRtxStream struct {
@@ -31,7 +33,7 @@ func newRtxStream(params *ParamRtxStream) (*RtxStream, error) {
 	id := strconv.FormatInt(int64(params.Ssrc), 10)
 	r := &RtxStream{
 		params: params,
-		logger: utils.NewLogger("RtxStream", id),
+		logger: zerowrapper.NewScope("RtxStream", id),
 	}
 	if params.MimeType.SubType != mediasoupdata.MimeSubTypeRTX {
 		return nil, mserror.ErrSubTypeNotRtx

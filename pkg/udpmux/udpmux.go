@@ -1,10 +1,13 @@
 package udpmux
 
 import (
-	"github.com/byyam/mediasoup-go-worker/pkg/logwrapper"
 	"net"
 	"strconv"
 	"sync"
+
+	"go.uber.org/zap"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 )
 
 const (
@@ -17,13 +20,10 @@ type UdpMux struct {
 	localAddr *net.UDPAddr
 	localSock *net.UDPConn
 	endPoints sync.Map
-	logger    logwrapper.Logger
+	logger    *zap.Logger
 }
 
-func NewUdpMux(network string, ip string, port uint16, logger logwrapper.Logger) (*UdpMux, error) {
-	if logger == nil {
-		logger = logwrapper.NewLogger()
-	}
+func NewUdpMux(network string, ip string, port uint16) (*UdpMux, error) {
 	udpAddr, err := net.ResolveUDPAddr(network, net.JoinHostPort(ip, strconv.Itoa(int(port))))
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func NewUdpMux(network string, ip string, port uint16, logger logwrapper.Logger)
 		port:      port,
 		localAddr: udpAddr,
 		localSock: udpSocket,
-		logger:    logger,
+		logger:    zaplog.NewLogger(),
 	}
 	go p.udpSocketPacketReceived()
 	return p, nil
@@ -84,12 +84,12 @@ func (p *UdpMux) udpSocketPacketReceived() {
 	for {
 		n, addr, err := p.localSock.ReadFromUDPAddrPort(buf)
 		if err != nil {
-			p.logger.Warn("udpSocketPacketReceived error:%s", err.Error())
+			p.logger.Warn("udpSocketPacketReceived error", zap.Error(err))
 			continue
 		}
 		v, ok := p.endPoints.Load(addr.String())
 		if !ok {
-			p.logger.Warn("udpSocketPacketReceived error: invalid addr:[%s]", addr.String())
+			p.logger.Warn("udpSocketPacketReceived error", zap.String("invalid addr", addr.String()))
 			continue
 		}
 		endpoint := v.(*EndPoint)

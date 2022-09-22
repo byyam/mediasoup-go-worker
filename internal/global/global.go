@@ -41,7 +41,7 @@ func initUdpMuxPort() {
 	if port < 0 {
 		UdpMuxConn = nil
 	}
-	UdpMuxConn, err = udpmux.NewUdpMux(Network, conf.Settings.RtcListenIp, uint16(port), nil)
+	UdpMuxConn, err = udpmux.NewUdpMux(Network, conf.Settings.RtcListenIp, uint16(port))
 	if err != nil {
 		panic(err)
 	}
