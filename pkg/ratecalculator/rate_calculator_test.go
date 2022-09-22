@@ -1,7 +1,6 @@
 package ratecalculator
 
 import (
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"testing"
 	"time"
@@ -19,8 +18,7 @@ func BenchmarkRateCalculator_Update(b *testing.B) {
 }
 
 func TestRateCalculator_Update(t *testing.T) {
-	utils2.DefaultLevel = utils2.TraceLevel
-	rate := NewRateCalculator(100, 0, 10, utils2.NewLogger("RateCalculator"))
+	rate := NewRateCalculator(100, 0, 10, nil)
 	for i := 0; i < 20; i++ {
 		nowMs := utils.GetTimeMs()
 		jitterMs := nowMs + int64(rand.Intn(10)) - int64(rand.Intn(10))
