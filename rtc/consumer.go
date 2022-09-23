@@ -2,15 +2,19 @@ package rtc
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
+
+	"github.com/kr/pretty"
+	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
-	"github.com/kr/pretty"
-	"github.com/pion/rtcp"
 )
 
 type IConsumer interface {
@@ -46,7 +50,7 @@ type Consumer struct {
 	consumableRtpEncodings []mediasoupdata.RtpEncodingParameters
 	fillJsonStatsFunc      func() json.RawMessage
 
-	logger utils.Logger
+	logger zerolog.Logger
 }
 
 func (c *Consumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
@@ -82,7 +86,7 @@ func (c *Consumer) GetId() string {
 }
 
 func (c *Consumer) Close() {
-	c.logger.Info("%s closed", c.Id)
+	c.logger.Info().Msg("closed")
 }
 
 func (c *Consumer) FillJson() json.RawMessage {
@@ -103,7 +107,7 @@ func (c *Consumer) FillJson() json.RawMessage {
 		SimulcastConsumerDump:      nil,
 	}
 	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug("dump:%+v", jsonData)
+	c.logger.Debug().Msgf("dump:%+v", jsonData)
 	return data
 }
 
@@ -140,21 +144,21 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 
 	c := &Consumer{
 		Id:                     param.id,
-		logger:                 utils.NewLogger("consumer", param.id),
+		logger:                 zerowrapper.NewScope("consumer", param.id),
 		consumerType:           typ,
 		Kind:                   param.kind,
 		rtpParameters:          param.rtpParameters,
 		consumableRtpEncodings: param.consumableRtpEncodings,
 		fillJsonStatsFunc:      param.fillJsonStatsFunc,
 	}
-	c.logger.Info("input param for consumer: %# v", pretty.Formatter(param))
+	c.logger.Info().Msgf("input param for consumer: %# v", pretty.Formatter(param))
 	// init consumer with param
 	if err := c.init(param); err != nil {
 		return nil, err
 	}
-	c.logger.Info("new consumer:%# v", pretty.Formatter(c.rtpParameters))
-	c.logger.Info("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
-	c.logger.Info("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
+	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.rtpParameters))
+	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
+	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
 
 	return c, nil
 }
@@ -164,10 +168,10 @@ func (c *Consumer) init(param consumerParam) error {
 		return err
 	}
 	if err := c.RtpHeaderExtensionIds.set(param.rtpParameters.HeaderExtensions, false); err != nil {
-		c.logger.Error("set RtpHeaderExtensionIds failed:%v", err)
+		c.logger.Error().Err(err).Msg("set RtpHeaderExtensionIds failed")
 		return err
 	}
-	c.logger.Info("set RtpHeaderExtensionIds:%# v", pretty.Formatter(c.RtpHeaderExtensionIds))
+	c.logger.Info().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(c.RtpHeaderExtensionIds))
 	// Fill supported codec payload types.
 	for _, codec := range c.rtpParameters.Codecs {
 		if codec.RtpCodecMimeType.IsMediaCodec() {
@@ -194,7 +198,7 @@ func (c *Consumer) GetMediaSsrcs() []uint32 {
 
 func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
-		c.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+		c.logger.Debug().Msgf("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
 	}()
 
 	switch request.Method {

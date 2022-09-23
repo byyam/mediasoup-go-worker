@@ -4,7 +4,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/pkg/ratecalculator"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 )
 
 type RtpDataCounter struct {
@@ -18,7 +17,7 @@ func NewRtpDataCounter(windowSizeMs int) *RtpDataCounter {
 		size = windowSizeMs
 	}
 	return &RtpDataCounter{
-		rate:    ratecalculator.NewRateCalculator(size, 0, 0, utils2.NewLogger("RateCalculator")),
+		rate:    ratecalculator.NewRateCalculator(size, 0, 0, nil),
 		packets: 0,
 	}
 }

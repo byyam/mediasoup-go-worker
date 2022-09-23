@@ -1,14 +1,17 @@
 package rtc
 
 import (
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"sync"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 type KeyFrameRequestManager struct {
 	keyFrameRequestDelay          uint32
 	mapSsrcKeyFrameRequestDelayer sync.Map
-	logger                        utils.Logger
+	logger                        zerolog.Logger
 	onKeyFrameNeededHandler       func(ssrc uint32)
 }
 
@@ -21,7 +24,7 @@ func NewKeyFrameRequestManager(param *KeyFrameRequestManagerParam) *KeyFrameRequ
 	return &KeyFrameRequestManager{
 		keyFrameRequestDelay:    param.keyFrameRequestDelay,
 		onKeyFrameNeededHandler: param.onKeyFrameNeeded,
-		logger:                  utils.NewLogger("KeyFrameRequestManager"),
+		logger:                  zerowrapper.NewScope("KeyFrameRequestManager"),
 	}
 }
 
@@ -40,7 +43,7 @@ func (p *KeyFrameRequestManager) KeyFrameNeeded(ssrc uint32) {
 			keyFrameRequestDelayer.SetKeyFrameRequested(true)
 			return
 		} else { // Otherwise create a delayer (not yet enabled) and continue.
-			p.logger.Debug("creating a delayer for the given ssrc")
+			p.logger.Debug().Msg("creating a delayer for the given ssrc")
 		}
 		// todo
 	}

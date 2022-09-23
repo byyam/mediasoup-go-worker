@@ -2,25 +2,30 @@ package rtc
 
 import (
 	"encoding/json"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
+
+	"github.com/rs/zerolog"
+	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
+
+	"github.com/kr/pretty"
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/srtp/v2"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
-	"github.com/kr/pretty"
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
-	"github.com/pion/srtp/v2"
 )
 
 type WebrtcTransport struct {
 	ITransport
 	id     string
-	logger utils2.Logger
+	logger zerolog.Logger
 
 	iceServer *iceServer
 
@@ -39,7 +44,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	t := &WebrtcTransport{
 		id:        param.Id,
 		connected: &utils.AtomicBool{},
-		logger:    utils2.NewLogger("webrtc-transport", param.Id),
+		logger:    zerowrapper.NewScope("webrtc-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
@@ -63,10 +68,10 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}); err != nil {
 		return nil, err
 	}
-	t.logger.Debug("newWebrtcTransport options:%# v", pretty.Formatter(param.options))
+	t.logger.Debug().Msgf("newWebrtcTransport options:%# v", pretty.Formatter(param.options))
 	go func() {
 		<-t.iceServer.CloseChannel()
-		t.logger.Warn("ice closed")
+		t.logger.Warn().Msg("ice closed")
 		t.Close()
 		// todo emit
 	}()
@@ -87,12 +92,12 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		SctpState:        "",
 	}
 	data, _ := json.Marshal(&transportData)
-	t.logger.Debug("transportData:%+v", transportData)
+	t.logger.Debug().Msgf("transportData:%+v", transportData)
 	return data
 }
 
 func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	t.logger.Debug("method=%s,internal=%+v", request.Method, request.Internal)
+	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
 	switch request.Method {
 	case mediasoupdata.MethodTransportConnect:
@@ -116,26 +121,26 @@ func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions)
 	go func() {
 		iceConn, err := t.iceServer.GetConn()
 		if err != nil {
-			t.logger.Error("iceConn get error:%v", err)
+			t.logger.Error().Err(err).Msg("iceConn get error")
 			return
 		}
 		if err = t.dtlsTransport.Connect(iceConn); err != nil {
-			t.logger.Error("dtls connect error:%v", err)
+			t.logger.Error().Err(err).Msg("dtls connect error")
 			return
 		}
 		srtpConfig, err := t.dtlsTransport.GetSRTPConfig()
 		if err != nil {
-			t.logger.Error("get srtp config error:%v", err)
+			t.logger.Error().Err(err).Msg("get srtp config error")
 			return
 		}
 		t.decryptCtx, err = srtp.CreateContext(srtpConfig.Keys.RemoteMasterKey, srtpConfig.Keys.RemoteMasterSalt, srtpConfig.Profile)
 		if err != nil {
-			t.logger.Error("get srtp remote/decrypt context error:%v", err)
+			t.logger.Error().Err(err).Msg("get srtp remote/decrypt context error")
 			return
 		}
 		t.encryptCtx, err = srtp.CreateContext(srtpConfig.Keys.LocalMasterKey, srtpConfig.Keys.LocalMasterSalt, srtpConfig.Profile)
 		if err != nil {
-			t.logger.Error("get srtp local/encrypt context error:%v", err)
+			t.logger.Error().Err(err).Msg("get srtp local/encrypt context error")
 			return
 		}
 		t.connected.Set(true)
@@ -148,7 +153,7 @@ func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions)
 
 func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 	if !t.connected.Get() {
-		t.logger.Warn("webrtc not connected, ignore received packet")
+		t.logger.Warn().Msg("webrtc not connected, ignore received packet")
 		return
 	}
 	if utils.MatchSRTPOrSRTCP(data) {
@@ -160,7 +165,7 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 			t.OnRtcpDataReceived(data) // RTCP
 		}
 	} else {
-		t.logger.Warn("ignoring received packet of unknown type")
+		t.logger.Warn().Msg("ignoring received packet of unknown type")
 	}
 }
 
@@ -170,14 +175,14 @@ func (t *WebrtcTransport) OnRtcpDataReceived(rawData []byte) {
 	actualDecrypted, err := t.decryptCtx.DecryptRTCP(decryptInput, rawData, decryptHeader)
 	if err != nil {
 		monitor.RtcpRecvCount(monitor.TraceDecryptFailed)
-		t.logger.Error("DecryptRTCP failed:%v", err)
+		t.logger.Error().Err(err).Msg("DecryptRTCP failed")
 		return
 	}
 
 	packets, err := rtcp.Unmarshal(actualDecrypted)
 	if err != nil {
 		monitor.RtcpRecvCount(monitor.TraceUnmarshalFailed)
-		t.logger.Error("rtcp.Unmarshal failed:%v", err)
+		t.logger.Error().Err(err).Msg("rtcp.Unmarshal failed")
 		return
 	}
 	monitor.RtcpRecvCount(monitor.TraceReceive)
@@ -190,53 +195,53 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 	actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
 	if err != nil {
 		monitor.RtpRecvCount(monitor.TraceDecryptFailed)
-		t.logger.Error("DecryptRTP failed:%v", err)
+		t.logger.Error().Err(err).Msg("DecryptRTP failed")
 		return
 	}
 	rtpPacket, err := rtpparser.Parse(actualDecrypted)
 	if err != nil {
 		monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
-		t.logger.Error("rtpPacket.Unmarshal error:%v", err)
+		t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 		return
 	}
-	t.logger.Trace("OnRtpDataReceived header%+v", rtpPacket.Header)
+	zaplog.NewLogger().Info("OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
 
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }
 
 func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 	if !t.connected.Get() {
-		t.logger.Warn("webrtc not connected, ignore send rtp packet")
+		t.logger.Warn().Msg("webrtc not connected, ignore send rtp packet")
 		return
 	}
-	t.logger.Trace("SendRtpPacket:%+v", packet.Header)
+	zaplog.NewLogger().Info("SendRtpPacket", zap.String("rtpPacket", packet.String()))
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
-		t.logger.Error("rtpPacket.Marshal error:%v", err)
+		t.logger.Error().Err(err).Msg("rtpPacket.Marshal error")
 		return
 	}
 	encrypted, err := t.encryptCtx.EncryptRTP(nil, decryptedRaw, &packet.Header)
 	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
-		t.logger.Error("write EncryptRTP error:%v", err)
+		t.logger.Error().Err(err).Msg("write EncryptRTP error")
 		return
 	}
 }
 
 func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 	if !t.connected.Get() {
-		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
+		t.logger.Warn().Msg("webrtc not connected, ignore send rtcp packet")
 		return
 	}
-	t.logger.Info("SendRtcpPacket:%+v", packet)
+	t.logger.Info().Uints32("packet", packet.DestinationSSRC()).Msg("SendRtcpPacket")
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
-		t.logger.Error("rtcpPacket.Marshal error:%v", err)
+		t.logger.Error().Err(err).Msg("rtcpPacket.Marshal error")
 		monitor.RtcpSendCount(monitor.TraceMarshalFailed)
 		return
 	}
 	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, nil)
 	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
-		t.logger.Error("write EncryptRTCP error:%v", err)
+		t.logger.Error().Err(err).Msg("write EncryptRTCP error")
 		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
 		return
 	}
@@ -245,19 +250,19 @@ func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 
 func (t *WebrtcTransport) SendRtcpCompoundPacket(packets []rtcp.Packet) {
 	if !t.connected.Get() {
-		t.logger.Warn("webrtc not connected, ignore send rtcp packet")
+		t.logger.Warn().Msg("webrtc not connected, ignore send rtcp packet")
 		return
 	}
-	t.logger.Info("SendRtcpCompoundPacket:%+v", packets)
+	t.logger.Info().Msgf("SendRtcpCompoundPacket:%+v", packets)
 	decryptedRaw, err := rtcp.Marshal(packets)
 	if err != nil {
-		t.logger.Error("rtcpPacket.Marshal error:%v", err)
+		t.logger.Error().Err(err).Msg("rtcpPacket.Marshal error")
 		monitor.RtcpSendCount(monitor.TraceMarshalFailed)
 		return
 	}
 	encrypted, err := t.encryptCtx.EncryptRTCP(nil, decryptedRaw, nil)
 	if _, err := t.iceServer.iceConn.Write(encrypted); err != nil {
-		t.logger.Error("write EncryptRTCP error:%v", err)
+		t.logger.Error().Err(err).Msg("write EncryptRTCP error")
 		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
 		return
 	}
@@ -272,5 +277,5 @@ func (t *WebrtcTransport) Close() {
 		t.dtlsTransport.Disconnect()
 	}
 	t.ITransport.Close()
-	t.logger.Info("webrtc transport closed")
+	t.logger.Info().Msg("webrtc transport closed")
 }

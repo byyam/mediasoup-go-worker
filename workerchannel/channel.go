@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
 	"strings"
 	"sync/atomic"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/tidwall/gjson"
 
@@ -27,7 +30,7 @@ const (
 )
 
 type Channel struct {
-	logger     utils.Logger
+	logger     zerolog.Logger
 	netParser  netparser.INetParser
 	jsonFormat bool
 
@@ -39,9 +42,9 @@ func NewChannel(netParser netparser.INetParser, id string, jsonFormat bool) *Cha
 	c := &Channel{
 		netParser:  netParser,
 		jsonFormat: jsonFormat,
-		logger:     utils.NewLogger(fmt.Sprintf("channel-json[%v]", jsonFormat), id),
+		logger:     zerowrapper.NewScope(fmt.Sprintf("channel-json[%v]", jsonFormat), id),
 	}
-	c.logger.Info("channel start")
+	c.logger.Info().Msg("channel start")
 	go c.runReadLoop()
 	return c
 }
@@ -52,10 +55,10 @@ func (c *Channel) runReadLoop() {
 	for {
 		n, err := c.netParser.ReadBuffer(payload)
 		if err != nil {
-			c.logger.Error("Channel error:%v", err)
+			c.logger.Error().Err(err).Msg("Channel read buffer error")
 			break
 		}
-		c.logger.Debug("payload:%s", string(payload[:n]))
+		c.logger.Debug().Str("payload", string(payload[:n])).Send()
 		if !c.jsonFormat {
 			c.processPayload(payload[:n])
 		} else {
@@ -68,12 +71,12 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 	switch nsPayload[0] {
 	case '{':
 		if err := c.processJsonMessage(nsPayload); err != nil {
-			c.logger.Error("process message failed:%s", err)
+			c.logger.Error().Err(err).Msg("process message failed")
 		}
 	case 'X':
-		c.logger.Debug("%s\n", nsPayload[1:])
+		c.logger.Debug().Str("payload", string(nsPayload[1:])).Send()
 	default:
-		c.logger.Error("unexpected data:[%s]", nsPayload)
+		c.logger.Error().Str("payload", string(nsPayload)).Msg("unexpected data")
 	}
 }
 
@@ -81,13 +84,13 @@ func (c *Channel) processPayload(nsPayload []byte) {
 	// https://github.com/versatica/mediasoup/commit/ed15a863a5ed095f58a16d972c8e25bf24f17933
 	// const request = `${id}:${method}:${handlerId}:${JSON.stringify(data)}`;
 	messages := strings.SplitN(string(nsPayload), ":", 4)
-	c.logger.Info("messages:%+v", messages)
+	c.logger.Info().Strs("messages", messages).Send()
 	if len(messages) != 4 {
-		c.logger.Error("messages length invalid,nsPayload:[%s]", nsPayload)
+		c.logger.Error().Strs("messages", messages).Msg("messages length invalid")
 		return
 	}
 	if err := c.processMessage(messages); err != nil {
-		c.logger.Error("process message failed:%s", err.Error())
+		c.logger.Error().Err(err).Msg("process message failed")
 	}
 }
 
@@ -145,11 +148,11 @@ func (c *Channel) processMessage(messages []string) error {
 
 	// handle
 	rspData, _ := c.handleMessage(&reqData, &internal)
-	c.logger.Info("rspData:%+v", rspData)
+	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Msg("rspData")
 
 	// encode
 	if err := c.returnMessage(rspData); err != nil {
-		c.logger.Error("return message failed:%s", err.Error())
+		c.logger.Error().Err(err).Msg("return message failed")
 	}
 	return nil
 }
@@ -162,14 +165,14 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	}
 	var internal InternalData
 	_ = internal.Unmarshal(reqData.Internal)
-	c.logger.Info("request Id=%d, Method=%s", reqData.Id, reqData.Method)
+	c.logger.Info().Int64("id", reqData.Id).Str("method", reqData.Method).Msg("reqData")
 
 	// handle
 	rspData, _ := c.handleMessage(&reqData, &internal)
 
 	// encode
 	if err := c.returnMessage(rspData); err != nil {
-		c.logger.Error("return message failed:%s", err.Error())
+		c.logger.Error().Err(err).Msg("return message failed")
 	}
 	return nil
 }
@@ -180,11 +183,11 @@ func (c *Channel) returnMessage(rspData *channelData) error {
 	if len(jsonByte) > NS_MESSAGE_MAX_LEN {
 		return errors.New("channel response too big")
 	}
-	c.logger.Trace("WriteBuffer:[%s],rspData:%+v", string(jsonByte), rspData)
+	c.logger.Trace().Str("WriteBuffer", string(jsonByte)).Int64("id", rspData.Id).Str("method", rspData.Method).Send()
 	if err := c.netParser.WriteBuffer(jsonByte); err != nil {
 		return err
 	}
-	c.logger.Info("response Id=%d,err=[%v]", rspData.Id, rspData.Error)
+	c.logger.Info().Str("error", rspData.Error).Int64("id", rspData.Id).Msg("response")
 	return nil
 }
 
@@ -204,7 +207,7 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	}
 
 	if ret.Err != nil {
-		c.logger.Error("response error:%v, Id=%d, Method=%s", ret.Err, reqData.Id, reqData.Method)
+		c.logger.Error().Err(ret.Err).Int64("id", reqData.Id).Str("method", reqData.Method).Msg("response error")
 		rspData.Error = ret.Err.Error()
 		rspData.Reason = ret.Err.Error()
 	} else {
@@ -222,9 +225,9 @@ func (c *Channel) Event(targetId int, event string) {
 	}
 	jsonByte, _ := json.Marshal(&msg)
 	err := c.netParser.WriteBuffer(jsonByte)
-	c.logger.Info("send Event msg:%+v,err=%v", msg, err)
+	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Str("event", msg.Event).Msg("send Event msg")
 }
 
 func (c *Channel) Close() {
-	c.logger.Info("closed")
+	c.logger.Info().Msg("closed")
 }

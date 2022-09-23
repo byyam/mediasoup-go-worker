@@ -3,19 +3,23 @@ package rtc
 import (
 	"errors"
 	"fmt"
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
+
+	"github.com/pion/ice/v2"
+	"github.com/pion/stun"
+	"github.com/pion/transport/packetio"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
-	"github.com/pion/ice/v2"
-	"github.com/pion/stun"
-	"github.com/pion/transport/packetio"
 )
 
 const (
@@ -31,7 +35,7 @@ type iceServer struct {
 	state      mediasoupdata.IceState
 	localUfrag string
 	localPwd   string
-	logger     utils2.Logger
+	logger     zerolog.Logger
 	udpMux     *ice.UDPMuxDefault
 	udpConn    net.PacketConn
 	buffer     *packetio.Buffer
@@ -65,7 +69,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	d := &iceServer{
 		iceLite:          param.iceLite, // todo: support full ICE
 		state:            mediasoupdata.IceState_New,
-		logger:           utils2.NewLogger(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
+		logger:           zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
 		udpMux:           global.ICEMuxConn,
@@ -90,11 +94,11 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	if param.tcp4 {
 		networkTypes = append(networkTypes, ice.NetworkTypeTCP4)
 	}
-	d.logger.Debug("ice server start, ufrag=%s", d.localUfrag)
+	d.logger.Debug().Msgf("ice server start, ufrag=%s", d.localUfrag)
 
 	go func() {
 		if err := d.connect(networkTypes); err != nil {
-			d.logger.Error("read ice connection failed:%v", err)
+			d.logger.Error().Err(err).Msg("read ice connection failed")
 			return
 		}
 	}()
@@ -110,7 +114,7 @@ func (d *iceServer) connectivityChecks() {
 			return
 		}
 		if time.Since(d.lastPkgTimestamp) > d.disconnectedTimeout && time.Since(d.lastStunTimestamp) > d.disconnectedTimeout {
-			d.logger.Warn("ice inactive, disconnectedTimeout=%v, ufrag=%s", d.disconnectedTimeout, d.localUfrag)
+			d.logger.Warn().Dur("disconnectedTimeout", d.disconnectedTimeout).Str("localUfrag", d.localUfrag).Msg("ice inactive")
 			d.Disconnect()
 		}
 	}
@@ -120,7 +124,7 @@ func (d *iceServer) connectivityChecks() {
 		case <-t.C:
 			checkFn()
 		case <-d.closedChan:
-			d.logger.Warn("stop ice connectivityChecks")
+			d.logger.Warn().Msg("stop ice connectivityChecks")
 			return
 		}
 	}
@@ -132,7 +136,7 @@ func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 	if err != nil {
 		return err
 	}
-	d.logger.Debug("get pkg connection from udp mux:%s", d.localUfrag)
+	d.logger.Debug().Str("localUfrag", d.localUfrag).Msg("get pkg connection from udp mux")
 	buf := make([]byte, global.ReceiveMTU)
 	for {
 		n, srcAddr, err := d.udpConn.ReadFrom(buf)
@@ -155,11 +159,13 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 		// Explicitly copy raw buffer so Message can own the memory.
 		copy(m.Raw, buffer)
 		if err := m.Decode(); err != nil {
-			d.logger.Error("Failed to handle decode ICE from %s to %s: %v", d.udpMux.LocalAddr(), srcAddr, err)
+			d.logger.Error().Err(err).Str("LocalAddr", d.udpMux.LocalAddr().String()).
+				Str("srcAddr", srcAddr.String()).
+				Msg("Failed to handle decode ICE")
 			return err
 		}
 		if err := d.handleInbound(m, srcAddr); err != nil {
-			d.logger.Error("Failed to handleInbound: %v", err)
+			d.logger.Error().Err(err).Msg("Failed to handleInbound")
 			return err
 		}
 		return nil
@@ -167,7 +173,7 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 	if utils.MatchDTLS(buffer) {
 		monitor.IceCount(monitor.DirectionTypeRecv, monitor.PacketDtls)
 		if _, err := d.buffer.Write(buffer); err != nil {
-			d.logger.Warn("Failed to write buffer: %v", err)
+			d.logger.Warn().Err(err).Msg("Failed to write buffer")
 		}
 		return nil
 	}
@@ -197,7 +203,7 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 		} else if err = utils.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
 		}
-		d.logger.Debug("inbound STUN (Request) from %s to %s", remote.String(), d.udpMux.LocalAddr())
+		d.logger.Debug().Str("remote", remote.String()).Str("local", d.udpMux.LocalAddr().String()).Msg("inbound STUN (Request)")
 		if err := d.handleBindingRequest(m, remote); err != nil {
 			return err
 		}
@@ -209,7 +215,7 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 func (d *iceServer) handleBindingRequest(m *stun.Message, remote net.Addr) error {
 	if m.Contains(stun.AttrUseCandidate) {
 		// todo
-		d.logger.Info("get AttrUseCandidate")
+		d.logger.Info().Msg("get AttrUseCandidate")
 	}
 	return d.sendBindingSuccess(m, remote)
 }
@@ -231,7 +237,7 @@ func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
 	} else {
 		if d.iceConn == nil { // todo
 			d.iceConn = newIceConn(remote, d)
-			d.logger.Debug("new ice connection,remote addr=%s", remote.String())
+			d.logger.Debug().Str("remote", remote.String()).Msg("new ice connection")
 			close(d.connDone)
 		}
 		_, err = d.iceConn.Write(out.Raw)
@@ -280,7 +286,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 func (d *iceServer) GetConn() (*iceConn, error) {
 	if d.connDone != nil {
 		<-d.connDone
-		d.logger.Debug("ice connected")
+		d.logger.Debug().Msg("ice connected")
 	}
 	return d.iceConn, nil
 }
@@ -291,21 +297,21 @@ func (d *iceServer) Disconnect() {
 	})
 	if d.iceConn != nil {
 		if err := d.iceConn.Close(); err != nil {
-			d.logger.Error("disconnect ice failed:%v", err)
+			d.logger.Error().Err(err).Msg("disconnect ice failed")
 		}
 	}
 	if d.buffer != nil {
 		if err := d.buffer.Close(); err != nil {
-			d.logger.Error("close ice buffer failed:%v", err)
+			d.logger.Error().Err(err).Msg("close ice buffer failed")
 		}
 	}
 	if d.udpConn != nil {
 		if err := d.udpConn.Close(); err != nil {
-			d.logger.Error("close udp conn failed:%v", err)
+			d.logger.Error().Err(err).Msg("close udp conn failed")
 		}
 	}
 	d.udpMux.RemoveConnByUfrag(d.localUfrag)
-	d.logger.Info("ice disconnect")
+	d.logger.Info().Msg("ice disconnect")
 }
 
 func (d *iceServer) isConnected() bool {

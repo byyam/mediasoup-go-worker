@@ -2,14 +2,16 @@ package monitor
 
 import (
 	"fmt"
-	logger2 "github.com/byyam/mediasoup-go-worker/utils"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 var (
-	logger = logger2.NewLogger("prometheus")
+	logger = zerowrapper.NewScope("prometheus")
 )
 
 type monitorOpt struct {
@@ -28,7 +30,7 @@ func InitPrometheus(options ...func(*monitorOpt)) {
 		for _, option := range options {
 			option(&settings)
 		}
-		logger.Info("prometheus listen on http:%+v", settings)
+		logger.Info().Msgf("prometheus listen on http:%+v", settings)
 		http.Handle(settings.Path, promhttp.Handler())
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", settings.Port), nil))
 	}()

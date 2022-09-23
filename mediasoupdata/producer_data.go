@@ -43,7 +43,7 @@ func (o ProducerOptions) Valid() bool {
 		return false
 	}
 	if len(o.RtpMapping.Encodings) != len(o.RtpParameters.Encodings) {
-		logger.Error("rtpParameters.encodings size does not match rtpMapping.encodings size")
+		logger.Error().Msg("rtpParameters.encodings size does not match rtpMapping.encodings size")
 		return false
 	}
 	return true

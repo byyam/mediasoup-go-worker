@@ -2,13 +2,15 @@ package rtc
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -33,7 +35,7 @@ type ITransport interface {
 
 type Transport struct {
 	id     string
-	logger utils.Logger
+	logger zerolog.Logger
 
 	mapProducers       sync.Map //map[string]*Producer
 	mapConsumers       sync.Map
@@ -62,7 +64,7 @@ type Transport struct {
 
 func (t *Transport) Close() {
 	t.closeOnce.Do(func() {
-		t.logger.Info("closed")
+		t.logger.Info().Msg("closed")
 	})
 }
 
@@ -91,7 +93,7 @@ func (t *Transport) FillJson() json.RawMessage {
 		WebRtcTransportDump:     nil,
 	}
 	data, _ := json.Marshal(&dumpData)
-	t.logger.Debug("dumpData:%+v", dumpData)
+	t.logger.Debug().Msgf("dumpData:%+v", dumpData)
 	return data
 }
 
@@ -123,7 +125,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 		WebRtcTransportSpecificStat: nil,
 	}
 	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
-	t.logger.Debug("getStats:%+v", jsonData)
+	t.logger.Debug().Msgf("getStats:%+v", jsonData)
 	return data
 }
 
@@ -162,7 +164,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	}
 	transport := &Transport{
 		id:          param.Id,
-		logger:      utils.NewLogger("transport", param.Id),
+		logger:      zerowrapper.NewScope("transport", param.Id),
 		rtpListener: newRtpListener(),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
@@ -182,7 +184,7 @@ func newTransport(param transportParam) (ITransport, error) {
 
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
-		t.logger.Debug("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
+		t.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
 	}()
 
 	switch request.Method {
@@ -269,7 +271,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.onTransportConsumerClosedHandler(request.Internal.ProducerId, consumer.GetId())
 
 	default:
-		t.logger.Error("unknown method:%s", request.Method)
+		t.logger.Error().Msgf("unknown method:%s", request.Method)
 	}
 }
 
@@ -302,7 +304,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	}
 
 	if err != nil {
-		t.logger.Error("create consumer[%s] failed:%v", options.Type, err)
+		t.logger.Error().Msgf("create consumer[%s] failed:%v", options.Type, err)
 		return nil, err
 	}
 	if err := t.onTransportNewConsumerHandler(consumer, producerId); err != nil {
@@ -313,7 +315,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	for _, ssrc := range consumer.GetMediaSsrcs() {
 		t.mapSsrcConsumer.Store(ssrc, consumer)
 	}
-	t.logger.Debug("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v", producerId, consumerId, options.Type, options.Kind, consumer.GetMediaSsrcs())
+	t.logger.Debug().Msgf("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v", producerId, consumerId, options.Type, options.Kind, consumer.GetMediaSsrcs())
 	return &mediasoupdata.ConsumerData{
 		Paused:         false,
 		ProducerPaused: false,
@@ -347,7 +349,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		}
 	}
 	t.mapProducers.Store(id, producer)
-	t.logger.Debug("Producer created [producerId:%s],type:%s", id, producer.Type)
+	t.logger.Debug().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// todo
 
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
@@ -373,7 +375,7 @@ func (t *Transport) OnProducerSendRtcpPacket(packet rtcp.Packet) {
 }
 
 func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtpparser.Packet) {
-	t.logger.Trace("OnConsumerSendRtpPacket:%+v", packet.Header)
+	t.logger.Trace().Msgf("OnConsumerSendRtpPacket:%+v", packet.Header)
 	t.sendRtpPacketFunc(packet)
 }
 
@@ -383,22 +385,22 @@ func (t *Transport) OnConsumerRetransmitRtpPacket(packet *rtpparser.Packet) {
 }
 
 func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
-	t.logger.Info("ReceiveRtcpPacket[%d]:\n%+v\nheader:%+v", len(packets), packets, header)
+	t.logger.Info().Msgf("ReceiveRtcpPacket[%d]:\n%+v\nheader:%+v", len(packets), packets, header)
 	for _, packet := range packets {
 		t.HandleRtcpPacket(header, packet)
 	}
 }
 
 func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
-	t.logger.Debug("HandleRtcpPacket:%v", packet.DestinationSSRC())
+	t.logger.Debug().Msgf("HandleRtcpPacket:%v", packet.DestinationSSRC())
 	switch packet.(type) {
 	case *rtcp.SenderReport:
 		pkg := packet.(*rtcp.SenderReport)
 		for _, sr := range pkg.Reports {
-			t.logger.Debug("handle SR:%s,report:%+v", pkg.String(), sr)
+			t.logger.Debug().Msgf("handle SR:%s,report:%+v", pkg.String(), sr)
 			producer := t.rtpListener.GetProducerBySSRC(sr.SSRC)
 			if producer == nil {
-				t.logger.Warn("no Producer found for received Sender Report [ssrc:%d]", sr.SSRC)
+				t.logger.Warn().Msgf("no Producer found for received Sender Report [ssrc:%d]", sr.SSRC)
 				continue
 			}
 			producer.ReceiveRtcpSenderReport(&sr)
@@ -406,7 +408,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	case *rtcp.ReceiverReport:
 		pkg := packet.(*rtcp.ReceiverReport)
 		for _, rr := range pkg.Reports {
-			t.logger.Debug("handle RR:%s,report:%+v", pkg.String(), rr)
+			t.logger.Debug().Msgf("handle RR:%s,report:%+v", pkg.String(), rr)
 			// Special case for the RTP probator.
 			if rr.SSRC == RtpProbationSsrc {
 				continue
@@ -422,7 +424,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 				if ok {
 					continue
 				}
-				t.logger.Warn("no Consumer found for received Receiver Report [ssrc %d]", rr.SSRC)
+				t.logger.Warn().Msgf("no Consumer found for received Receiver Report [ssrc %d]", rr.SSRC)
 				continue
 			}
 			consumer.(IConsumer).ReceiveRtcpReceiverReport(&rr)
@@ -430,10 +432,10 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 		}
 	case *rtcp.SourceDescription:
 		pkg := packet.(*rtcp.SourceDescription)
-		t.logger.Debug("%s", pkg.String())
+		t.logger.Debug().Msgf("%s", pkg.String())
 	case *rtcp.Goodbye:
 		pkg := packet.(*rtcp.Goodbye)
-		t.logger.Debug("ignoring received RTCP BYE %s", pkg.String())
+		t.logger.Debug().Msgf("ignoring received RTCP BYE %s", pkg.String())
 	case *rtcp.FullIntraRequest:
 		pkg := packet.(*rtcp.FullIntraRequest)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
@@ -444,23 +446,23 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 		monitor.KeyframeCount(pkg.MediaSSRC, monitor.KeyframeRecvPLI)
 	case *rtcp.ReceiverEstimatedMaximumBitrate:
 		pkg := packet.(*rtcp.ReceiverEstimatedMaximumBitrate)
-		t.logger.Debug("%s", pkg.String())
+		t.logger.Debug().Msgf("%s", pkg.String())
 	case *rtcp.TransportLayerNack:
 		pkg := packet.(*rtcp.TransportLayerNack)
-		t.logger.Debug("TransportLayerNack:%+v", pkg)
+		t.logger.Debug().Msgf("TransportLayerNack:%+v", pkg)
 		consumer, ok := t.mapSsrcConsumer.Load(pkg.MediaSSRC)
 		if !ok {
-			t.logger.Warn("no Consumer found for received NACK Feedback packet [sender ssrc:%d, media ssrc:%d]", pkg.SenderSSRC, pkg.MediaSSRC)
+			t.logger.Warn().Msgf("no Consumer found for received NACK Feedback packet [sender ssrc:%d, media ssrc:%d]", pkg.SenderSSRC, pkg.MediaSSRC)
 			return
 		}
 		consumer.(IConsumer).ReceiveNack(pkg)
 
 	case *rtcp.TransportLayerCC:
 		pkg := packet.(*rtcp.TransportLayerCC)
-		t.logger.Info("TransportLayerCC:%+v", pkg)
+		t.logger.Info().Msgf("TransportLayerCC:%+v", pkg)
 	default:
 		monitor.RtcpRecvCount(monitor.TraceUnknownRtcpType)
-		t.logger.Warn("unhandled RTCP type received %+v", header)
+		t.logger.Warn().Msgf("unhandled RTCP type received %+v", header)
 	}
 }
 

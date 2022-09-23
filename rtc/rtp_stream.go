@@ -1,9 +1,12 @@
 package rtc
 
 import (
-	utils2 "github.com/byyam/mediasoup-go-worker/utils"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog"
+
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
 
@@ -67,7 +70,7 @@ type RtpStream struct {
 
 	reportedPacketLost uint32
 
-	logger utils2.Logger
+	logger zerolog.Logger
 }
 
 func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
@@ -76,7 +79,7 @@ func newRtpStream(param *ParamRtpStream, initialScore uint8) *RtpStream {
 		id:     id,
 		score:  initialScore,
 		params: param,
-		logger: utils2.NewLogger("RtpStream", id),
+		logger: zerowrapper.NewScope("RtpStream", id),
 	}
 }
 
@@ -92,7 +95,7 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 	r.params.RtxSsrc = ssrc
 
 	if r.HasRtx() {
-		r.logger.Warn("replace RTX stream:%d", ssrc)
+		r.logger.Warn().Msgf("replace RTX stream:%d", ssrc)
 	}
 	// Set RTX stream params.
 	params := &ParamRtxStream{
@@ -109,10 +112,10 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 	var err error
 	r.rtxStream, err = newRtxStream(params)
 	if err != nil {
-		r.logger.Error("set rtx failed:%v", err)
+		r.logger.Error().Err(err).Msg("set rtx failed")
 		return
 	}
-	r.logger.Info("set RTX stream:%d", ssrc)
+	r.logger.Info().Uint32("ssrc", ssrc).Msg("set RTX stream")
 }
 
 func (r *RtpStream) GetId() string {
@@ -142,7 +145,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 	}
 	// If not a valid packet ignore it.
 	if !r.UpdateSeq(packet) {
-		r.logger.Warn("invalid packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+		r.logger.Warn().Msgf("invalid packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 		return false
 	}
 	// Update highest seen RTP timestamp.
@@ -187,7 +190,7 @@ func (r *RtpStream) GetExpectedPackets() uint32 {
 }
 
 func (r *RtpStream) InitSeq(seq uint16) {
-	r.logger.Trace("init seq")
+	r.logger.Trace().Msg("init seq")
 	// Initialize/reset RTP counters.
 	r.baseSeq = uint32(seq)
 	r.maxSeq = seq
@@ -216,12 +219,12 @@ func (r *RtpStream) UpdateSeq(packet *rtpparser.Packet) bool {
 		if uint32(packet.SequenceNumber) == r.badSeq {
 			// Two sequential packets. Assume that the other side restarted without
 			// telling us so just re-sync (i.e., pretend this was the first packet).
-			r.logger.Warn("too bad sequence number, re-syncing RTP [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+			r.logger.Warn().Msgf("too bad sequence number, re-syncing RTP [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.InitSeq(packet.SequenceNumber)
 			r.maxPacketTs = packet.Timestamp
 			r.maxPacketMS = utils.GetTimeMs()
 		} else {
-			r.logger.Warn("bad sequence number, ignoring packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
+			r.logger.Warn().Msgf("bad sequence number, ignoring packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.badSeq = (uint32(packet.SequenceNumber) + 1) & (RtpSeqMod - 1)
 			// Packet discarded due to late or early arriving.
 			r.packetsDiscarded++

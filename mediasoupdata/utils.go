@@ -3,18 +3,19 @@ package mediasoupdata
 import (
 	"encoding/binary"
 	"encoding/json"
-	logger2 "github.com/byyam/mediasoup-go-worker/utils"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
+
 	"github.com/imdario/mergo"
 )
 
 var (
-	logger = logger2.NewLogger("mediasoup-data")
+	logger = zerowrapper.NewScope("mediasoup-data")
 )
 
 func init() {

@@ -2,15 +2,17 @@ package rtc
 
 import (
 	"encoding/json"
-	"github.com/byyam/mediasoup-go-worker/utils"
+
+	"github.com/rs/zerolog"
 
 	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 type DirectTransport struct {
 	ITransport
 	id     string
-	logger utils.Logger
+	logger zerolog.Logger
 }
 
 type directTransportParam struct {
@@ -22,7 +24,7 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 	var err error
 	t := &DirectTransport{
 		id:     param.Id,
-		logger: utils.NewLogger("direct-transport", param.Id),
+		logger: zerowrapper.NewScope("direct-transport", param.Id),
 	}
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
