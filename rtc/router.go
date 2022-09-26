@@ -12,7 +12,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/hashmap"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -20,7 +20,7 @@ type Router struct {
 	id                   string
 	logger               zerolog.Logger
 	mapTransports        sync.Map
-	mapProducerConsumers *utils.Hashmap
+	mapProducerConsumers *hashmap.Hashmap
 	mapProducers         sync.Map
 	mapConsumerProducer  sync.Map
 }
@@ -29,7 +29,7 @@ func NewRouter(id string) *Router {
 	return &Router{
 		id:                   id,
 		logger:               zerowrapper.NewScope("router", id),
-		mapProducerConsumers: utils.NewHashMap(),
+		mapProducerConsumers: hashmap.NewHashMap(),
 	}
 }
 

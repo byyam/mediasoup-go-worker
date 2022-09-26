@@ -22,11 +22,6 @@ func checkError(err error) {
 
 func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel.PayloadChannel, error) {
 	var err error
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		logger.Error("init worker panic:%s", debug.Stack())
-	//	}
-	//}()
 
 	currentLatest, err := version.NewVersion(mediasoupVersion)
 	checkError(err)

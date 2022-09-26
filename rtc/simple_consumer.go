@@ -6,10 +6,9 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
-
-	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
