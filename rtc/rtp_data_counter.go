@@ -1,8 +1,8 @@
 package rtc
 
 import (
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/pkg/ratecalculator"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 )
 
@@ -35,7 +35,7 @@ func (p RtpDataCounter) GetBitrate(nowMs int64) uint32 {
 }
 
 func (p *RtpDataCounter) Update(packet *rtpparser.Packet) {
-	nowMs := utils.GetTimeMs()
+	nowMs := rtctime.GetTimeMs()
 	p.packets++
 	p.rate.Update(packet.GetLen(), nowMs)
 }

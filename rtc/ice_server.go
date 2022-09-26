@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/iceutil"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -19,7 +20,6 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 )
 
@@ -65,8 +65,8 @@ type iceServerParam struct {
 }
 
 func newIceServer(param iceServerParam) (*iceServer, error) {
-	ufrag, _ := utils.GenerateUFrag()
-	pwd, _ := utils.GeneratePwd()
+	ufrag, _ := iceutil.GenerateUFrag()
+	pwd, _ := iceutil.GeneratePwd()
 	d := &iceServer{
 		iceLite:          param.iceLite, // todo: support full ICE
 		state:            mediasoupdata2.IceState_New,
@@ -199,9 +199,9 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 	}
 
 	if m.Type.Class == stun.ClassRequest {
-		if err = utils.AssertInboundUsername(m, d.localUfrag+":"+""); err != nil {
+		if err = iceutil.AssertInboundUsername(m, d.localUfrag+":"+""); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
-		} else if err = utils.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
+		} else if err = iceutil.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
 		}
 		d.logger.Debug().Str("remote", remote.String()).Str("local", d.udpMux.LocalAddr().String()).Msg("inbound STUN (Request)")
@@ -222,7 +222,7 @@ func (d *iceServer) handleBindingRequest(m *stun.Message, remote net.Addr) error
 }
 
 func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
-	ip, port, _, ok := utils.ParseAddr(d.udpMux.LocalAddr())
+	ip, port, _, ok := iceutil.ParseAddr(d.udpMux.LocalAddr())
 	if !ok {
 		return fmt.Errorf("error parsing addr: %s", d.udpMux.LocalAddr())
 	}

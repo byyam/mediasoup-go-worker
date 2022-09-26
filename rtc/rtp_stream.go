@@ -7,13 +7,12 @@ import (
 	"github.com/rs/zerolog"
 
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 )
 
 const (
@@ -141,7 +140,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 		r.started = true
 		r.maxSeq = packet.SequenceNumber - 1
 		r.maxPacketTs = packet.Timestamp
-		r.maxPacketMS = utils.GetTimeMs()
+		r.maxPacketMS = rtctime.GetTimeMs()
 	}
 	// If not a valid packet ignore it.
 	if !r.UpdateSeq(packet) {
@@ -151,7 +150,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 	// Update highest seen RTP timestamp.
 	if seqmgr.IsSeqHigherThanUint32(packet.Timestamp, r.maxPacketTs) {
 		r.maxPacketTs = packet.Timestamp
-		r.maxPacketMS = utils.GetTimeMs()
+		r.maxPacketMS = rtctime.GetTimeMs()
 	}
 	return true
 }
@@ -222,7 +221,7 @@ func (r *RtpStream) UpdateSeq(packet *rtpparser.Packet) bool {
 			r.logger.Warn().Msgf("too bad sequence number, re-syncing RTP [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.InitSeq(packet.SequenceNumber)
 			r.maxPacketTs = packet.Timestamp
-			r.maxPacketMS = utils.GetTimeMs()
+			r.maxPacketMS = rtctime.GetTimeMs()
 		} else {
 			r.logger.Warn().Msgf("bad sequence number, ignoring packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.badSeq = (uint32(packet.SequenceNumber) + 1) & (RtpSeqMod - 1)

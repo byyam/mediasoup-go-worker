@@ -10,9 +10,9 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/nack"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 )
@@ -128,7 +128,7 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 }
 
 func (r *RtpStreamRecv) FillJsonStats(stat *mediasoupdata.ProducerStat) {
-	nowMs := utils.GetTimeMs()
+	nowMs := rtctime.GetTimeMs()
 	stat.Type = "inbound-rtp"
 	stat.Timestamp = nowMs
 	stat.PacketCount = r.transmissionCounter.GetPacketCount()
@@ -184,7 +184,7 @@ func (r *RtpStreamRecv) GetRtcpReceiverReport(now time.Time, worstRemoteFraction
 	report.Jitter = r.jitter
 	if r.lastSrReceived != 0 {
 		// Get delay in milliseconds.
-		delayMs := utils.GetTimeMs() - r.lastSrReceived
+		delayMs := rtctime.GetTimeMs() - r.lastSrReceived
 		// Express delay in units of 1/65536 seconds.
 		dlsr := (delayMs / 1000) << 16
 		dlsr |= (delayMs % 1000) * 65536 / 1000

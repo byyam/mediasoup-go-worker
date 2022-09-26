@@ -16,9 +16,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
+	"github.com/byyam/mediasoup-go-worker/pkg/iceutil"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -90,12 +90,12 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	// other options
 	t.rtx = param.options.EnableRtx
 	if param.options.EnableSrtp {
-		t.srtpKey, err = randutil.GenerateCryptoRandomString(srtpMasterLength, utils.RunesAlpha)
+		t.srtpKey, err = randutil.GenerateCryptoRandomString(srtpMasterLength, iceutil.RunesAlpha)
 		if err != nil {
 			return nil, err
 		}
 		t.srtpKeyBase64 = base64.StdEncoding.EncodeToString([]byte(t.srtpKey))
-		t.srtpSalt, err = randutil.GenerateCryptoRandomString(srtpSaltLength, utils.RunesAlpha)
+		t.srtpSalt, err = randutil.GenerateCryptoRandomString(srtpSaltLength, iceutil.RunesAlpha)
 		if err != nil {
 			return nil, err
 		}
