@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 

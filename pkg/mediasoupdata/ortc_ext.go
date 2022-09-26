@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/byyam/mediasoup-go-worker/h264"
+	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
 
 var DYNAMIC_PAYLOAD_TYPES = [...]byte{

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
@@ -13,7 +14,6 @@ import (
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 )
 
 const (
@@ -27,7 +27,7 @@ type ParamRtpStream struct {
 	EncodingIdx    int
 	Ssrc           uint32
 	PayloadType    uint8
-	MimeType       mediasoupdata.RtpCodecMimeType
+	MimeType       mediasoupdata2.RtpCodecMimeType
 	ClockRate      int
 	Rid            string
 	Cname          string
@@ -106,7 +106,7 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 		RRid:        r.params.Rid,
 		Cname:       r.params.Cname,
 	}
-	params.MimeType.SubType = mediasoupdata.MimeSubTypeRTX
+	params.MimeType.SubType = mediasoupdata2.MimeSubTypeRTX
 	// Tell the RtpCodecMimeType to update its string based on current type and subtype.
 	params.MimeType.UpdateMimeType()
 	var err error
@@ -156,7 +156,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 	return true
 }
 
-func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
+func (r *RtpStream) FillJsonStats(stat *mediasoupdata2.ProducerStat) {
 	stat.Ssrc = r.GetSsrc()
 	stat.RtxSsrc = r.GetRtxSsrc()
 	stat.Rid = r.params.Rid

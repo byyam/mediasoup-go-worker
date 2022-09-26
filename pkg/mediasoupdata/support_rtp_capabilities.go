@@ -1,6 +1,8 @@
 package mediasoupdata
 
-import "github.com/byyam/mediasoup-go-worker/h264"
+import (
+	"github.com/byyam/mediasoup-go-worker/pkg/h264"
+)
 
 var supportedRtpCapabilities = RtpCapabilities{
 	Codecs: []*RtpCodecCapability{

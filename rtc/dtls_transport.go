@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/pion/dtls/v2"
@@ -18,7 +19,6 @@ import (
 	"github.com/pion/dtls/v2/pkg/crypto/selfsign"
 	"github.com/pion/srtp/v2"
 
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 )
 
@@ -45,9 +45,9 @@ type dtlsTransport struct {
 	dtlsConn               *dtls.Conn
 	dtlsConnState          dtls.State
 	config                 *dtls.Config
-	state                  mediasoupdata.DtlsState
-	fingerPrints           []mediasoupdata.DtlsFingerprint
-	role                   mediasoupdata.DtlsRole
+	state                  mediasoupdata2.DtlsState
+	fingerPrints           []mediasoupdata2.DtlsFingerprint
+	role                   mediasoupdata2.DtlsRole
 	tlsCerts               []tls.Certificate
 	logger                 zerolog.Logger
 	connTimeout            time.Duration
@@ -58,19 +58,19 @@ type dtlsTransport struct {
 
 type dtlsTransportParam struct {
 	transportId string
-	role        mediasoupdata.DtlsRole
+	role        mediasoupdata2.DtlsRole
 	connTimeout *time.Duration
 }
 
 func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	d := &dtlsTransport{
-		state:                  mediasoupdata.DtlsState_New,
+		state:                  mediasoupdata2.DtlsState_New,
 		role:                   param.role,
-		logger:                 zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_DTLS), param.transportId),
+		logger:                 zerowrapper.NewScope(string(mediasoupdata2.WorkerLogTag_DTLS), param.transportId),
 		fingerprintAlgorithms:  defaultFingerprintAlgorithms,
 		sRTPProtectionProfiles: defaultSRTPProtectionProfiles,
 	}
-	d.fingerPrints = make([]mediasoupdata.DtlsFingerprint, len(d.fingerprintAlgorithms))
+	d.fingerPrints = make([]mediasoupdata2.DtlsFingerprint, len(d.fingerprintAlgorithms))
 	if param.connTimeout == nil {
 		d.connTimeout = defaultDtlsConnectTimeout
 	} else {
@@ -83,14 +83,14 @@ func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	return d, nil
 }
 
-func (d *dtlsTransport) GetDtlsParameters() mediasoupdata.DtlsParameters {
-	return mediasoupdata.DtlsParameters{
+func (d *dtlsTransport) GetDtlsParameters() mediasoupdata2.DtlsParameters {
+	return mediasoupdata2.DtlsParameters{
 		Role:         d.role,
 		Fingerprints: d.fingerPrints,
 	}
 }
 
-func (d *dtlsTransport) GetState() mediasoupdata.DtlsState {
+func (d *dtlsTransport) GetState() mediasoupdata2.DtlsState {
 	return d.state
 }
 
@@ -115,7 +115,7 @@ func (d *dtlsTransport) selfSignCerts() error {
 		if err != nil {
 			return err
 		}
-		d.fingerPrints[i] = mediasoupdata.DtlsFingerprint{
+		d.fingerPrints[i] = mediasoupdata2.DtlsFingerprint{
 			Algorithm: name,
 			Value:     value,
 		}
@@ -135,30 +135,30 @@ func (d *dtlsTransport) prepareConfig(timeout time.Duration) {
 	}
 }
 
-func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*mediasoupdata.TransportConnectData, error) {
+func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata2.DtlsParameters) (*mediasoupdata2.TransportConnectData, error) {
 
 	switch remoteParam.Role {
-	case mediasoupdata.DtlsRole_Client, mediasoupdata.DtlsRole_Auto:
-		d.role = mediasoupdata.DtlsRole_Server
-	case mediasoupdata.DtlsRole_Server:
-		d.role = mediasoupdata.DtlsRole_Client
+	case mediasoupdata2.DtlsRole_Client, mediasoupdata2.DtlsRole_Auto:
+		d.role = mediasoupdata2.DtlsRole_Server
+	case mediasoupdata2.DtlsRole_Server:
+		d.role = mediasoupdata2.DtlsRole_Client
 	default:
 		return nil, mserror.ErrInvalidParam
 	}
-	return &mediasoupdata.TransportConnectData{DtlsLocalRole: d.role}, nil
+	return &mediasoupdata2.TransportConnectData{DtlsLocalRole: d.role}, nil
 }
 
 func (d *dtlsTransport) Connect(iceConn net.Conn) error {
-	d.state = mediasoupdata.DtlsState_Connecting
+	d.state = mediasoupdata2.DtlsState_Connecting
 	var err error
 	defer func() {
 		if err != nil {
-			d.state = mediasoupdata.DtlsState_Failed
+			d.state = mediasoupdata2.DtlsState_Failed
 			d.logger.Error().Msgf("dtls connecting failed:%v", err)
 		}
 	}()
 	d.logger.Debug().Msgf("dtlsRole=%s,iceConn=%s|%s", d.role, iceConn.LocalAddr(), iceConn.RemoteAddr())
-	if d.role == mediasoupdata.DtlsRole_Client {
+	if d.role == mediasoupdata2.DtlsRole_Client {
 		d.config.InsecureSkipVerify = true
 		if d.dtlsConn, err = dtls.Client(iceConn, d.config); err != nil {
 			return err
@@ -169,7 +169,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 		}
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
-	d.state = mediasoupdata.DtlsState_Connected
+	d.state = mediasoupdata2.DtlsState_Connected
 	d.logger.Info().Msg("DtlsState_Connected")
 	return nil
 }
@@ -191,7 +191,7 @@ func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 		Profile: d.srtpProtectionProfile,
 	}
 	var isClient bool
-	if d.role == mediasoupdata.DtlsRole_Client {
+	if d.role == mediasoupdata2.DtlsRole_Client {
 		isClient = true
 	}
 	if err := srtpConfig.ExtractSessionKeysFromDTLS(&d.dtlsConnState, isClient); err != nil {

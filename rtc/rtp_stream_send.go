@@ -5,12 +5,12 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 )
 

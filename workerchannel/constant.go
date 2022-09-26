@@ -1,4 +1,4 @@
-package constant
+package workerchannel
 
 const (
 	NativeJsonVersion = "3.9.0"

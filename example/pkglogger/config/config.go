@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 )
 
 func InitConfig() {
