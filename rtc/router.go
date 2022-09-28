@@ -26,11 +26,13 @@ type Router struct {
 }
 
 func NewRouter(id string) *Router {
-	return &Router{
+	r := &Router{
 		id:                   id,
 		logger:               zerowrapper.NewScope("router", id),
 		mapProducerConsumers: hashmap.NewHashMap(),
 	}
+	workerchannel.RegisterHandler(id, r.HandleRequest)
+	return r
 }
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {

@@ -7,8 +7,9 @@ import (
 type channelData struct {
 	Id int64 `json:"id,omitempty"`
 	// request
-	Method   string          `json:"method,omitempty"`
-	Internal json.RawMessage `json:"internal,omitempty"`
+	Method    string          `json:"method,omitempty"`
+	HandlerId string          `json:"handlerId,omitempty"`
+	Internal  json.RawMessage `json:"internal,omitempty"`
 	// response
 	Accepted bool   `json:"accepted,omitempty"`
 	Error    string `json:"error,omitempty"`

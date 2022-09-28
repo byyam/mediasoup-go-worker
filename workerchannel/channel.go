@@ -156,6 +156,33 @@ func (c *Channel) processMessage(messages []string) error {
 	return nil
 }
 
+func (c *Channel) convertHandlerId(reqData *channelData, internal *InternalData) error {
+	methods := strings.Split(reqData.Method, ".")
+	if len(methods) != 2 {
+		return errors.New("method invalid")
+	}
+	switch methods[0] {
+	case "router":
+		reqData.HandlerId = internal.RouterId
+	case "transport":
+		reqData.HandlerId = internal.TransportId
+	case "producer":
+		reqData.HandlerId = internal.ProducerId
+	case "consumer":
+		reqData.HandlerId = internal.ConsumerId
+	case "dataProducer":
+		reqData.HandlerId = internal.DataProducerId
+	case "dataConsumer":
+		reqData.HandlerId = internal.DataConsumerId
+	case "rtpObserver":
+		reqData.HandlerId = internal.RtpObserverId
+	default:
+		return errors.New("unknown method prefix")
+	}
+
+	return nil
+}
+
 func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	// decode
 	var reqData channelData
@@ -165,6 +192,11 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	var internal InternalData
 	_ = internal.Unmarshal(reqData.Internal)
 	c.logger.Info().Int64("id", reqData.Id).Str("method", reqData.Method).Msg("reqData")
+
+	// convert internal ids to handlerId
+	if err := c.convertHandlerId(&reqData, &internal); err != nil {
+		c.logger.Error().Err(err).Msg("convert handlerId failed")
+	}
 
 	// handle
 	rspData, _ := c.handleMessage(&reqData, &internal)
@@ -197,9 +229,10 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	rspData.Method = reqData.Method
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		ret = handler(RequestData{
-			Method:   reqData.Method,
-			Internal: *internal,
-			Data:     reqData.Data,
+			Method:    reqData.Method,
+			HandlerId: reqData.HandlerId,
+			Internal:  *internal,
+			Data:      reqData.Data,
 		})
 	} else {
 		rspData.Error = "OnRequestHandler not register"

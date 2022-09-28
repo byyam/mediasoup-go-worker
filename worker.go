@@ -6,7 +6,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/byyam/mediasoup-go-worker/mserror"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/rtc"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -39,13 +38,20 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 	case mediasoupdata2.MethodWorkerUpdateSettings:
 		// todo
 	default:
-		r, ok := w.routerMap.Load(request.Internal.RouterId)
-		if !ok {
-			response.Err = mserror.ErrRouterNotFound
+		h, err := workerchannel.GetChannelRequestHandler(request.HandlerId)
+		if err != nil {
+			response.Err = err
 			return
 		}
-		router := r.(*rtc.Router)
-		router.HandleRequest(request, &response)
+		h(request, &response)
+
+		//r, ok := w.routerMap.Load(request.Internal.RouterId)
+		//if !ok {
+		//	response.Err = mserror.ErrRouterNotFound
+		//	return
+		//}
+		//router := r.(*rtc.Router)
+		//router.HandleRequest(request, &response)
 	}
 	w.logger.Info().Str("request", request.String()).Msg("handle channel request done")
 	return
