@@ -162,6 +162,9 @@ func (c *Channel) convertHandlerId(reqData *channelData, internal *InternalData)
 		return errors.New("method invalid")
 	}
 	switch methods[0] {
+	case "worker":
+		c.logger.Debug().Msg("worker method not convert")
+		return nil
 	case "router":
 		reqData.HandlerId = internal.RouterId
 	case "transport":
