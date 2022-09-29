@@ -181,7 +181,6 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.notifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
 
-	workerchannel.RegisterHandler(param.Id, transport.HandleRequest)
 	return transport, nil
 }
 

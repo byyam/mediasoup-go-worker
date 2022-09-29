@@ -102,6 +102,7 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 		t.srtpSaltBase64 = base64.StdEncoding.EncodeToString([]byte(t.srtpSalt))
 	}
 
+	workerchannel.RegisterHandler(param.Id, t.HandleRequest)
 	return t, nil
 }
 

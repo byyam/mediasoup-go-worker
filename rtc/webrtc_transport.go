@@ -76,6 +76,8 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 		t.Close()
 		// todo emit
 	}()
+
+	workerchannel.RegisterHandler(param.Id, t.HandleRequest)
 	return t, nil
 }
 
