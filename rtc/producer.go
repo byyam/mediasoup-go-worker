@@ -98,6 +98,8 @@ func newProducer(param producerParam) (*Producer, error) {
 
 	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.RtpParameters))
 	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.rtpMapping))
+
+	workerchannel.RegisterHandler(p.id, p.HandleRequest)
 	return p, nil
 }
 
@@ -302,6 +304,7 @@ func (p *Producer) FillJson() json.RawMessage {
 
 func (p *Producer) Close() {
 	p.logger.Info().Msgf("producer:%s closed", p.id)
+	workerchannel.UnregisterHandler(p.id)
 }
 
 func (p *Producer) RequestKeyFrame(mappedSsrc uint32) {

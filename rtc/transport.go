@@ -65,6 +65,7 @@ type Transport struct {
 func (t *Transport) Close() {
 	t.closeOnce.Do(func() {
 		t.logger.Info().Msg("closed")
+		workerchannel.UnregisterHandler(t.id)
 	})
 }
 
@@ -179,6 +180,8 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
 	transport.notifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
+
+	workerchannel.RegisterHandler(param.Id, transport.HandleRequest)
 	return transport, nil
 }
 
@@ -271,7 +274,8 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.onTransportConsumerClosedHandler(request.Internal.ProducerId, consumer.GetId())
 
 	default:
-		t.logger.Error().Msgf("unknown method:%s", request.Method)
+		t.logger.Error().Str("method", request.Method).Msg("transport handle request method not found")
+		return
 	}
 }
 

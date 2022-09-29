@@ -124,13 +124,16 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case mediasoupdata2.MethodRouterClose:
 		r.Close()
 	default:
-		t, ok := r.mapTransports.Load(request.Internal.TransportId)
-		if !ok {
-			response.Err = mserror.ErrTransportNotFound
-			return
-		}
-		transport := t.(ITransport)
-		transport.HandleRequest(request, response)
+		//t, ok := r.mapTransports.Load(request.Internal.TransportId)
+		//if !ok {
+		//	response.Err = mserror.ErrTransportNotFound
+		//	return
+		//}
+		//transport := t.(ITransport)
+		//transport.HandleRequest(request, response)
+		r.logger.Error().Str("method", request.Method).Msg("router handle request method not found")
+		response.Err = mserror.ErrInvalidMethod
+		return
 	}
 }
 
@@ -145,6 +148,7 @@ func (r *Router) Close() {
 		producer.Close()
 		return true
 	})
+	workerchannel.UnregisterHandler(r.id)
 	r.logger.Warn().Msg("router stop")
 }
 

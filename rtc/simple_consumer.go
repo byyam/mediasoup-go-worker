@@ -9,6 +9,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
@@ -58,6 +59,8 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	}
 	// Create RtpStreamSend instance for sending a single stream to the remote.
 	c.CreateRtpStream()
+
+	workerchannel.RegisterHandler(param.id, c.HandleRequest)
 	return c, nil
 }
 
@@ -108,6 +111,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 
 func (c *SimpleConsumer) Close() {
 	c.logger.Info().Msg("closed")
+	workerchannel.UnregisterHandler(c.GetId())
 }
 
 func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
