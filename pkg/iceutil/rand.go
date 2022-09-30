@@ -1,4 +1,4 @@
-package utils
+package iceutil
 
 import "github.com/pion/randutil"
 

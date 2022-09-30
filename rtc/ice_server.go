@@ -9,6 +9,9 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/iceutil"
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/pion/ice/v2"
@@ -17,8 +20,6 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 )
 
@@ -32,7 +33,7 @@ const (
 
 type iceServer struct {
 	iceLite    bool
-	state      mediasoupdata.IceState
+	state      mediasoupdata2.IceState
 	localUfrag string
 	localPwd   string
 	logger     zerolog.Logger
@@ -64,12 +65,12 @@ type iceServerParam struct {
 }
 
 func newIceServer(param iceServerParam) (*iceServer, error) {
-	ufrag, _ := utils.GenerateUFrag()
-	pwd, _ := utils.GeneratePwd()
+	ufrag, _ := iceutil.GenerateUFrag()
+	pwd, _ := iceutil.GeneratePwd()
 	d := &iceServer{
 		iceLite:          param.iceLite, // todo: support full ICE
-		state:            mediasoupdata.IceState_New,
-		logger:           zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
+		state:            mediasoupdata2.IceState_New,
+		logger:           zerowrapper.NewScope(string(mediasoupdata2.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
 		udpMux:           global.ICEMuxConn,
@@ -170,7 +171,7 @@ func (d *iceServer) handleInboundMsg(buffer []byte, n int, srcAddr net.Addr) err
 		}
 		return nil
 	}
-	if utils.MatchDTLS(buffer) {
+	if muxpkg.MatchDTLS(buffer) {
 		monitor.IceCount(monitor.DirectionTypeRecv, monitor.PacketDtls)
 		if _, err := d.buffer.Write(buffer); err != nil {
 			d.logger.Warn().Err(err).Msg("Failed to write buffer")
@@ -198,9 +199,9 @@ func (d *iceServer) handleInbound(m *stun.Message, remote net.Addr) error {
 	}
 
 	if m.Type.Class == stun.ClassRequest {
-		if err = utils.AssertInboundUsername(m, d.localUfrag+":"+""); err != nil {
+		if err = iceutil.AssertInboundUsername(m, d.localUfrag+":"+""); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
-		} else if err = utils.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
+		} else if err = iceutil.AssertInboundMessageIntegrity(m, []byte(d.localPwd)); err != nil {
 			return fmt.Errorf("discard message from (%s), %v", remote, err)
 		}
 		d.logger.Debug().Str("remote", remote.String()).Str("local", d.udpMux.LocalAddr().String()).Msg("inbound STUN (Request)")
@@ -221,7 +222,7 @@ func (d *iceServer) handleBindingRequest(m *stun.Message, remote net.Addr) error
 }
 
 func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
-	ip, port, _, ok := utils.ParseAddr(d.udpMux.LocalAddr())
+	ip, port, _, ok := iceutil.ParseAddr(d.udpMux.LocalAddr())
 	if !ok {
 		return fmt.Errorf("error parsing addr: %s", d.udpMux.LocalAddr())
 	}
@@ -248,19 +249,19 @@ func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
 	return nil
 }
 
-func (d *iceServer) GetIceParameters() mediasoupdata.IceParameters {
-	return mediasoupdata.IceParameters{
+func (d *iceServer) GetIceParameters() mediasoupdata2.IceParameters {
+	return mediasoupdata2.IceParameters{
 		UsernameFragment: d.localUfrag,
 		Password:         d.localPwd,
 		IceLite:          d.iceLite,
 	}
 }
 
-func (d *iceServer) GetSelectedTuple() mediasoupdata.TransportTuple {
-	return mediasoupdata.TransportTuple{}
+func (d *iceServer) GetSelectedTuple() mediasoupdata2.TransportTuple {
+	return mediasoupdata2.TransportTuple{}
 }
 
-func (d *iceServer) GetState() mediasoupdata.IceState {
+func (d *iceServer) GetState() mediasoupdata2.IceState {
 	return d.state
 }
 
@@ -268,8 +269,8 @@ func (d *iceServer) GetRole() string {
 	return "controlled"
 }
 
-func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandidate) {
-	candidate := mediasoupdata.IceCandidate{
+func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata2.IceCandidate) {
+	candidate := mediasoupdata2.IceCandidate{
 		Foundation: "udpcandidate",
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,

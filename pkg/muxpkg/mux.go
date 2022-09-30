@@ -1,4 +1,4 @@
-package utils
+package muxpkg
 
 // MatchFunc allows custom logic for mapping packets to an Endpoint
 type MatchFunc func([]byte) bool

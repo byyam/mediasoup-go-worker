@@ -8,6 +8,8 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -18,9 +20,7 @@ import (
 
 	"github.com/pion/rtcp"
 
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/mserror"
-	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -28,15 +28,15 @@ type Producer struct {
 	id     string
 	logger zerolog.Logger
 
-	Kind                  mediasoupdata.MediaKind
-	RtpParameters         mediasoupdata.RtpParameters
-	Type                  mediasoupdata.ProducerType
+	Kind                  mediasoupdata2.MediaKind
+	RtpParameters         mediasoupdata2.RtpParameters
+	Type                  mediasoupdata2.ProducerType
 	RtpHeaderExtensionIds RtpHeaderExtensionIds
 	Paused                bool
 
 	rtpStreamByEncodingIdx []*RtpStreamRecv
 	rtpStreamScores        []uint8
-	rtpMapping             mediasoupdata.RtpMapping
+	rtpMapping             mediasoupdata2.RtpMapping
 	mapMappedSsrcSsrc      sync.Map
 	mapSsrcRtpStream       sync.Map
 	mapRtxSsrcRtpStream    sync.Map
@@ -63,7 +63,7 @@ const (
 
 type producerParam struct {
 	id                                    string
-	options                               mediasoupdata.ProducerOptions
+	options                               mediasoupdata2.ProducerOptions
 	OnProducerRtpPacketReceived           func(*Producer, *rtpparser.Packet)
 	OnProducerSendRtcpPacket              func(packet rtcp.Packet)
 	OnProducerNeedWorstRemoteFractionLost func(producerId string, worstRemoteFractionLost *uint8)
@@ -98,6 +98,8 @@ func newProducer(param producerParam) (*Producer, error) {
 
 	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.RtpParameters))
 	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.rtpMapping))
+
+	workerchannel.RegisterHandler(p.id, p.HandleRequest)
 	return p, nil
 }
 
@@ -113,7 +115,7 @@ func (p *Producer) init(param producerParam) error {
 	}
 	p.logger.Info().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
-	if p.Kind == mediasoupdata.MediaKind_Audio {
+	if p.Kind == mediasoupdata2.MediaKind_Audio {
 		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
 	} else {
 		p.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
@@ -125,20 +127,20 @@ func (p *Producer) init(param producerParam) error {
 	return nil
 }
 
-func (p *Producer) initRtpMapping(rtpMapping mediasoupdata.RtpMapping) {
+func (p *Producer) initRtpMapping(rtpMapping mediasoupdata2.RtpMapping) {
 	p.rtpMapping.Encodings = rtpMapping.Encodings
 	p.rtpMapping.Codecs = rtpMapping.Codecs
 
 }
 
 func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
-	if p.Kind == mediasoupdata.MediaKind_Video && packet.IsKeyFrame() {
+	if p.Kind == mediasoupdata2.MediaKind_Video && packet.IsKeyFrame() {
 		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug().Msg("isKeyFrame")
 	}
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == mediasoupdata2.MediaKind_Video {
 		monitor.RtpRecvCount(monitor.TraceVideo)
-	} else if p.Kind == mediasoupdata.MediaKind_Audio {
+	} else if p.Kind == mediasoupdata2.MediaKind_Audio {
 		monitor.RtpRecvCount(monitor.TraceAudio)
 	}
 
@@ -224,38 +226,38 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 	//		}
 	//	}
 	//}
-	if p.Kind == mediasoupdata.MediaKind_Audio {
+	if p.Kind == mediasoupdata2.MediaKind_Audio {
 		// Proxy urn:ietf:params:rtp-hdrext:ssrc-audio-level.
 		payload := packet.GetExtension(p.RtpHeaderExtensionIds.SsrcAudioLevel)
 		if payload != nil {
-			if err := packet.SetExtension(mediasoupdata.SSRC_AUDIO_LEVEL, payload); err != nil {
+			if err := packet.SetExtension(mediasoupdata2.SSRC_AUDIO_LEVEL, payload); err != nil {
 				p.logger.Warn().Msgf("set RTP header extension ssrc audio level failed:%s,mappedSsrc:%d", err, mappedSsrc)
 			}
 		}
-	} else if p.Kind == mediasoupdata.MediaKind_Video {
+	} else if p.Kind == mediasoupdata2.MediaKind_Video {
 		// todo
 	}
 	// Assign mediasoup RTP header extension ids (just those that mediasoup may
 	// be interested in after passing it to the Router).
-	packet.SetMidExtensionId(mediasoupdata.MID)
-	packet.SetAbsSendTimeExtensionId(mediasoupdata.ABS_SEND_TIME)
-	packet.SetTransportWideCc01ExtensionId(mediasoupdata.TRANSPORT_WIDE_CC_01)
+	packet.SetMidExtensionId(mediasoupdata2.MID)
+	packet.SetAbsSendTimeExtensionId(mediasoupdata2.ABS_SEND_TIME)
+	packet.SetTransportWideCc01ExtensionId(mediasoupdata2.TRANSPORT_WIDE_CC_01)
 	// NOTE: Remove this once framemarking draft becomes RFC.
-	packet.SetFrameMarking07ExtensionId(mediasoupdata.FRAME_MARKING_07)
-	packet.SetFrameMarkingExtensionId(mediasoupdata.FRAME_MARKING)
-	packet.SetSsrcAudioLevelExtensionId(mediasoupdata.SSRC_AUDIO_LEVEL)
-	packet.SetVideoOrientationExtensionId(mediasoupdata.VIDEO_ORIENTATION)
+	packet.SetFrameMarking07ExtensionId(mediasoupdata2.FRAME_MARKING_07)
+	packet.SetFrameMarkingExtensionId(mediasoupdata2.FRAME_MARKING)
+	packet.SetSsrcAudioLevelExtensionId(mediasoupdata2.SSRC_AUDIO_LEVEL)
+	packet.SetVideoOrientationExtensionId(mediasoupdata2.VIDEO_ORIENTATION)
 	return true
 }
 
 func (p *Producer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ProducerStat
+	var jsonData []mediasoupdata2.ProducerStat
 	for idx, rtpStream := range p.rtpStreamByEncodingIdx {
 		if rtpStream == nil {
 			p.logger.Warn().Msgf("rtpStream empty, idx=%d", idx)
 			continue
 		}
-		stat := &mediasoupdata.ProducerStat{}
+		stat := &mediasoupdata2.ProducerStat{}
 		rtpStream.FillJsonStats(stat)
 		jsonData = append(jsonData, *stat)
 		p.logger.Info().Msgf("stat:%+v", *stat)
@@ -271,9 +273,9 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 	}()
 
 	switch request.Method {
-	case mediasoupdata.MethodProducerDump:
+	case mediasoupdata2.MethodProducerDump:
 		response.Data = p.FillJson()
-	case mediasoupdata.MethodProducerGetStats:
+	case mediasoupdata2.MethodProducerGetStats:
 		response.Data = p.FillJsonStats()
 
 	default:
@@ -284,13 +286,13 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 }
 
 func (p *Producer) FillJson() json.RawMessage {
-	dumpData := mediasoupdata.ProducerDump{
+	dumpData := mediasoupdata2.ProducerDump{
 		Id:              p.id,
 		Kind:            string(p.Kind),
 		Type:            string(p.Type),
 		RtpParameters:   p.RtpParameters,
 		RtpMapping:      p.rtpMapping,
-		Encodings:       mediasoupdata.RtpMappingEncoding{},
+		Encodings:       mediasoupdata2.RtpMappingEncoding{},
 		RtpStreams:      nil,
 		Paused:          p.Paused,
 		TraceEventTypes: "",
@@ -302,6 +304,7 @@ func (p *Producer) FillJson() json.RawMessage {
 
 func (p *Producer) Close() {
 	p.logger.Info().Msgf("producer:%s closed", p.id)
+	workerchannel.UnregisterHandler(p.id)
 }
 
 func (p *Producer) RequestKeyFrame(mappedSsrc uint32) {
@@ -329,7 +332,7 @@ func (p *Producer) OnRtpStreamSendRtcpPacket(packet rtcp.Packet) {
 	p.onProducerSendRtcpPacketHandler(packet)
 }
 
-func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
+func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediasoupdata2.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
 	ssrc := packet.SSRC
 	if _, ok := p.mapSsrcRtpStream.Load(ssrc); ok {
 		panic("RtpStream with given SSRC already exists")
@@ -480,14 +483,14 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 }
 
 func (p *Producer) PreProcessRtpPacket(packet *rtpparser.Packet) {
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == mediasoupdata2.MediaKind_Video {
 		packet.SetFrameMarking07ExtensionId(p.RtpHeaderExtensionIds.FrameMarking07)
 		packet.SetFrameMarkingExtensionId(p.RtpHeaderExtensionIds.FrameMarking)
 	}
 }
 
 func (p *Producer) PostProcessRtpPacket(packet *rtpparser.Packet) {
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == mediasoupdata2.MediaKind_Video {
 	}
 	// todo
 }

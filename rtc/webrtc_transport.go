@@ -6,6 +6,9 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -15,8 +18,6 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/srtp/v2"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -31,11 +32,11 @@ type WebrtcTransport struct {
 
 	dtlsTransport          *dtlsTransport
 	decryptCtx, encryptCtx *srtp.Context
-	connected              *utils.AtomicBool
+	connected              *atomicbool.AtomicBool
 }
 
 type webrtcTransportParam struct {
-	options mediasoupdata.WebRtcTransportOptions
+	options mediasoupdata2.WebRtcTransportOptions
 	transportParam
 }
 
@@ -43,7 +44,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	var err error
 	t := &WebrtcTransport{
 		id:        param.Id,
-		connected: &utils.AtomicBool{},
+		connected: &atomicbool.AtomicBool{},
 		logger:    zerowrapper.NewScope("webrtc-transport", param.Id),
 	}
 	param.SendRtpPacketFunc = t.SendRtpPacket
@@ -64,7 +65,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
 		transportId: param.Id,
-		role:        mediasoupdata.DtlsRole_Auto,
+		role:        mediasoupdata2.DtlsRole_Auto,
 	}); err != nil {
 		return nil, err
 	}
@@ -75,11 +76,13 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 		t.Close()
 		// todo emit
 	}()
+
+	workerchannel.RegisterHandler(param.Id, t.HandleRequest)
 	return t, nil
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	transportData := mediasoupdata.WebrtcTransportData{
+	transportData := mediasoupdata2.WebrtcTransportData{
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -88,7 +91,7 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
 		DtlsRemoteCert:   "",
-		SctpParameters:   mediasoupdata.SctpParameters{},
+		SctpParameters:   mediasoupdata2.SctpParameters{},
 		SctpState:        "",
 	}
 	data, _ := json.Marshal(&transportData)
@@ -100,21 +103,21 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
 	switch request.Method {
-	case mediasoupdata.MethodTransportConnect:
-		var options mediasoupdata.TransportConnectOptions
+	case mediasoupdata2.MethodTransportConnect:
+		var options mediasoupdata2.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.connect(options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata.MethodTransportRestartIce:
+	case mediasoupdata2.MethodTransportRestartIce:
 
 	default:
 		t.ITransport.HandleRequest(request, response)
 	}
 }
 
-func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
+func (t *WebrtcTransport) connect(options mediasoupdata2.TransportConnectOptions) (*mediasoupdata2.TransportConnectData, error) {
 	if options.DtlsParameters == nil {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -156,8 +159,8 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 		t.logger.Warn().Msg("webrtc not connected, ignore received packet")
 		return
 	}
-	if utils.MatchSRTPOrSRTCP(data) {
-		if !utils.IsRTCP(data) {
+	if muxpkg.MatchSRTPOrSRTCP(data) {
+		if !muxpkg.IsRTCP(data) {
 			monitor.RtpRecvCount(monitor.TraceReceive)
 			t.OnRtpDataReceived(data) // RTP
 		} else {

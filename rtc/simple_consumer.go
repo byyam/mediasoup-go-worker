@@ -6,17 +6,16 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
-
-	"github.com/byyam/mediasoup-go-worker/rtc/ms_rtcp"
+	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 
 	"github.com/pion/rtcp"
 
 	"github.com/byyam/mediasoup-go-worker/monitor"
-
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 )
 
 type SimpleConsumer struct {
@@ -46,20 +45,22 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 		logger:     zerowrapper.NewScope("simple-consumer", param.id),
 	}
 	param.fillJsonStatsFunc = c.FillJsonStats
-	c.IConsumer, err = newConsumer(mediasoupdata.ConsumerType_Simple, param.consumerParam)
+	c.IConsumer, err = newConsumer(mediasoupdata2.ConsumerType_Simple, param.consumerParam)
 	c.onConsumerSendRtpPacketHandler = param.OnConsumerSendRtpPacket
 	c.onConsumerKeyFrameRequestedHandler = param.OnConsumerKeyFrameRequested
 	if err != nil {
 		return nil, err
 	}
 	// Set the RTCP report generation interval.
-	if c.GetKind() == mediasoupdata.MediaKind_Audio {
+	if c.GetKind() == mediasoupdata2.MediaKind_Audio {
 		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
 	} else {
 		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
 	}
 	// Create RtpStreamSend instance for sending a single stream to the remote.
 	c.CreateRtpStream()
+
+	workerchannel.RegisterHandler(param.id, c.HandleRequest)
 	return c, nil
 }
 
@@ -94,9 +95,9 @@ func (c *SimpleConsumer) CreateRtpStream() {
 }
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
-	if c.GetKind() == mediasoupdata.MediaKind_Video {
+	if c.GetKind() == mediasoupdata2.MediaKind_Video {
 		monitor.RtpSendCount(monitor.TraceVideo)
-	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {
+	} else if c.GetKind() == mediasoupdata2.MediaKind_Audio {
 		monitor.RtpSendCount(monitor.TraceAudio)
 	}
 	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
@@ -110,6 +111,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 
 func (c *SimpleConsumer) Close() {
 	c.logger.Info().Msg("closed")
+	workerchannel.UnregisterHandler(c.GetId())
 }
 
 func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32) {
@@ -118,7 +120,7 @@ func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint3
 }
 
 func (c *SimpleConsumer) RequestKeyFrame() {
-	if c.GetKind() != mediasoupdata.MediaKind_Video {
+	if c.GetKind() != mediasoupdata2.MediaKind_Video {
 		return
 	}
 	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
@@ -159,9 +161,9 @@ func (c *SimpleConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp
 }
 
 func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ConsumerStat
+	var jsonData []mediasoupdata2.ConsumerStat
 	if c.rtpStream != nil {
-		var stat mediasoupdata.ConsumerStat
+		var stat mediasoupdata2.ConsumerStat
 		c.rtpStream.FillJsonStats(&stat)
 		jsonData = append(jsonData, stat)
 	}

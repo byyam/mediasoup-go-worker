@@ -20,9 +20,10 @@ func (i *InternalData) Unmarshal(data json.RawMessage) error {
 }
 
 type RequestData struct {
-	Method   string
-	Internal InternalData
-	Data     json.RawMessage
+	Method    string
+	HandlerId string `json:"handlerId,omitempty"`
+	Internal  InternalData
+	Data      json.RawMessage
 }
 
 func (d RequestData) String() string {

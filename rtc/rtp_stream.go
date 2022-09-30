@@ -6,14 +6,13 @@ import (
 
 	"github.com/rs/zerolog"
 
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 )
 
 const (
@@ -27,7 +26,7 @@ type ParamRtpStream struct {
 	EncodingIdx    int
 	Ssrc           uint32
 	PayloadType    uint8
-	MimeType       mediasoupdata.RtpCodecMimeType
+	MimeType       mediasoupdata2.RtpCodecMimeType
 	ClockRate      int
 	Rid            string
 	Cname          string
@@ -106,7 +105,7 @@ func (r *RtpStream) SetRtx(payloadType uint8, ssrc uint32) {
 		RRid:        r.params.Rid,
 		Cname:       r.params.Cname,
 	}
-	params.MimeType.SubType = mediasoupdata.MimeSubTypeRTX
+	params.MimeType.SubType = mediasoupdata2.MimeSubTypeRTX
 	// Tell the RtpCodecMimeType to update its string based on current type and subtype.
 	params.MimeType.UpdateMimeType()
 	var err error
@@ -141,7 +140,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 		r.started = true
 		r.maxSeq = packet.SequenceNumber - 1
 		r.maxPacketTs = packet.Timestamp
-		r.maxPacketMS = utils.GetTimeMs()
+		r.maxPacketMS = rtctime.GetTimeMs()
 	}
 	// If not a valid packet ignore it.
 	if !r.UpdateSeq(packet) {
@@ -151,12 +150,12 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 	// Update highest seen RTP timestamp.
 	if seqmgr.IsSeqHigherThanUint32(packet.Timestamp, r.maxPacketTs) {
 		r.maxPacketTs = packet.Timestamp
-		r.maxPacketMS = utils.GetTimeMs()
+		r.maxPacketMS = rtctime.GetTimeMs()
 	}
 	return true
 }
 
-func (r *RtpStream) FillJsonStats(stat *mediasoupdata.ProducerStat) {
+func (r *RtpStream) FillJsonStats(stat *mediasoupdata2.ProducerStat) {
 	stat.Ssrc = r.GetSsrc()
 	stat.RtxSsrc = r.GetRtxSsrc()
 	stat.Rid = r.params.Rid
@@ -222,7 +221,7 @@ func (r *RtpStream) UpdateSeq(packet *rtpparser.Packet) bool {
 			r.logger.Warn().Msgf("too bad sequence number, re-syncing RTP [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.InitSeq(packet.SequenceNumber)
 			r.maxPacketTs = packet.Timestamp
-			r.maxPacketMS = utils.GetTimeMs()
+			r.maxPacketMS = rtctime.GetTimeMs()
 		} else {
 			r.logger.Warn().Msgf("bad sequence number, ignoring packet [ssrc:%d,seq:%d]", packet.SSRC, packet.SequenceNumber)
 			r.badSeq = (uint32(packet.SequenceNumber) + 1) & (RtpSeqMod - 1)

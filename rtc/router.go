@@ -6,14 +6,13 @@ import (
 
 	"github.com/rs/zerolog"
 
+	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
 
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
-
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
+	"github.com/byyam/mediasoup-go-worker/internal/hashmap"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -21,17 +20,19 @@ type Router struct {
 	id                   string
 	logger               zerolog.Logger
 	mapTransports        sync.Map
-	mapProducerConsumers *utils.Hashmap
+	mapProducerConsumers *hashmap.Hashmap
 	mapProducers         sync.Map
 	mapConsumerProducer  sync.Map
 }
 
 func NewRouter(id string) *Router {
-	return &Router{
+	r := &Router{
 		id:                   id,
 		logger:               zerowrapper.NewScope("router", id),
-		mapProducerConsumers: utils.NewHashMap(),
+		mapProducerConsumers: hashmap.NewHashMap(),
 	}
+	workerchannel.RegisterHandler(id, r.HandleRequest)
+	return r
 }
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -40,8 +41,8 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	}()
 
 	switch request.Method {
-	case mediasoupdata.MethodRouterCreateWebRtcTransport:
-		var options mediasoupdata.WebRtcTransportOptions
+	case mediasoupdata2.MethodRouterCreateWebRtcTransport:
+		var options mediasoupdata2.WebRtcTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
 			options: options,
@@ -64,10 +65,10 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		r.mapTransports.Store(request.Internal.TransportId, webrtcTransport)
 		response.Data = webrtcTransport.FillJson()
 
-	case mediasoupdata.MethodRouterCreatePlainTransport:
+	case mediasoupdata2.MethodRouterCreatePlainTransport:
 
-	case mediasoupdata.MethodRouterCreatePipeTransport:
-		var options mediasoupdata.PipeTransportOptions
+	case mediasoupdata2.MethodRouterCreatePipeTransport:
+		var options mediasoupdata2.PipeTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
 			options: options,
@@ -90,8 +91,8 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
 		response.Data = pipeTransport.FillJson()
 
-	case mediasoupdata.MethodRouterCreateDirectTransport:
-		var options mediasoupdata.DirectTransportOptions
+	case mediasoupdata2.MethodRouterCreateDirectTransport:
+		var options mediasoupdata2.DirectTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		directTransport, err := newDirectTransport(directTransportParam{
 			options: options,
@@ -113,23 +114,26 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		}
 		r.mapTransports.Store(request.Internal.TransportId, directTransport)
 
-	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
+	case mediasoupdata2.MethodRouterCreateActiveSpeakerObserver:
 
-	case mediasoupdata.MethodRouterCreateAudioLevelObserver:
+	case mediasoupdata2.MethodRouterCreateAudioLevelObserver:
 
-	case mediasoupdata.MethodRouterDump:
+	case mediasoupdata2.MethodRouterDump:
 		response.Data = r.FillJson()
 
-	case mediasoupdata.MethodRouterClose:
+	case mediasoupdata2.MethodRouterClose:
 		r.Close()
 	default:
-		t, ok := r.mapTransports.Load(request.Internal.TransportId)
-		if !ok {
-			response.Err = mserror.ErrTransportNotFound
-			return
-		}
-		transport := t.(ITransport)
-		transport.HandleRequest(request, response)
+		//t, ok := r.mapTransports.Load(request.Internal.TransportId)
+		//if !ok {
+		//	response.Err = mserror.ErrTransportNotFound
+		//	return
+		//}
+		//transport := t.(ITransport)
+		//transport.HandleRequest(request, response)
+		r.logger.Error().Str("method", request.Method).Msg("router handle request method not found")
+		response.Err = mserror.ErrInvalidMethod
+		return
 	}
 }
 
@@ -144,6 +148,7 @@ func (r *Router) Close() {
 		producer.Close()
 		return true
 	})
+	workerchannel.UnregisterHandler(r.id)
 	r.logger.Warn().Msg("router stop")
 }
 
@@ -153,7 +158,7 @@ func (r *Router) FillJson() json.RawMessage {
 		transportIds = append(transportIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata.RouterDump{
+	dumpData := mediasoupdata2.RouterDump{
 		Id:                               r.id,
 		TransportIds:                     transportIds,
 		RtpObserverIds:                   nil,

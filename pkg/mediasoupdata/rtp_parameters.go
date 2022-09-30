@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/byyam/mediasoup-go-worker/h264"
+	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
 
 /**

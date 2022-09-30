@@ -1,4 +1,4 @@
-package utils
+package atomicbool
 
 import "sync/atomic"
 

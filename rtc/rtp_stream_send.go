@@ -5,12 +5,12 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
 	"github.com/pion/rtcp"
 
-	"github.com/byyam/mediasoup-go-worker/internal/utils"
-	"github.com/byyam/mediasoup-go-worker/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 )
 
@@ -43,8 +43,8 @@ func newRtpStreamSend(param *ParamRtpStreamSend) *RtpStreamSend {
 }
 
 func (p *RtpStreamSend) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
-	nowMs := utils.GetTimeMs()
-	ntp := utils.TimeMs2Ntp(nowMs)
+	nowMs := rtctime.GetTimeMs()
+	ntp := rtctime.TimeMs2Ntp(nowMs)
 	compactNtp := (ntp.Seconds & 0x0000FFFF) << 16
 	compactNtp |= (ntp.Fractions & 0xFFFF0000) >> 16
 	lastSr := report.LastSenderReport
@@ -70,7 +70,7 @@ func (p *RtpStreamSend) GetRtcpSenderReport(now time.Time) *rtcp.SenderReport {
 	}
 	report := &rtcp.SenderReport{
 		SSRC:        p.GetSsrc(),
-		NTPTime:     uint64(utils.ToNtpTime(now)),
+		NTPTime:     uint64(rtctime.ToNtpTime(now)),
 		RTPTime:     p.GetRtpTimestamp(now),
 		PacketCount: uint32(p.transmissionCounter.GetPacketCount()),
 		OctetCount:  uint32(p.transmissionCounter.GetBytes()),
@@ -149,7 +149,7 @@ func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
 			continue
 		}
 		// Don't resent the packet if it was resent in the last RTT ms.
-		nowMs := utils.GetTimeMs()
+		nowMs := rtctime.GetTimeMs()
 		rtt := p.rtt
 		if rtt == 0 {
 			rtt = DefaultRtt
@@ -171,7 +171,7 @@ func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
 }
 
 func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
-	nowMs := utils.GetTimeMs()
+	nowMs := rtctime.GetTimeMs()
 	stat.Timestamp = nowMs
 	stat.Type = "outbound-rtp"
 	stat.Bitrate = p.transmissionCounter.GetBitrate(nowMs)
