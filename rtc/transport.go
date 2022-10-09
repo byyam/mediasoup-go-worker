@@ -413,7 +413,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 		for _, rr := range pkg.Reports {
 			t.logger.Debug().Msgf("handle RR:%s,report:%+v", pkg.String(), rr)
 			// Special case for the RTP probator.
-			if rr.SSRC == RtpProbationSsrc {
+			if rr.SSRC == rtpprobation.RtpProbationSsrc {
 				continue
 			}
 			consumer, ok := t.mapSsrcConsumer.Load(rr.SSRC)
