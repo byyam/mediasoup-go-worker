@@ -62,10 +62,10 @@ type ConsumerOptions struct {
 	AppData interface{} `json:"appData,omitempty"`
 
 	// input
-	Kind                   MediaKind               `json:"kind,omitempty"`
-	Type                   ConsumerType            `json:"type,omitempty"`
-	RtpParameters          RtpParameters           `json:"rtpParameters,omitempty"`
-	ConsumableRtpEncodings []RtpEncodingParameters `json:"consumableRtpEncodings,omitempty"`
+	Kind                   MediaKind                `json:"kind,omitempty"`
+	Type                   ConsumerType             `json:"type,omitempty"`
+	RtpParameters          RtpParameters            `json:"rtpParameters,omitempty"`
+	ConsumableRtpEncodings []*RtpEncodingParameters `json:"consumableRtpEncodings,omitempty"`
 }
 
 type ConsumerLayers struct {

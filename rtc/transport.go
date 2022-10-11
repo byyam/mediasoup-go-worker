@@ -7,20 +7,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/mserror"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
-
-	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-
-	"github.com/byyam/mediasoup-go-worker/monitor"
-
-	"github.com/pion/rtcp"
-
-	"github.com/byyam/mediasoup-go-worker/mserror"
-
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -75,7 +70,7 @@ func (t *Transport) FillJson() json.RawMessage {
 		producerIds = append(producerIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata2.TransportDump{
+	dumpData := mediasoupdata.TransportDump{
 		Id:                      t.id,
 		Direct:                  false,
 		ProducerIds:             producerIds,
@@ -86,7 +81,7 @@ func (t *Transport) FillJson() json.RawMessage {
 		DataConsumerIds:         nil,
 		RecvRtpHeaderExtensions: nil,
 		RtpListener:             nil,
-		SctpParameters:          mediasoupdata2.SctpParameters{},
+		SctpParameters:          mediasoupdata.SctpParameters{},
 		SctpState:               "",
 		SctpListener:            nil,
 		TraceEventTypes:         "",
@@ -99,7 +94,7 @@ func (t *Transport) FillJson() json.RawMessage {
 }
 
 func (t *Transport) FillJsonStats() json.RawMessage {
-	jsonData := mediasoupdata2.TransportStat{
+	jsonData := mediasoupdata.TransportStat{
 		Type:                        "",
 		TransportId:                 "",
 		Timestamp:                   0,
@@ -125,7 +120,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 		RtpPacketLossSent:           0,
 		WebRtcTransportSpecificStat: nil,
 	}
-	data, _ := json.Marshal(&([]mediasoupdata2.TransportStat{jsonData}))
+	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
 	t.logger.Debug().Msgf("getStats:%+v", jsonData)
 	return data
 }
@@ -191,42 +186,42 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 
 	switch request.Method {
 
-	case mediasoupdata2.MethodTransportDump:
+	case mediasoupdata.MethodTransportDump:
 		response.Data = t.FillJson()
 
-	case mediasoupdata2.MethodTransportClose:
+	case mediasoupdata.MethodTransportClose:
 		t.notifyCloseFunc() // call son close, tiger this close
 
-	case mediasoupdata2.MethodTransportProduce:
-		var options mediasoupdata2.ProducerOptions
+	case mediasoupdata.MethodTransportProduce:
+		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Produce(request.Internal.ProducerId, options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata2.MethodTransportConsume:
-		var options mediasoupdata2.ConsumerOptions
+	case mediasoupdata.MethodTransportConsume:
+		var options mediasoupdata.ConsumerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Consume(request.Internal.ProducerId, request.Internal.ConsumerId, options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata2.MethodTransportProduceData:
+	case mediasoupdata.MethodTransportProduceData:
 
-	case mediasoupdata2.MethodTransportConsumeData:
+	case mediasoupdata.MethodTransportConsumeData:
 
-	case mediasoupdata2.MethodTransportSetMaxIncomingBitrate:
+	case mediasoupdata.MethodTransportSetMaxIncomingBitrate:
 
-	case mediasoupdata2.MethodTransportSetMaxOutgoingBitrate:
+	case mediasoupdata.MethodTransportSetMaxOutgoingBitrate:
 
-	case mediasoupdata2.MethodTransportEnableTraceEvent:
+	case mediasoupdata.MethodTransportEnableTraceEvent:
 
-	case mediasoupdata2.MethodTransportGetStats:
+	case mediasoupdata.MethodTransportGetStats:
 		response.Data = t.FillJsonStats()
 
 	// producer
-	case mediasoupdata2.MethodProducerDump, mediasoupdata2.MethodProducerGetStats, mediasoupdata2.MethodProducerPause,
-		mediasoupdata2.MethodProducerResume, mediasoupdata2.MethodProducerEnableTraceEvent:
+	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
+		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
 			response.Err = mserror.ErrProducerNotFound
@@ -235,7 +230,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		producer := value.(*Producer)
 		producer.HandleRequest(request, response)
 
-	case mediasoupdata2.MethodProducerClose:
+	case mediasoupdata.MethodProducerClose:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
 			response.Err = mserror.ErrProducerNotFound
@@ -247,9 +242,9 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.onTransportProducerClosedHandler(producer.id)
 
 	// consumer
-	case mediasoupdata2.MethodConsumerDump, mediasoupdata2.MethodConsumerGetStats, mediasoupdata2.MethodConsumerPause,
-		mediasoupdata2.MethodConsumerResume, mediasoupdata2.MethodConsumerSetPreferredLayers, mediasoupdata2.MethodConsumerSetPriority,
-		mediasoupdata2.MethodConsumerRequestKeyFrame, mediasoupdata2.MethodConsumerEnableTraceEvent:
+	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodConsumerGetStats, mediasoupdata.MethodConsumerPause,
+		mediasoupdata.MethodConsumerResume, mediasoupdata.MethodConsumerSetPreferredLayers, mediasoupdata.MethodConsumerSetPriority,
+		mediasoupdata.MethodConsumerRequestKeyFrame, mediasoupdata.MethodConsumerEnableTraceEvent:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
 		if !ok {
 			response.Err = mserror.ErrConsumerNotFound
@@ -258,7 +253,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		consumer := value.(IConsumer)
 		consumer.HandleRequest(request, response)
 
-	case mediasoupdata2.MethodConsumerClose:
+	case mediasoupdata.MethodConsumerClose:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
 		if !ok {
 			response.Err = mserror.ErrConsumerNotFound
@@ -278,7 +273,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	}
 }
 
-func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata2.ConsumerOptions) (*mediasoupdata2.ConsumerData, error) {
+func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
 	if producerId == "" || consumerId == "" {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -286,7 +281,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	var consumer IConsumer
 	var err error
 	switch options.Type {
-	case mediasoupdata2.ConsumerType_Simple:
+	case mediasoupdata.ConsumerType_Simple:
 		consumer, err = newSimpleConsumer(simpleConsumerParam{
 			consumerParam: consumerParam{
 				id:                     consumerId,
@@ -300,9 +295,10 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
 		})
 
-	case mediasoupdata2.ConsumerType_Simulcast: // todo...
-	case mediasoupdata2.ConsumerType_Svc:
+	case mediasoupdata.ConsumerType_Simulcast: // todo...
+	case mediasoupdata.ConsumerType_Svc:
 	default:
+		t.logger.Error().Str("type", string(options.Type)).Msg("unsupported consumer type")
 		return nil, mserror.ErrInvalidParam
 	}
 
@@ -319,14 +315,14 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 		t.mapSsrcConsumer.Store(ssrc, consumer)
 	}
 	t.logger.Debug().Msgf("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v", producerId, consumerId, options.Type, options.Kind, consumer.GetMediaSsrcs())
-	return &mediasoupdata2.ConsumerData{
+	return &mediasoupdata.ConsumerData{
 		Paused:         false,
 		ProducerPaused: false,
-		Score:          mediasoupdata2.ConsumerScore{},
+		Score:          mediasoupdata.ConsumerScore{},
 	}, nil
 }
 
-func (t *Transport) Produce(id string, options mediasoupdata2.ProducerOptions) (*mediasoupdata2.ProducerData, error) {
+func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -355,7 +351,7 @@ func (t *Transport) Produce(id string, options mediasoupdata2.ProducerOptions) (
 	t.logger.Debug().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// todo
 
-	return &mediasoupdata2.ProducerData{Type: producer.Type}, nil
+	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
 }
 
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {

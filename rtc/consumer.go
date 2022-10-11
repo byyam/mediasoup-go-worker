@@ -5,15 +5,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rs/zerolog"
-
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
-	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
-
 	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
+	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
@@ -22,13 +20,13 @@ type IConsumer interface {
 	Close()
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
-	GetType() mediasoupdata2.ConsumerType
-	GetRtpParameters() mediasoupdata2.RtpParameters
+	GetType() mediasoupdata.ConsumerType
+	GetRtpParameters() mediasoupdata.RtpParameters
 	SendRtpPacket(packet *rtpparser.Packet)
 	ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32)
 	GetMediaSsrcs() []uint32
-	GetKind() mediasoupdata2.MediaKind
-	GetConsumableRtpEncodings() []mediasoupdata2.RtpEncodingParameters
+	GetKind() mediasoupdata.MediaKind
+	GetConsumableRtpEncodings() []*mediasoupdata.RtpEncodingParameters
 	ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
 	ReceiveNack(nackPacket *rtcp.TransportLayerNack)
 	GetRtpStreams() []*RtpStreamSend
@@ -39,15 +37,15 @@ type IConsumer interface {
 type Consumer struct {
 	Id                         string
 	ProducerId                 string
-	Kind                       mediasoupdata2.MediaKind
+	Kind                       mediasoupdata.MediaKind
 	RtpHeaderExtensionIds      RtpHeaderExtensionIds
 	mediaSsrcs                 []uint32
 	rtxSsrcs                   []uint32
 	supportedCodecPayloadTypes []uint8
 
-	consumerType           mediasoupdata2.ConsumerType
-	rtpParameters          mediasoupdata2.RtpParameters
-	consumableRtpEncodings []mediasoupdata2.RtpEncodingParameters
+	consumerType           mediasoupdata.ConsumerType
+	rtpParameters          mediasoupdata.RtpParameters
+	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
 	fillJsonStatsFunc      func() json.RawMessage
 
 	logger zerolog.Logger
@@ -61,7 +59,7 @@ func (c *Consumer) GetRtpStreams() []*RtpStreamSend {
 	panic("implement me")
 }
 
-func (c *Consumer) GetKind() mediasoupdata2.MediaKind {
+func (c *Consumer) GetKind() mediasoupdata.MediaKind {
 	return c.Kind
 }
 
@@ -69,15 +67,15 @@ func (c *Consumer) SendRtpPacket(packet *rtpparser.Packet) {
 	panic("implement me")
 }
 
-func (c *Consumer) GetType() mediasoupdata2.ConsumerType {
+func (c *Consumer) GetType() mediasoupdata.ConsumerType {
 	return c.consumerType
 }
 
-func (c *Consumer) GetRtpParameters() mediasoupdata2.RtpParameters {
+func (c *Consumer) GetRtpParameters() mediasoupdata.RtpParameters {
 	return c.rtpParameters
 }
 
-func (c *Consumer) GetConsumableRtpEncodings() []mediasoupdata2.RtpEncodingParameters {
+func (c *Consumer) GetConsumableRtpEncodings() []*mediasoupdata.RtpEncodingParameters {
 	return c.consumableRtpEncodings
 }
 
@@ -90,7 +88,7 @@ func (c *Consumer) Close() {
 }
 
 func (c *Consumer) FillJson() json.RawMessage {
-	jsonData := mediasoupdata2.ConsumerDump{
+	jsonData := mediasoupdata.ConsumerDump{
 		Id:                         c.Id,
 		ProducerId:                 c.ProducerId,
 		Kind:                       string(c.Kind),
@@ -118,9 +116,9 @@ func (c *Consumer) FillJsonStats() json.RawMessage {
 type consumerParam struct {
 	id                     string
 	producerId             string
-	kind                   mediasoupdata2.MediaKind
-	rtpParameters          mediasoupdata2.RtpParameters
-	consumableRtpEncodings []mediasoupdata2.RtpEncodingParameters
+	kind                   mediasoupdata.MediaKind
+	rtpParameters          mediasoupdata.RtpParameters
+	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
 	fillJsonStatsFunc      func() json.RawMessage
 }
 
@@ -137,7 +135,7 @@ func (c consumerParam) valid() error {
 	return nil
 }
 
-func newConsumer(typ mediasoupdata2.ConsumerType, param consumerParam) (IConsumer, error) {
+func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer, error) {
 	if err := param.valid(); err != nil {
 		return nil, err
 	}
@@ -203,10 +201,10 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 
 	switch request.Method {
 
-	case mediasoupdata2.MethodConsumerDump:
+	case mediasoupdata.MethodConsumerDump:
 		response.Data = c.FillJson()
 
-	case mediasoupdata2.MethodConsumerGetStats:
+	case mediasoupdata.MethodConsumerGetStats:
 		response.Data = c.FillJsonStats()
 	}
 }
