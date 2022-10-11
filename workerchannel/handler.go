@@ -29,6 +29,7 @@ func InitChannelHandlers() {
 			handlers: make(map[string]Handler),
 			logger:   zerowrapper.NewScope("cHandlers"),
 		}
+		channelHandlers.logger.Info().Msg("init channel handlers")
 	})
 }
 
