@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -12,7 +13,6 @@ import (
 	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
 
-	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -124,22 +124,22 @@ type consumerParam struct {
 	fillJsonStatsFunc      func() json.RawMessage
 }
 
-func (c consumerParam) valid() bool {
+func (c consumerParam) valid() error {
 	if len(c.consumableRtpEncodings) == 0 {
-		return false
+		return errors.New("consumableRtpEncodings empty")
 	}
 	if !c.rtpParameters.Valid() {
-		return false
+		return errors.New("rtpParameters invalid")
 	}
 	if c.fillJsonStatsFunc == nil {
-		return false
+		return errors.New("fillJsonStatsFunc nil")
 	}
-	return true
+	return nil
 }
 
 func newConsumer(typ mediasoupdata2.ConsumerType, param consumerParam) (IConsumer, error) {
-	if !param.valid() {
-		return nil, mserror.ErrInvalidParam
+	if err := param.valid(); err != nil {
+		return nil, err
 	}
 
 	c := &Consumer{
