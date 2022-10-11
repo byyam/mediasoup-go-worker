@@ -4,12 +4,11 @@ import (
 	"os"
 
 	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
 
 type MediasoupWorker struct {
-	workerBase
+	*workerBase
 	channel        *workerchannel.Channel
 	payloadChannel *workerchannel.PayloadChannel
 }
@@ -17,10 +16,7 @@ type MediasoupWorker struct {
 func NewMediasoupWorker(channel *workerchannel.Channel, payloadChannel *workerchannel.PayloadChannel) *MediasoupWorker {
 	pid := os.Getpid()
 	w := &MediasoupWorker{
-		workerBase: workerBase{
-			pid:    pid,
-			logger: zerowrapper.NewScope("worker", pid),
-		},
+		workerBase:     NewWorkerBase(pid),
 		channel:        channel,
 		payloadChannel: payloadChannel,
 	}
