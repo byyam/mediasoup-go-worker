@@ -19,9 +19,9 @@ var (
 
 func InitCli() {
 	initOnce.Do(func() {
+		setDefaultValue()
 		logger.Info().Msgf("config init, settings:%+v", Settings)
 		checkPort()
-		setDefaultValue()
 	})
 }
 
