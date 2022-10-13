@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	ReceiveMTU = 1200
-	Network    = "udp4"
+	Network = "udp4"
 )
 
 var (

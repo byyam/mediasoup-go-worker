@@ -138,7 +138,7 @@ func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 		return err
 	}
 	d.logger.Debug().Str("localUfrag", d.localUfrag).Msg("get pkg connection from udp mux")
-	buf := make([]byte, global.ReceiveMTU)
+	buf := make([]byte, conf.Settings.ReceiveMTU)
 	for {
 		n, srcAddr, err := d.udpConn.ReadFrom(buf)
 		if err != nil {

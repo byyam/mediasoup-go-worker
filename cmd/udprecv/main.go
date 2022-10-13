@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/byyam/mediasoup-go-worker/internal/global"
-	"github.com/pion/rtp"
 	"log"
 	"net"
+
+	"github.com/pion/rtp"
 )
 
 const (
@@ -28,7 +28,7 @@ func main() {
 		_ = udpSocket.Close()
 	}()
 
-	buf := make([]byte, global.ReceiveMTU)
+	buf := make([]byte, 1200)
 	rtpPacket := &rtp.Packet{}
 	for {
 		n, addr, err := udpSocket.ReadFromUDPAddrPort(buf)

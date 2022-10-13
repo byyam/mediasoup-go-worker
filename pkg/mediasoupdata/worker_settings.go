@@ -44,6 +44,8 @@ type WorkerSettings struct {
 	PrometheusPort int    `json:"prometheusPort,omitempty"`
 
 	PipePort int `json:"pipePort,omitempty"`
+
+	ReceiveMTU uint32 `json:"receiveMTU,omitempty"`
 	/**
 	 * Custom application data.
 	 */
