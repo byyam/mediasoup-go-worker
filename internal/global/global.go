@@ -24,6 +24,7 @@ var (
 var (
 	ICEMuxConn *ice.UDPMuxDefault
 	ICEMuxPort uint16
+	ICEMuxAddr *net.UDPAddr
 
 	UdpMuxConn *udpmux.UdpMux
 )
@@ -75,11 +76,11 @@ func initICEMuxPort() {
 }
 
 func bindingICEMux(addr string) (err error) {
-	udpAddr, err := net.ResolveUDPAddr(Network, addr)
+	ICEMuxAddr, err = net.ResolveUDPAddr(Network, addr)
 	if err != nil {
 		return
 	}
-	udpConn, err := net.ListenUDP(Network, udpAddr)
+	udpConn, err := net.ListenUDP(Network, ICEMuxAddr)
 	if err != nil {
 		return
 	}

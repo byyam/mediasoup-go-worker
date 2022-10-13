@@ -8,7 +8,7 @@ require (
 	github.com/imdario/mergo v0.3.12
 	github.com/kr/pretty v0.3.0
 	github.com/pion/dtls/v2 v2.1.5
-	github.com/pion/ice/v2 v2.2.7
+	github.com/pion/ice/v2 v2.2.11
 	github.com/pion/logging v0.2.2
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtcp v1.2.9
@@ -50,8 +50,8 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220516162934-403b01795ae8 // indirect
-	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect
-	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 // indirect
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

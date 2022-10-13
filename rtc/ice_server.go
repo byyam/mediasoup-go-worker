@@ -133,7 +133,7 @@ func (d *iceServer) connectivityChecks() {
 
 func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 	var err error
-	d.udpConn, err = d.udpMux.GetConn(d.localUfrag, false)
+	d.udpConn, err = d.udpMux.GetConn(d.localUfrag, global.ICEMuxAddr)
 	if err != nil {
 		return err
 	}
