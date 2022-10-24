@@ -51,9 +51,7 @@ func newRtpStreamRecv(param *ParamRtpStreamRecv) *RtpStreamRecv {
 		windowSize = 6000
 	}
 	r.logger = zaplog.NewLogger()
-	r.nackGenerator = nack.NewNACKQueue(&nack.ParamNackQueue{
-		Logger: nil, // todo
-	})
+	r.nackGenerator = nack.NewNACKQueue()
 	r.transmissionCounter = newTransmissionCounter(param.SpatialLayers, param.TemporalLayers, windowSize)
 	r.mediaTransmissionCounter = NewRtpDataCounter(0)
 	r.logger.Info("new RtpStreamRecv", zap.Any("ParamRtpStream", *param.ParamRtpStream))

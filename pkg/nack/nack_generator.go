@@ -32,16 +32,12 @@ type ParamNackQueue struct {
 	Logger *zap.Logger
 }
 
-func NewNACKQueue(param *ParamNackQueue) *NackQueue {
+func NewNACKQueue() *NackQueue {
 	n := &NackQueue{
 		nacks:  make([]*nack, 0, cacheSize),
 		rtt:    initialDelay,
-		logger: param.Logger,
+		logger: zaplog.NewLogger(),
 	}
-	if n.logger == nil {
-		n.logger = zaplog.NewLogger()
-	}
-
 	return n
 }
 

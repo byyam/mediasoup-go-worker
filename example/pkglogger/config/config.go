@@ -23,6 +23,7 @@ func InitConfig() {
 			&cli.StringFlag{Name: "rtcListenIp", Value: "0.0.0.0", Aliases: []string{"L"}},
 			&cli.StringFlag{Name: "prometheusPath", Value: "/metrics", Aliases: []string{"pm"}},
 			&cli.IntFlag{Name: "prometheusPort", Value: -1, Aliases: []string{"pp"}},
+			&cli.UintFlag{Name: "receiveMTU", Value: 0},
 		},
 	}
 
@@ -41,6 +42,7 @@ func InitConfig() {
 		conf.Settings.PrometheusPath = c.String("prometheusPath")
 		conf.Settings.PrometheusPort = c.Int("prometheusPort")
 		conf.Settings.PipePort = c.Int("pipePort")
+		conf.Settings.ReceiveMTU = uint32(c.Uint("receiveMTU"))
 		return nil
 	}
 	err := app.Run(os.Args)

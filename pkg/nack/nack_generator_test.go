@@ -70,7 +70,7 @@ func Test_nackQueue_pairs(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue(&ParamNackQueue{})
+			n := NewNACKQueue()
 			for _, sn := range tt.args {
 				n.Push(sn)
 			}
@@ -102,7 +102,7 @@ func Test_nackQueue_push(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue(&ParamNackQueue{})
+			n := NewNACKQueue()
 			for _, sn := range tt.args.sn {
 				n.Push(sn)
 			}
@@ -135,7 +135,7 @@ func Test_nackQueue_remove(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue(&ParamNackQueue{})
+			n := NewNACKQueue()
 			for _, sn := range tt.args.sn {
 				n.Push(sn)
 			}
@@ -169,7 +169,7 @@ func Test_nackQueue_clearOldAge(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNACKQueue(&ParamNackQueue{})
+			n := NewNACKQueue()
 			for _, sn := range tt.args.sn {
 				n.Push(sn)
 			}

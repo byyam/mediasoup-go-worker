@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
@@ -265,7 +266,7 @@ func (t *PipeTransport) connect(options mediasoupdata2.TransportConnectOptions) 
 }
 
 func (t *PipeTransport) udpSocketPacketReceived() {
-	buf := make([]byte, global.ReceiveMTU)
+	buf := make([]byte, conf.Settings.ReceiveMTU)
 	for {
 		n, addr, err := t.udpSocket.ReadFromUDPAddrPort(buf)
 		if err != nil {

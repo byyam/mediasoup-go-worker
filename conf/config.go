@@ -7,6 +7,10 @@ import (
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
+const (
+	defaultMtu = 1200
+)
+
 var (
 	Settings mediasoupdata.WorkerSettings
 	initOnce sync.Once
@@ -15,6 +19,7 @@ var (
 
 func InitCli() {
 	initOnce.Do(func() {
+		setDefaultValue()
 		logger.Info().Msgf("config init, settings:%+v", Settings)
 		checkPort()
 	})
@@ -26,5 +31,12 @@ func checkPort() {
 	}
 	if Settings.RtcMaxPort < Settings.RtcMinPort {
 		panic("port range invalid")
+	}
+}
+
+func setDefaultValue() {
+	if Settings.ReceiveMTU == 0 {
+		Settings.ReceiveMTU = defaultMtu
+		logger.Info().Int("mtu", defaultMtu).Msg("set default MTU")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/rtc"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -17,6 +18,18 @@ type workerBase struct {
 	routerMap sync.Map
 }
 
+func NewWorkerBase(pid int) *workerBase {
+	w := &workerBase{
+		pid:       pid,
+		logger:    zerowrapper.NewScope("worker", pid),
+		routerMap: sync.Map{},
+	}
+	// init channel handlers
+	workerchannel.InitChannelHandlers()
+
+	return w
+}
+
 func (w *workerBase) GetPid() int {
 	return w.pid
 }
@@ -24,6 +37,13 @@ func (w *workerBase) GetPid() int {
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
 	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
+
+	// support new message format: handlerId
+	if err := workerchannel.ConvertRequestData(&request); err != nil {
+		w.logger.Error().Err(err).Msg("convert request data failed")
+		response.Err = err
+		return
+	}
 
 	switch request.Method {
 	case mediasoupdata2.MethodWorkerCreateRouter:

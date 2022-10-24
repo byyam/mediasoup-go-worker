@@ -53,8 +53,5 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("cfd=%d,pfd=%d", workerchannel.ConsumerChannelFd, workerchannel.ProducerChannelFd), jsonFormat)
 	payloadChannel := workerchannel.NewPayloadChannel()
 
-	// init channel handlers
-	workerchannel.InitChannelHandlers()
-
 	return channel, payloadChannel, nil
 }
