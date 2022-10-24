@@ -418,7 +418,7 @@ func (r RtpCodecParameters) isRtxCodec() bool {
  */
 type RtpCodecSpecificParameters struct {
 	h264.RtpParameter          // used by h264 codec
-	ProfileId           string `json:"profile-id,omitempty"`   // used by vp9
+	ProfileId           uint8  `json:"profile-id,omitempty"`   // used by vp9  https://www.webmproject.org/vp9/profiles/
 	Apt                 byte   `json:"apt,omitempty"`          // used by rtx codec
 	SpropStereo         uint8  `json:"sprop-stereo,omitempty"` // used by audio, 1 or 0
 	Useinbandfec        uint8  `json:"useinbandfec,omitempty"` // used by audio, 1 or 0
