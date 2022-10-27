@@ -164,6 +164,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 			return err
 		}
 	} else {
+		d.config.InsecureSkipVerify = true
 		if d.dtlsConn, err = dtls.Server(iceConn, d.config); err != nil {
 			return err
 		}
