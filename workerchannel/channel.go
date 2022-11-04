@@ -115,6 +115,10 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		internal.RouterId = handlerId
 	case mediasoupdata.MethodPrefixTransport:
 		internal.TransportId = handlerId
+	case mediasoupdata.MethodPrefixProducer:
+		internal.ProducerId = handlerId
+	case mediasoupdata.MethodPrefixConsumer:
+		internal.ConsumerId = handlerId
 	default:
 		return errors.New("unknown method prefix")
 	}
@@ -123,6 +127,13 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	case mediasoupdata.MethodPrefixRouter:
 		value := gjson.Get(data, "transportId")
 		internal.TransportId = value.String()
+	case mediasoupdata.MethodPrefixTransport: // include producer and consumer
+		value := gjson.Get(data, "producerId")
+		internal.ProducerId = value.String()
+	}
+	if method == mediasoupdata.MethodTransportConsume {
+		value := gjson.Get(data, "consumerId")
+		internal.ConsumerId = value.String()
 	}
 	return nil
 }

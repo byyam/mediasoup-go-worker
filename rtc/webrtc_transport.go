@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
@@ -36,7 +36,7 @@ type WebrtcTransport struct {
 }
 
 type webrtcTransportParam struct {
-	options mediasoupdata2.WebRtcTransportOptions
+	options mediasoupdata.WebRtcTransportOptions
 	transportParam
 }
 
@@ -65,7 +65,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
 		transportId: param.Id,
-		role:        mediasoupdata2.DtlsRole_Auto,
+		role:        mediasoupdata.DtlsRole_Auto,
 	}); err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	transportData := mediasoupdata2.WebrtcTransportData{
+	transportData := mediasoupdata.WebrtcTransportData{
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -91,7 +91,7 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
 		DtlsRemoteCert:   "",
-		SctpParameters:   mediasoupdata2.SctpParameters{},
+		SctpParameters:   mediasoupdata.SctpParameters{},
 		SctpState:        "",
 	}
 	data, _ := json.Marshal(&transportData)
@@ -103,21 +103,21 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
 	switch request.Method {
-	case mediasoupdata2.MethodTransportConnect:
-		var options mediasoupdata2.TransportConnectOptions
+	case mediasoupdata.MethodTransportConnect:
+		var options mediasoupdata.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.connect(options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata2.MethodTransportRestartIce:
+	case mediasoupdata.MethodTransportRestartIce:
 
 	default:
 		t.ITransport.HandleRequest(request, response)
 	}
 }
 
-func (t *WebrtcTransport) connect(options mediasoupdata2.TransportConnectOptions) (*mediasoupdata2.TransportConnectData, error) {
+func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
 	if options.DtlsParameters == nil {
 		return nil, mserror.ErrInvalidParam
 	}
