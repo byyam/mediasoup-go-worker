@@ -104,18 +104,23 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		}
 		return nil
 	}
+	// get prefix of method
+	methodFields := strings.SplitN(method, ".", 2)
+	if len(methodFields) != 2 {
+		return errors.New("method is not formatted")
+	}
 	// set handlerId
-	switch method {
-	case mediasoupdata.MethodWorkerCreateRouter, mediasoupdata.MethodRouterCreateAudioLevelObserver, mediasoupdata.MethodRouterCreateDirectTransport:
+	switch methodFields[0] {
+	case mediasoupdata.MethodPrefixWorker, mediasoupdata.MethodPrefixRouter:
 		internal.RouterId = handlerId
-	case mediasoupdata.MethodTransportProduceData:
+	case mediasoupdata.MethodPrefixTransport:
 		internal.TransportId = handlerId
 	default:
-		return errors.New("unknown method")
+		return errors.New("unknown method prefix")
 	}
 	// set objectId
-	switch method {
-	case mediasoupdata.MethodRouterCreateDirectTransport:
+	switch methodFields[0] {
+	case mediasoupdata.MethodPrefixRouter:
 		value := gjson.Get(data, "transportId")
 		internal.TransportId = value.String()
 	}
@@ -135,6 +140,7 @@ func (c *Channel) processMessage(messages []string) error {
 	var internal InternalData
 
 	if err := c.setHandlerId(method, handlerId, data, &internal); err != nil {
+		c.logger.Error().Err(err).Msg("set handler Id failed")
 		return err
 	}
 
@@ -152,6 +158,7 @@ func (c *Channel) processMessage(messages []string) error {
 	// encode
 	if err := c.returnMessage(rspData); err != nil {
 		c.logger.Error().Err(err).Msg("return message failed")
+		return err
 	}
 	return nil
 }

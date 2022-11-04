@@ -62,3 +62,9 @@ const (
 	MethodRtpObserverRemoveProducer = "rtpObserver.removeProducer"
 	MethodRtpObserverClose          = "rtpObserver.close"
 )
+
+const (
+	MethodPrefixWorker    = "worker"
+	MethodPrefixRouter    = "router"
+	MethodPrefixTransport = "transport"
+)

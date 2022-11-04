@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -41,8 +41,8 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	}()
 
 	switch request.Method {
-	case mediasoupdata2.MethodRouterCreateWebRtcTransport:
-		var options mediasoupdata2.WebRtcTransportOptions
+	case mediasoupdata.MethodRouterCreateWebRtcTransport:
+		var options mediasoupdata.WebRtcTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
 			options: options,
@@ -65,10 +65,10 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		r.mapTransports.Store(request.Internal.TransportId, webrtcTransport)
 		response.Data = webrtcTransport.FillJson()
 
-	case mediasoupdata2.MethodRouterCreatePlainTransport:
+	case mediasoupdata.MethodRouterCreatePlainTransport:
 
-	case mediasoupdata2.MethodRouterCreatePipeTransport:
-		var options mediasoupdata2.PipeTransportOptions
+	case mediasoupdata.MethodRouterCreatePipeTransport:
+		var options mediasoupdata.PipeTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
 			options: options,
@@ -91,8 +91,8 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
 		response.Data = pipeTransport.FillJson()
 
-	case mediasoupdata2.MethodRouterCreateDirectTransport:
-		var options mediasoupdata2.DirectTransportOptions
+	case mediasoupdata.MethodRouterCreateDirectTransport:
+		var options mediasoupdata.DirectTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		directTransport, err := newDirectTransport(directTransportParam{
 			options: options,
@@ -113,15 +113,16 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			return
 		}
 		r.mapTransports.Store(request.Internal.TransportId, directTransport)
+		response.Data = directTransport.FillJson()
 
-	case mediasoupdata2.MethodRouterCreateActiveSpeakerObserver:
+	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
 
-	case mediasoupdata2.MethodRouterCreateAudioLevelObserver:
+	case mediasoupdata.MethodRouterCreateAudioLevelObserver:
 
-	case mediasoupdata2.MethodRouterDump:
+	case mediasoupdata.MethodRouterDump:
 		response.Data = r.FillJson()
 
-	case mediasoupdata2.MethodRouterClose:
+	case mediasoupdata.MethodRouterClose:
 		r.Close()
 	default:
 		//t, ok := r.mapTransports.Load(request.Internal.TransportId)
@@ -158,7 +159,7 @@ func (r *Router) FillJson() json.RawMessage {
 		transportIds = append(transportIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata2.RouterDump{
+	dumpData := mediasoupdata.RouterDump{
 		Id:                               r.id,
 		TransportIds:                     transportIds,
 		RtpObserverIds:                   nil,
