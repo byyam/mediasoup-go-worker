@@ -3,6 +3,7 @@
 
 ### WIP
 
+* rtp observer.
 * support REMB.
 * support gcc.
 * add SCTP protocol.

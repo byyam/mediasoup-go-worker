@@ -40,6 +40,7 @@ func (o ProducerOptions) Valid() bool {
 		return false
 	}
 	if !o.RtpMapping.Valid() || !o.RtpParameters.Valid() {
+		logger.Error().Msg("RtpMapping or RtpParameters invalid")
 		return false
 	}
 	if len(o.RtpMapping.Encodings) != len(o.RtpParameters.Encodings) {

@@ -337,6 +337,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		OnProducerNeedWorstRemoteFractionLost: t.onTransportNeedWorstRemoteFractionLostHandler,
 	})
 	if err != nil {
+		t.logger.Err(err).Msg("produce failed")
 		return nil, err
 	}
 	if err = t.rtpListener.AddProducer(producer); err != nil {
