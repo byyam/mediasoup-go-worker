@@ -57,7 +57,7 @@ BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op     
 | router.createWebRtcTransport       | :ballot_box_with_check: |
 | router.createPlainTransport        |           WIP           |
 | router.createPipeTransport         | :ballot_box_with_check: |
-| router.createDirectTransport       |           WIP           |
+| router.createDirectTransport       | :ballot_box_with_check: |
 | router.createActiveSpeakerObserver |           WIP           |
 | router.createAudioLevelObserver    |           WIP           |
 
@@ -159,8 +159,7 @@ BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op     
 build out executable file.
 
 ``` shell
-$ cd cmd/mediasoup-worker
-$ go build
+$ ./build.sh
 ```
 
 Replace the worker Binary in [mediasoup](https://github.com/versatica/mediasoup) project.
