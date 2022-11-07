@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/rtc"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -46,16 +46,16 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 	}
 
 	switch request.Method {
-	case mediasoupdata2.MethodWorkerCreateRouter:
+	case mediasoupdata.MethodWorkerCreateRouter:
 		router := rtc.NewRouter(request.Internal.RouterId)
 		w.routerMap.Store(request.Internal.RouterId, router)
-	case mediasoupdata2.MethodWorkerClose:
+	case mediasoupdata.MethodWorkerClose:
 		w.Stop()
-	case mediasoupdata2.MethodWorkerDump:
+	case mediasoupdata.MethodWorkerDump:
 		response.Data = w.FillJson()
-	case mediasoupdata2.MethodWorkerGetResourceUsage:
+	case mediasoupdata.MethodWorkerGetResourceUsage:
 		response.Data = w.FillJsonResourceUsage()
-	case mediasoupdata2.MethodWorkerUpdateSettings:
+	case mediasoupdata.MethodWorkerUpdateSettings:
 		// todo
 	default:
 		h, err := workerchannel.GetChannelRequestHandler(request.HandlerId)
@@ -92,7 +92,7 @@ func (w *workerBase) FillJson() json.RawMessage {
 		routerIds = append(routerIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata2.WorkerDump{
+	dumpData := mediasoupdata.WorkerDump{
 		Pid:       w.pid,
 		RouterIds: routerIds,
 	}
@@ -103,7 +103,7 @@ func (w *workerBase) FillJson() json.RawMessage {
 
 func (w *workerBase) FillJsonResourceUsage() json.RawMessage {
 	// todo
-	ruData := mediasoupdata2.WorkerResourceUsage{
+	ruData := mediasoupdata.WorkerResourceUsage{
 		RU_Utime:    0,
 		RU_Stime:    0,
 		RU_Maxrss:   0,

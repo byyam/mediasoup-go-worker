@@ -98,7 +98,7 @@ func (c *Channel) OnRequest(fn func(request RequestData) ResponseData) {
 }
 
 func (c *Channel) setHandlerId(method, handlerId, data string, internal *InternalData) error {
-	if handlerId == UNDEFINED {
+	if handlerId == UNDEFINED && data != UNDEFINED {
 		if err := internal.Unmarshal(json.RawMessage(data)); err != nil {
 			return err
 		}
@@ -119,15 +119,21 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		internal.ProducerId = handlerId
 	case mediasoupdata.MethodPrefixConsumer:
 		internal.ConsumerId = handlerId
+	case mediasoupdata.MethodPrefixRtpObserver:
+		internal.RtpObserverId = handlerId
 	default:
 		return errors.New("unknown method prefix")
 	}
 	// set objectId
 	switch methodFields[0] {
 	case mediasoupdata.MethodPrefixRouter:
+		// set ids if fields exist
 		value := gjson.Get(data, "transportId")
 		internal.TransportId = value.String()
-	case mediasoupdata.MethodPrefixTransport: // include producer and consumer
+
+		value = gjson.Get(data, "rtpObserverId")
+		internal.RtpObserverId = value.String()
+	case mediasoupdata.MethodPrefixTransport, mediasoupdata.MethodPrefixRtpObserver: // include producer and consumer
 		value := gjson.Get(data, "producerId")
 		internal.ProducerId = value.String()
 	}
