@@ -136,6 +136,9 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	case mediasoupdata.MethodPrefixTransport, mediasoupdata.MethodPrefixRtpObserver: // include producer and consumer
 		value := gjson.Get(data, "producerId")
 		internal.ProducerId = value.String()
+
+		value = gjson.Get(data, "dataProducerId")
+		internal.DataProducerId = value.String()
 	}
 	if method == mediasoupdata.MethodTransportConsume {
 		value := gjson.Get(data, "consumerId")

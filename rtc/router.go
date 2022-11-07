@@ -117,6 +117,18 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		response.Data = directTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
+		var options mediasoupdata.ActiveSpeakerObserverOptions
+		_ = json.Unmarshal(request.Data, &options)
+		audioLevelObserver, err := newActiveSpeakerObserver(ActiveSpeakerObserverParam{
+			Id:      request.Internal.RtpObserverId,
+			Options: options,
+		})
+		if err != nil {
+			r.logger.Error().Err(err).Msg("newActiveSpeakerObserver")
+			response.Err = mserror.ErrCreateActiveSpeakerObserver
+			return
+		}
+		r.mapRtpObservers.Store(request.Internal.RtpObserverId, audioLevelObserver)
 
 	case mediasoupdata.MethodRouterCreateAudioLevelObserver:
 		var options mediasoupdata.AudioLevelObserverOptions

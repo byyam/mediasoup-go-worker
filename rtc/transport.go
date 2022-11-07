@@ -29,8 +29,10 @@ type ITransport interface {
 }
 
 type Transport struct {
-	id     string
-	logger zerolog.Logger
+	id             string
+	direct         bool
+	maxMessageSize uint32
+	logger         zerolog.Logger
 
 	mapProducers       sync.Map //map[string]*Producer
 	mapConsumers       sync.Map
@@ -127,6 +129,8 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 
 type transportParam struct {
 	Id                                     string
+	Direct                                 bool
+	MaxMessageSize                         uint32
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)
 	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
@@ -159,9 +163,11 @@ func newTransport(param transportParam) (ITransport, error) {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
-		id:          param.Id,
-		logger:      zerowrapper.NewScope("transport", param.Id),
-		rtpListener: newRtpListener(),
+		id:             param.Id,
+		direct:         param.Direct,
+		maxMessageSize: param.MaxMessageSize,
+		logger:         zerowrapper.NewScope("transport", param.Id),
+		rtpListener:    newRtpListener(),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
@@ -207,6 +213,14 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.Err = err
 
 	case mediasoupdata.MethodTransportProduceData:
+		var options mediasoupdata.DataProducerOptions
+		_ = json.Unmarshal(request.Data, &options)
+		dataProducer, err := t.DataProduce(request.Internal.DataProducerId, options)
+		if err != nil {
+			response.Err = err
+			return
+		}
+		response.Data = dataProducer.FillJson()
 
 	case mediasoupdata.MethodTransportConsumeData:
 
@@ -353,6 +367,20 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	// todo
 
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
+}
+
+func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOptions) (*DataProducer, error) {
+	if id == "" {
+		return nil, mserror.ErrInvalidParam
+	}
+	dataProducer, err := newDataProducer(id, t.maxMessageSize, options)
+	if err != nil {
+		t.logger.Err(err).Msg("data produce failed")
+		return nil, err
+	}
+	// todo: store in map
+	t.logger.Debug().Msgf("DataProducer created [producerId:%s],type:%s", id, dataProducer.options.Type)
+	return dataProducer, nil
 }
 
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {

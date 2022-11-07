@@ -24,6 +24,7 @@ func (t *RtpObserver) HandleRequest(request workerchannel.RequestData, response 
 
 	switch request.Method {
 	case mediasoupdata.MethodRtpObserverAddProducer:
+		t.logger.Info().Msg("add producer")
 
 	default:
 		t.logger.Error().Str("method", request.Method).Msg("handle request method not found")
