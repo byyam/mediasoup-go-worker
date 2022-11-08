@@ -32,28 +32,7 @@ type WebRtcTransportOptions struct {
 	 */
 	InitialAvailableOutgoingBitrate uint32 `json:"initialAvailableOutgoingBitrate,omitempty"`
 
-	/**
-	 * Create a SCTP association. Default false.
-	 */
-	EnableSctp bool `json:"enableSctp,omitempty"`
-
-	/**
-	 * SCTP streams uint32.
-	 */
-	NumSctpStreams NumSctpStreams `json:"numSctpStreams,omitempty"`
-
-	/**
-	 * Maximum allowed size for SCTP messages sent by DataProducers.
-	 * Default 262144.
-	 */
-	MaxSctpMessageSize int `json:"maxSctpMessageSize,omitempty"`
-
-	/**
-	 * Maximum SCTP send buffer used by DataConsumers.
-	 * Default 262144.
-	 */
-	SctpSendBufferSize int `json:"sctpSendBufferSize,omitempty"`
-
+	SctpOptions
 	/**
 	 * Custom application data.
 	 */

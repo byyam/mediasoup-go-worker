@@ -29,10 +29,9 @@ type ITransport interface {
 }
 
 type Transport struct {
-	id             string
-	direct         bool
-	maxMessageSize uint32
-	logger         zerolog.Logger
+	id      string
+	options mediasoupdata.TransportOptions
+	logger  zerolog.Logger
 
 	mapProducers       sync.Map //map[string]*Producer
 	mapConsumers       sync.Map
@@ -129,8 +128,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 
 type transportParam struct {
 	Id                                     string
-	Direct                                 bool
-	MaxMessageSize                         uint32
+	Options                                mediasoupdata.TransportOptions
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)
 	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
@@ -163,11 +161,10 @@ func newTransport(param transportParam) (ITransport, error) {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
-		id:             param.Id,
-		direct:         param.Direct,
-		maxMessageSize: param.MaxMessageSize,
-		logger:         zerowrapper.NewScope("transport", param.Id),
-		rtpListener:    newRtpListener(),
+		id:          param.Id,
+		options:     param.Options,
+		logger:      zerowrapper.NewScope("transport", param.Id),
+		rtpListener: newRtpListener(),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
@@ -373,7 +370,7 @@ func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOpt
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
-	dataProducer, err := newDataProducer(id, t.maxMessageSize, options)
+	dataProducer, err := newDataProducer(id, t.options.MaxMessageSize, options)
 	if err != nil {
 		t.logger.Err(err).Msg("data produce failed")
 		return nil, err

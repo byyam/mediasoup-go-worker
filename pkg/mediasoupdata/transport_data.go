@@ -13,6 +13,11 @@ type TransportListenIp struct {
 	AnnouncedIp string `json:"announcedIp,omitempty"`
 }
 
+type TransportOptions struct {
+	DirectTransportOptions
+	SctpOptions
+}
+
 /**
  * Transport protocol.
  */
