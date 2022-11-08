@@ -287,7 +287,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 func (d *iceServer) GetConn() (*iceConn, error) {
 	if d.connDone != nil {
 		<-d.connDone
-		d.logger.Debug().Msg("ice connected")
+		d.logger.Info().Msg("ice connected")
 	}
 	return d.iceConn, nil
 }

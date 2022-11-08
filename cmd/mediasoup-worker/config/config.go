@@ -20,7 +20,7 @@ func InitConfig() {
 			&cli.StringFlag{Name: "dtlsPrivateKeyFile", Aliases: []string{"p"}},
 			&cli.IntFlag{Name: "rtcStaticPort", Value: 0, Aliases: []string{"s"}},
 			&cli.IntFlag{Name: "pipePort", Value: -1, Aliases: []string{"pipeP"}},
-			&cli.StringFlag{Name: "rtcListenIp", Value: "0.0.0.0", Aliases: []string{"L"}},
+			&cli.StringFlag{Name: "rtcListenIp", Value: "127.0.0.1", Aliases: []string{"L"}},
 			&cli.StringFlag{Name: "prometheusPath", Value: "/metrics", Aliases: []string{"pm"}},
 			&cli.IntFlag{Name: "prometheusPort", Value: -1, Aliases: []string{"pp"}},
 		},
