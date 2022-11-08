@@ -64,9 +64,10 @@ const (
 )
 
 const (
-	MethodPrefixWorker    = "worker"
-	MethodPrefixRouter    = "router"
-	MethodPrefixTransport = "transport"
-	MethodPrefixProducer  = "producer"
-	MethodPrefixConsumer  = "consumer"
+	MethodPrefixWorker      = "worker"
+	MethodPrefixRouter      = "router"
+	MethodPrefixTransport   = "transport"
+	MethodPrefixProducer    = "producer"
+	MethodPrefixConsumer    = "consumer"
+	MethodPrefixRtpObserver = "rtpObserver"
 )

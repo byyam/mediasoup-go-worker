@@ -34,6 +34,8 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
 	param.SendRtcpCompoundPacketFunc = t.SendRtcpCompoundPacket
 	param.NotifyCloseFunc = t.Close
+	param.Direct = true
+	param.MaxMessageSize = param.options.MaxMessageSize
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
 		return nil, err

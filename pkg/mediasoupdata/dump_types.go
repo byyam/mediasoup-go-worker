@@ -140,7 +140,7 @@ type DataConsumerDump struct {
 
 type DataProducerDump struct {
 	Id                   string                `json:"id,omitempty"`
-	Type                 string                `json:"type,omitempty"`
+	Type                 DataProducerType      `json:"type,omitempty"`
 	SctpStreamParameters *SctpStreamParameters `json:"sctpStreamParameters,omitempty"`
 	Label                string                `json:"label,omitempty"`
 	Protocol             string                `json:"protocol,omitempty"`

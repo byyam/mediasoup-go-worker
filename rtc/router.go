@@ -23,6 +23,7 @@ type Router struct {
 	mapProducerConsumers *hashmap.Hashmap
 	mapProducers         sync.Map
 	mapConsumerProducer  sync.Map
+	mapRtpObservers      sync.Map
 }
 
 func NewRouter(id string) *Router {
@@ -116,8 +117,32 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		response.Data = directTransport.FillJson()
 
 	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
+		var options mediasoupdata.ActiveSpeakerObserverOptions
+		_ = json.Unmarshal(request.Data, &options)
+		audioLevelObserver, err := newActiveSpeakerObserver(ActiveSpeakerObserverParam{
+			Id:      request.Internal.RtpObserverId,
+			Options: options,
+		})
+		if err != nil {
+			r.logger.Error().Err(err).Msg("newActiveSpeakerObserver")
+			response.Err = mserror.ErrCreateActiveSpeakerObserver
+			return
+		}
+		r.mapRtpObservers.Store(request.Internal.RtpObserverId, audioLevelObserver)
 
 	case mediasoupdata.MethodRouterCreateAudioLevelObserver:
+		var options mediasoupdata.AudioLevelObserverOptions
+		_ = json.Unmarshal(request.Data, &options)
+		audioLevelObserver, err := newAudioLevelObserver(AudioLevelObserverParam{
+			Id:      request.Internal.RtpObserverId,
+			Options: options,
+		})
+		if err != nil {
+			r.logger.Error().Err(err).Msg("newAudioLevelObserver")
+			response.Err = mserror.ErrCreateAudioLevelObserver
+			return
+		}
+		r.mapRtpObservers.Store(request.Internal.RtpObserverId, audioLevelObserver)
 
 	case mediasoupdata.MethodRouterDump:
 		response.Data = r.FillJson()
