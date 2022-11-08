@@ -3,7 +3,7 @@ package mediasoupdata
 // DataProducerOptions define options to create a DataProducer.
 type DataProducerOptions struct {
 	// Id is DataProducer id (just for Router.pipeToRouter() method).
-	Id string `json:"id,omitempty"`
+	DataProducerId string `json:"dataProducerId,omitempty"`
 
 	Type DataProducerType `json:"type,omitempty"`
 
