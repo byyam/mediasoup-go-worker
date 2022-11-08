@@ -82,7 +82,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	transportData := mediasoupdata.WebrtcTransportData{
+	webrtcTransportData := &mediasoupdata.WebRtcTransportDump{
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -91,11 +91,15 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
 		DtlsRemoteCert:   "",
-		SctpParameters:   mediasoupdata.SctpParameters{},
-		SctpState:        "",
 	}
-	data, _ := json.Marshal(&transportData)
-	t.logger.Debug().Msgf("transportData:%+v", transportData)
+	dataDump := &mediasoupdata.TransportDump{
+		WebRtcTransportDump: webrtcTransportData,
+	}
+
+	t.ITransport.GetJson(dataDump)
+	data, _ := json.Marshal(dataDump)
+
+	t.logger.Debug().Msgf("webrtcTransportData:%+v", data)
 	return data
 }
 

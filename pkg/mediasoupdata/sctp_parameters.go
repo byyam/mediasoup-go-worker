@@ -122,4 +122,6 @@ type SctpOptions struct {
 	 * Default 268435456.
 	 */
 	SctpSendBufferSize int `json:"sctpSendBufferSize,omitempty"`
+
+	IsDataChannel bool `json:"isDataChannel,omitempty"`
 }

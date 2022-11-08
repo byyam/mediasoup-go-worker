@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
@@ -22,6 +23,7 @@ import (
 type ITransport interface {
 	Connected()
 	Close()
+	GetJson(data *mediasoupdata.TransportDump)
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
@@ -65,32 +67,23 @@ func (t *Transport) Close() {
 	})
 }
 
-func (t *Transport) FillJson() json.RawMessage {
+func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
 	var producerIds []string
 	t.mapProducers.Range(func(key, value interface{}) bool {
 		producerIds = append(producerIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata.TransportDump{
-		Id:                      t.id,
-		Direct:                  false,
-		ProducerIds:             producerIds,
-		ConsumerIds:             nil,
-		MapSsrcConsumerId:       nil,
-		MapRtxSsrcConsumerId:    nil,
-		DataProducerIds:         nil,
-		DataConsumerIds:         nil,
-		RecvRtpHeaderExtensions: nil,
-		RtpListener:             nil,
-		SctpParameters:          mediasoupdata.SctpParameters{},
-		SctpState:               "",
-		SctpListener:            nil,
-		TraceEventTypes:         "",
-		PlainTransportDump:      nil,
-		WebRtcTransportDump:     nil,
-	}
-	data, _ := json.Marshal(&dumpData)
-	t.logger.Debug().Msgf("dumpData:%+v", dumpData)
+
+	data.Id = t.id
+	data.Direct = t.options.Direct
+	data.ProducerIds = producerIds
+}
+
+func (t *Transport) FillJson() json.RawMessage {
+	dumpData := &mediasoupdata.TransportDump{}
+
+	data, _ := json.Marshal(dumpData)
+	t.logger.Debug().Msgf("dumpData:%+v", *dumpData)
 	return data
 }
 
@@ -178,6 +171,8 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
 	transport.notifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
+
+	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.options))
 
 	return transport, nil
 }

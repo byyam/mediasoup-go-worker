@@ -48,6 +48,10 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
 			options: options,
 			transportParam: transportParam{
+				Options: mediasoupdata.TransportOptions{
+					SctpOptions:                     options.SctpOptions,
+					InitialAvailableOutgoingBitrate: options.InitialAvailableOutgoingBitrate,
+				},
 				Id:                                     request.Internal.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,
@@ -74,6 +78,9 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
 			options: options,
 			transportParam: transportParam{
+				Options: mediasoupdata.TransportOptions{
+					SctpOptions: options.SctpOptions,
+				},
 				Id:                                     request.Internal.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,
@@ -98,6 +105,9 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		directTransport, err := newDirectTransport(directTransportParam{
 			options: options,
 			transportParam: transportParam{
+				Options: mediasoupdata.TransportOptions{
+					DirectTransportOptions: options,
+				},
 				Id:                                     request.Internal.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,

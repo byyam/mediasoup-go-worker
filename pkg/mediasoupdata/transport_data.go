@@ -16,6 +16,7 @@ type TransportListenIp struct {
 type TransportOptions struct {
 	DirectTransportOptions
 	SctpOptions
+	InitialAvailableOutgoingBitrate uint32 `json:"initialAvailableOutgoingBitrate,omitempty"`
 }
 
 /**
