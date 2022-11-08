@@ -32,7 +32,7 @@ type TransportDump struct {
 	DataConsumerIds         []string                 `json:"dataConsumerIds,omitempty"`
 	RecvRtpHeaderExtensions *RecvRtpHeaderExtensions `json:"recvRtpHeaderExtensions,omitempty"`
 	RtpListener             *RtpListener             `json:"rtpListener,omitempty"`
-	SctpParameters          SctpParameters           `json:"SctpParameters,omitempty"`
+	SctpParameters          SctpParameters           `json:"sctpParameters,omitempty"`
 	SctpState               SctpState                `json:"sctpState,omitempty"`
 	SctpListener            *SctpListener            `json:"sctpListener,omitempty"`
 	TraceEventTypes         string                   `json:"traceEventTypes,omitempty"`

@@ -40,6 +40,7 @@ type Transport struct {
 	mapSsrcConsumer    sync.Map
 	mapRtxSsrcConsumer sync.Map
 	rtpListener        *RtpListener
+	sctpAssociation    *SctpAssociation
 
 	// handler
 	onTransportNewProducerHandler                 atomic.Value
@@ -77,13 +78,16 @@ func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
 	data.Id = t.id
 	data.Direct = t.options.Direct
 	data.ProducerIds = producerIds
+	if t.sctpAssociation != nil {
+		data.SctpParameters = t.sctpAssociation.GetSctpAssociationParam()
+	}
 }
 
 func (t *Transport) FillJson() json.RawMessage {
 	dumpData := &mediasoupdata.TransportDump{}
 
 	data, _ := json.Marshal(dumpData)
-	t.logger.Debug().Msgf("dumpData:%+v", *dumpData)
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data
 }
 
@@ -150,6 +154,7 @@ func (t transportParam) valid() bool {
 }
 
 func newTransport(param transportParam) (ITransport, error) {
+	var err error
 	if !param.valid() {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -173,6 +178,14 @@ func newTransport(param transportParam) (ITransport, error) {
 	go transport.OnTimer()
 
 	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.options))
+
+	if transport.options.EnableSctp {
+		transport.sctpAssociation, err = newSctpAssociation(transport.options.SctpOptions)
+		if err != nil {
+			transport.logger.Err(err).Msg("newSctpAssociation failed")
+			return nil, err
+		}
+	}
 
 	return transport, nil
 }

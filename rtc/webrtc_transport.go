@@ -99,7 +99,7 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 	t.ITransport.GetJson(dataDump)
 	data, _ := json.Marshal(dataDump)
 
-	t.logger.Debug().Msgf("webrtcTransportData:%+v", data)
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data
 }
 

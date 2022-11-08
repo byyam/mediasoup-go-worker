@@ -39,19 +39,19 @@ type WebRtcTransportOptions struct {
 	AppData interface{} `json:"appData,omitempty"`
 }
 
-type WebrtcTransportData struct {
-	// always be 'controlled'
-	IceRole          string         `json:"iceRole,omitempty"`
-	IceParameters    IceParameters  `json:"iceParameters,omitempty"`
-	IceCandidates    []IceCandidate `json:"iceCandidates,omitempty"`
-	IceState         IceState       `json:"iceState,omitempty"`
-	IceSelectedTuple TransportTuple `json:"iceSelectedTuple,omitempty"`
-	DtlsParameters   DtlsParameters `json:"dtlsParameters,omitempty"`
-	DtlsState        DtlsState      `json:"dtlsState,omitempty"`
-	DtlsRemoteCert   string         `json:"dtlsRemoteCert,omitempty"`
-	SctpParameters   SctpParameters `json:"sctpParameters,omitempty"`
-	SctpState        SctpState      `json:"sctpState,omitempty"`
-}
+//type WebrtcTransportData struct {
+//	// always be 'controlled'
+//	IceRole          string         `json:"iceRole,omitempty"`
+//	IceParameters    IceParameters  `json:"iceParameters,omitempty"`
+//	IceCandidates    []IceCandidate `json:"iceCandidates,omitempty"`
+//	IceState         IceState       `json:"iceState,omitempty"`
+//	IceSelectedTuple TransportTuple `json:"iceSelectedTuple,omitempty"`
+//	DtlsParameters   DtlsParameters `json:"dtlsParameters,omitempty"`
+//	DtlsState        DtlsState      `json:"dtlsState,omitempty"`
+//	DtlsRemoteCert   string         `json:"dtlsRemoteCert,omitempty"`
+//	SctpParameters   SctpParameters `json:"sctpParameters,omitempty"`
+//	SctpState        SctpState      `json:"sctpState,omitempty"`
+//}
 
 type IceParameters struct {
 	UsernameFragment string `json:"usernameFragment"`

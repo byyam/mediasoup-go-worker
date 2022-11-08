@@ -47,12 +47,12 @@ type SctpParameters struct {
 	/**
 	 * Initially requested int of outgoing SCTP streams.
 	 */
-	OS uint16 `json:"os"`
+	OS uint16 `json:"OS"`
 
 	/**
 	 * Maximum int of incoming SCTP streams.
 	 */
-	MIS uint16 `json:"mis"`
+	MIS uint16 `json:"MIS"`
 
 	/**
 	 * Maximum allowed size for SCTP messages.
@@ -115,7 +115,7 @@ type SctpOptions struct {
 	 * Maximum allowed size for SCTP messages sent by DataProducers.
 	 * Default 268435456.
 	 */
-	MaxSctpMessageSize int `json:"maxSctpMessageSize,omitempty"`
+	MaxSctpMessageSize uint32 `json:"maxSctpMessageSize,omitempty"`
 
 	/**
 	 * Maximum SCTP send buffer used by DataConsumers.
