@@ -6,8 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
+
 	"github.com/byyam/mediasoup-go-worker/cmd/mediasoup-worker/config"
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/google/gops/agent"
@@ -27,6 +30,30 @@ func checkError(err error) {
 	}
 }
 
+func initLog() {
+	zaplog.Init(zaplog.Config{
+		ConsoleLoggingEnabled: true,
+		FileLoggingEnabled:    true,
+		Directory:             "./log",
+		Filename:              "media.log",
+		MaxSize:               1,
+		MaxBackups:            1,
+		MaxAge:                1,
+		LogTimeFieldFormat:    "",
+		ErrorStackMarshaler:   false,
+	})
+	zerowrapper.InitLog(zerowrapper.Config{
+		ConsoleLoggingEnabled: true,
+		FileLoggingEnabled:    false,
+		Directory:             "./log",
+		Filename:              "signal.log",
+		MaxSize:               1,
+		MaxBackups:            10,
+		MaxAge:                2,
+		LogTimeFieldFormat:    zerolog.TimeFormatUnixMicro,
+	})
+}
+
 func main() {
 	// init configurations
 	config.InitConfig()
@@ -34,6 +61,7 @@ func main() {
 	if conf.Settings.PrometheusPort > 0 {
 		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
 	}
+	initLog()
 
 	// init worker
 	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")

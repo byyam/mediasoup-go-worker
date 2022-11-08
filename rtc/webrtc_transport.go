@@ -211,7 +211,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 		t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 		return
 	}
-	zaplog.NewLogger().Info("OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
+	zaplog.NewLogger().Info("WebrtcTransport: OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
 
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }

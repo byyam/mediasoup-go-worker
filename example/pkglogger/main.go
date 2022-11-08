@@ -6,6 +6,7 @@ import (
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	"github.com/byyam/mediasoup-go-worker/example/pkglogger/config"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -38,6 +39,7 @@ func main() {
 		LogTimeFieldFormat:    zerolog.TimeFormatUnixMicro,
 	})
 	zaplog.NewLogger().Info("this is logger")
+	logger = zaplog.NewLogger()
 	server()
 
 	select {}
@@ -46,8 +48,11 @@ func main() {
 func server() {
 	config.InitConfig()
 	worker := mediasoup_go_worker.NewSimpleWorker()
+	pid := worker.Start()
+	logger.Info("zap log: worker start", zap.Int("pid", pid))
+
 	rsp := worker.OnChannelRequest(workerchannel.RequestData{
-		Method:   "method",
+		Method:   mediasoupdata.MethodWorkerDump,
 		Internal: workerchannel.InternalData{},
 		Data:     nil,
 	})

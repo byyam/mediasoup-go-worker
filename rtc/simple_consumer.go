@@ -6,11 +6,13 @@ import (
 
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
+	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
+	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -103,7 +105,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
 	}
 	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
-	c.logger.Trace().Msgf("SendRtpPacket:%+v", packet.Header)
+	zaplog.NewLogger().Info("SimpleConsumer: SendRtpPacket", zap.String("packet", packet.String()))
 }
 
 func (c *SimpleConsumer) Close() {

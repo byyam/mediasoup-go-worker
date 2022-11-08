@@ -189,7 +189,7 @@ func (r *RtpStream) GetExpectedPackets() uint32 {
 }
 
 func (r *RtpStream) InitSeq(seq uint16) {
-	r.logger.Trace().Msg("init seq")
+	r.logger.Debug().Msg("init seq")
 	// Initialize/reset RTP counters.
 	r.baseSeq = uint32(seq)
 	r.maxSeq = seq
