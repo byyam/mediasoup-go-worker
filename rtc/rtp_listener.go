@@ -63,12 +63,12 @@ func (r *RtpListener) GetProducer(packet *rtpparser.Packet) *Producer {
 	if producer := r.GetProducerBySSRC(packet.SSRC); producer != nil {
 		return producer
 	}
-	// todo: Otherwise lookup into the MID table.
-	if producer := r.GetProducerByMID(packet.String()); producer != nil {
+	// Otherwise lookup into the MID table.
+	if producer := r.GetProducerByMID(packet); producer != nil {
 		return producer
 	}
-	// todo: Otherwise lookup into the RID table.
-	if producer := r.GetProducerByRID(packet.String()); producer != nil {
+	// Otherwise lookup into the RID table.
+	if producer := r.GetProducerByRID(packet); producer != nil {
 		return producer
 	}
 	return nil
@@ -83,18 +83,28 @@ func (r *RtpListener) GetProducerBySSRC(ssrc uint32) *Producer {
 	return value.(*Producer)
 }
 
-func (r *RtpListener) GetProducerByMID(mid string) *Producer {
-	value, ok := r.midTable.Load(mid)
+func (r *RtpListener) GetProducerByMID(packet *rtpparser.Packet) *Producer {
+	value, ok := r.midTable.Load(packet.GetMid())
 	if !ok {
 		return nil
 	}
-	return value.(*Producer)
+	// Fill the ssrc table.
+	// NOTE: We may be overriding an exiting SSRC here, but we don't care.
+	producer := value.(*Producer)
+	r.ssrcTable.Store(packet.SSRC, producer)
+
+	return producer
 }
 
-func (r *RtpListener) GetProducerByRID(rid string) *Producer {
-	value, ok := r.ridTable.Load(rid)
+func (r *RtpListener) GetProducerByRID(packet *rtpparser.Packet) *Producer {
+	value, ok := r.ridTable.Load(packet.GetRid())
 	if !ok {
 		return nil
 	}
-	return value.(*Producer)
+	// Fill the ssrc table.
+	// NOTE: We may be overriding an exiting SSRC here, but we don't care.
+	producer := value.(*Producer)
+	r.ssrcTable.Store(packet.SSRC, producer)
+
+	return producer
 }

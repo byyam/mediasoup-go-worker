@@ -30,7 +30,7 @@ func Parse(buf []byte) (*Packet, error) {
 	return p, nil
 }
 
-func (p Packet) GetLen() int {
+func (p *Packet) GetLen() int {
 	return p.packetLen
 }
 
@@ -74,28 +74,28 @@ func (p *Packet) SetPayloadDescriptorHandler(payloadDescriptorHandler PayloadDes
 	p.payloadDescriptorHandler = payloadDescriptorHandler
 }
 
-func (p Packet) GetSpatialLayer() uint8 {
+func (p *Packet) GetSpatialLayer() uint8 {
 	if p.payloadDescriptorHandler == nil {
 		return 0
 	}
 	return p.payloadDescriptorHandler.GetSpatialLayer()
 }
 
-func (p Packet) GetTemporalLayer() uint8 {
+func (p *Packet) GetTemporalLayer() uint8 {
 	if p.payloadDescriptorHandler == nil {
 		return 0
 	}
 	return p.payloadDescriptorHandler.GetTemporalLayer()
 }
 
-func (p Packet) IsKeyFrame() bool {
+func (p *Packet) IsKeyFrame() bool {
 	if p.payloadDescriptorHandler == nil {
 		return false
 	}
 	return p.payloadDescriptorHandler.IsKeyFrame()
 }
 
-func (p Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool {
+func (p *Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool {
 	extenValue := p.GetExtension(p.frameMarkingExtensionId)
 	// NOTE: Remove this once framemarking draft becomes RFC.
 	if extenValue == nil {
@@ -108,6 +108,16 @@ func (p Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) bool
 	frameMarking = Unmarshal(extenValue)
 	*length = uint8(extenLen)
 	return true
+}
+
+func (p *Packet) GetMid() string {
+	extenValue := p.GetExtension(p.midExtensionId)
+	return string(extenValue)
+}
+
+func (p *Packet) GetRid() string {
+	extenValue := p.GetExtension(p.ridExtensionId)
+	return string(extenValue)
 }
 
 func (p *Packet) UpdateMid(mid string) error {

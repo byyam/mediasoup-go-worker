@@ -35,12 +35,13 @@ type Transport struct {
 	options mediasoupdata.TransportOptions
 	logger  zerolog.Logger
 
-	mapProducers       sync.Map //map[string]*Producer
-	mapConsumers       sync.Map
-	mapSsrcConsumer    sync.Map
-	mapRtxSsrcConsumer sync.Map
-	rtpListener        *RtpListener
-	sctpAssociation    *SctpAssociation
+	mapProducers              sync.Map //map[string]*Producer
+	mapConsumers              sync.Map
+	mapSsrcConsumer           sync.Map
+	mapRtxSsrcConsumer        sync.Map
+	rtpListener               *RtpListener
+	sctpAssociation           *SctpAssociation
+	recvRtpHeaderExtensionIds RtpHeaderExtensionIds
 
 	// handler
 	onTransportNewProducerHandler                 atomic.Value
@@ -369,6 +370,13 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	}
 	t.mapProducers.Store(id, producer)
 	t.logger.Debug().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
+	// Take the transport related RTP header extensions of the Producer and
+	// add them to the Transport.
+	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
+	// header extension ids of the Producer (and not their mapped values).
+	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
+	t.logger.Debug().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
+
 	// todo
 
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
@@ -389,6 +397,9 @@ func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOpt
 }
 
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
+	// Apply the Transport RTP header extension ids so the RTP listener can use them.
+	packet.SetMidExtensionId(t.recvRtpHeaderExtensionIds.Mid)
+	packet.SetRidExtensionId(t.recvRtpHeaderExtensionIds.Rid)
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {

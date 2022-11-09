@@ -1,6 +1,8 @@
 package rtc
 
 import (
+	"fmt"
+
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 )
@@ -65,4 +67,11 @@ func (r *RtpHeaderExtensionIds) set(headerExtensions []mediasoupdata.RtpHeaderEx
 		fn(ext)
 	}
 	return nil
+}
+
+func (r *RtpHeaderExtensionIds) String() string {
+	out := "RtpHeaderExtensionIds:\n"
+	out += fmt.Sprintf("\tMID:%d\n", r.Mid)
+	out += fmt.Sprintf("\tRID:%d\n", r.Rid)
+	return out
 }
