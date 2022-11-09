@@ -221,7 +221,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 		t.logger.Warn().Msg("webrtc not connected, ignore send rtp packet")
 		return
 	}
-	zaplog.NewLogger().Info("SendRtpPacket", zap.String("rtpPacket", packet.String()))
+	zaplog.NewLogger().Info("WebrtcTransport: SendRtpPacket", zap.String("rtpPacket", packet.String()))
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
 		t.logger.Error().Err(err).Msg("rtpPacket.Marshal error")

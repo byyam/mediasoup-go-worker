@@ -59,11 +59,40 @@ func (r *RtpListener) AddProducer(producer *Producer) error {
 }
 
 func (r *RtpListener) GetProducer(packet *rtpparser.Packet) *Producer {
-	return r.GetProducerBySSRC(packet.SSRC)
+	// First lookup into the SSRC table.
+	if producer := r.GetProducerBySSRC(packet.SSRC); producer != nil {
+		return producer
+	}
+	// todo: Otherwise lookup into the MID table.
+	if producer := r.GetProducerByMID(packet.String()); producer != nil {
+		return producer
+	}
+	// todo: Otherwise lookup into the RID table.
+	if producer := r.GetProducerByRID(packet.String()); producer != nil {
+		return producer
+	}
+	return nil
 }
 
+// GetProducerBySSRC is over-write to GetProducer in mediasoup
 func (r *RtpListener) GetProducerBySSRC(ssrc uint32) *Producer {
 	value, ok := r.ssrcTable.Load(ssrc)
+	if !ok {
+		return nil
+	}
+	return value.(*Producer)
+}
+
+func (r *RtpListener) GetProducerByMID(mid string) *Producer {
+	value, ok := r.midTable.Load(mid)
+	if !ok {
+		return nil
+	}
+	return value.(*Producer)
+}
+
+func (r *RtpListener) GetProducerByRID(rid string) *Producer {
+	value, ok := r.ridTable.Load(rid)
 	if !ok {
 		return nil
 	}

@@ -2,7 +2,7 @@ package rtc
 
 import (
 	"github.com/byyam/mediasoup-go-worker/mserror"
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 )
 
 type RtpHeaderExtensionIds struct {
@@ -19,41 +19,41 @@ type RtpHeaderExtensionIds struct {
 	AbsCaptureTime    uint8
 }
 
-func (r *RtpHeaderExtensionIds) set(headerExtensions []mediasoupdata2.RtpHeaderExtensionParameters, isProducer bool) error {
-	fn := func(ext mediasoupdata2.RtpHeaderExtensionParameters) {
-		ext.Type = mediasoupdata2.GetRtpHeaderExtensionUri(ext.Uri)
-		if r.Mid == 0 && ext.Type == mediasoupdata2.MID {
+func (r *RtpHeaderExtensionIds) set(headerExtensions []mediasoupdata.RtpHeaderExtensionParameters, isProducer bool) error {
+	fn := func(ext mediasoupdata.RtpHeaderExtensionParameters) {
+		ext.Type = mediasoupdata.GetRtpHeaderExtensionUri(ext.Uri)
+		if r.Mid == 0 && ext.Type == mediasoupdata.MID {
 			r.Mid = uint8(ext.Id)
 		}
-		if r.Rid == 0 && ext.Type == mediasoupdata2.RTP_STREAM_ID {
+		if r.Rid == 0 && ext.Type == mediasoupdata.RTP_STREAM_ID {
 			r.Rid = uint8(ext.Id)
 		}
-		if r.RRid == 0 && ext.Type == mediasoupdata2.REPAIRED_RTP_STREAM_ID {
+		if r.RRid == 0 && ext.Type == mediasoupdata.REPAIRED_RTP_STREAM_ID {
 			r.RRid = uint8(ext.Id)
 		}
-		if r.AbsSendTime == 0 && ext.Type == mediasoupdata2.ABS_SEND_TIME {
+		if r.AbsSendTime == 0 && ext.Type == mediasoupdata.ABS_SEND_TIME {
 			r.AbsSendTime = uint8(ext.Id)
 		}
-		if r.TransportWideCc01 == 0 && ext.Type == mediasoupdata2.TRANSPORT_WIDE_CC_01 {
+		if r.TransportWideCc01 == 0 && ext.Type == mediasoupdata.TRANSPORT_WIDE_CC_01 {
 			r.TransportWideCc01 = uint8(ext.Id)
 		}
 		// NOTE: Remove this once framemarking draft becomes RFC.
-		if r.FrameMarking07 == 0 && ext.Type == mediasoupdata2.FRAME_MARKING_07 && isProducer {
+		if r.FrameMarking07 == 0 && ext.Type == mediasoupdata.FRAME_MARKING_07 && isProducer {
 			r.FrameMarking07 = uint8(ext.Id)
 		}
-		if r.FrameMarking == 0 && ext.Type == mediasoupdata2.FRAME_MARKING && isProducer {
+		if r.FrameMarking == 0 && ext.Type == mediasoupdata.FRAME_MARKING && isProducer {
 			r.FrameMarking = uint8(ext.Id)
 		}
-		if r.SsrcAudioLevel == 0 && ext.Type == mediasoupdata2.SSRC_AUDIO_LEVEL {
+		if r.SsrcAudioLevel == 0 && ext.Type == mediasoupdata.SSRC_AUDIO_LEVEL {
 			r.SsrcAudioLevel = uint8(ext.Id)
 		}
-		if r.VideoOrientation == 0 && ext.Type == mediasoupdata2.VIDEO_ORIENTATION {
+		if r.VideoOrientation == 0 && ext.Type == mediasoupdata.VIDEO_ORIENTATION {
 			r.VideoOrientation = uint8(ext.Id)
 		}
-		if r.TOffset == 0 && ext.Type == mediasoupdata2.TOFFSET && isProducer {
+		if r.TOffset == 0 && ext.Type == mediasoupdata.TOFFSET && isProducer {
 			r.TOffset = uint8(ext.Id)
 		}
-		if r.AbsCaptureTime == 0 && ext.Type == mediasoupdata2.ABS_CAPTURE_TIME && isProducer {
+		if r.AbsCaptureTime == 0 && ext.Type == mediasoupdata.ABS_CAPTURE_TIME && isProducer {
 			r.AbsCaptureTime = uint8(ext.Id)
 		}
 	}

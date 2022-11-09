@@ -105,7 +105,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
 	}
 	monitor.MediasoupCount(monitor.SimpleConsumer, monitor.EventSendRtp)
-	zaplog.NewLogger().Info("SimpleConsumer: SendRtpPacket", zap.String("packet", packet.String()))
+	zaplog.NewLogger().Info("SimpleConsumer: SendRtpPacket", zap.String("kind", string(c.IConsumer.GetKind())), zap.String("packet", packet.String()))
 }
 
 func (c *SimpleConsumer) Close() {
