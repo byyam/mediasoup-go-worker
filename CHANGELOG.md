@@ -9,6 +9,12 @@
 * add SCTP protocol.
 * implement data-channel interface.
 
+
+### 1.0.6 
+* Support [mediasoup-demo](https://github.com/versatica/mediasoup-demo) client which is using v3 mediasoup basic libs.
+* Producer using RID to create RTP streams.
+* Initial with signal/media logs.
+
 ### 1.0.5
 * Support mediasoup-3.10.6 channel message format.
 
