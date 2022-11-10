@@ -2,6 +2,8 @@ package rtc
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -335,10 +337,10 @@ func (p *Producer) OnRtpStreamSendRtcpPacket(packet rtcp.Packet) {
 func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediasoupdata.RtpCodecParameters, encodingIdx int) *RtpStreamRecv {
 	ssrc := packet.SSRC
 	if _, ok := p.mapSsrcRtpStream.Load(ssrc); ok {
-		panic("RtpStream with given SSRC already exists")
+		panic(fmt.Sprintf("RtpStream with given SSRC=%d already exists", ssrc))
 	}
 	if v := p.rtpStreamByEncodingIdx[encodingIdx]; v != nil {
-		panic("RtpStream for given encoding index already exists")
+		panic("RtpStream for given encoding index already exists,idx=" + strconv.Itoa(encodingIdx))
 	}
 	encoding := p.RtpParameters.Encodings[encodingIdx]
 	encodingMapping := p.rtpMapping.Encodings[encodingIdx]
@@ -474,10 +476,51 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 	}
 
 	// If not found, look for an encoding matching the packet RID value.
-	// todo
-	p.logger.Warn().Msg("ignoring packet with unknown RID (RID lookup)")
+	if packet.GetRid() != "" {
+		for idx, encoding := range p.RtpParameters.Encodings {
+			if encoding.Rid != packet.GetRid() {
+				continue
+			}
+			mediaCodec := p.RtpParameters.GetCodecForEncoding(encoding)
+			rtxCodec := p.RtpParameters.GetRtxCodecForEncoding(encoding)
+			var isMediaPacket, isRtxPacket bool
+			if mediaCodec.PayloadType == payloadType {
+				isMediaPacket = true
+			}
+			if rtxCodec != nil && rtxCodec.PayloadType == payloadType {
+				isRtxPacket = true
+			}
+			if isMediaPacket {
+				// Ensure no other stream already exists with same RID.
+				ignore := false
+				p.mapSsrcRtpStream.Range(func(key, value any) bool {
+					rtpStream, ok := value.(*RtpStreamRecv)
+					if !ok || rtpStream == nil {
+						return true
+					}
+					if rtpStream.GetRid() == packet.GetRid() {
+						p.logger.Warn().Msg("ignoring packet with unknown ssrc but already handled RID (RID lookup)")
+						ignore = true
+						return false
+					}
+					return true
+				})
+				if ignore {
+					return nil
+				}
+				rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
+				p.logger.Info().Str("RID", packet.GetRid()).Msg("CreateRtpStream by RID")
+				return rtpStream
+			} else if isRtxPacket {
+				// todo
+
+			}
+		}
+		p.logger.Warn().Msg("ignoring packet with unknown RID (RID lookup)")
+	}
 	// If not found, and there is a single encoding without ssrc and RID, this
 	// may be the media or RTX stream.
+	// todo
 
 	return nil
 }

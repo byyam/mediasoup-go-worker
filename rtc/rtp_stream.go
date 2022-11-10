@@ -121,6 +121,10 @@ func (r *RtpStream) GetId() string {
 	return r.id
 }
 
+func (r *RtpStream) GetRid() string {
+	return r.params.Rid
+}
+
 func (r *RtpStream) GetSsrc() uint32 {
 	return r.params.Ssrc
 }
