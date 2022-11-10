@@ -47,12 +47,12 @@ type SctpParameters struct {
 	/**
 	 * Initially requested int of outgoing SCTP streams.
 	 */
-	OS uint16 `json:"os"`
+	OS uint16 `json:"OS"`
 
 	/**
 	 * Maximum int of incoming SCTP streams.
 	 */
-	MIS uint16 `json:"mis"`
+	MIS uint16 `json:"MIS"`
 
 	/**
 	 * Maximum allowed size for SCTP messages.
@@ -97,4 +97,31 @@ type SctpStreamParameters struct {
 	 * be retransmitted.
 	 */
 	MaxRetransmits uint16 `json:"maxRetransmits,omitempty"`
+}
+
+type SctpOptions struct {
+
+	/**
+	 * Create a SCTP association. Default false.
+	 */
+	EnableSctp bool `json:"enableSctp,omitempty"`
+
+	/**
+	 * SCTP streams number.
+	 */
+	NumSctpStreams NumSctpStreams `json:"numSctpStreams,omitempty"`
+
+	/**
+	 * Maximum allowed size for SCTP messages sent by DataProducers.
+	 * Default 268435456.
+	 */
+	MaxSctpMessageSize uint32 `json:"maxSctpMessageSize,omitempty"`
+
+	/**
+	 * Maximum SCTP send buffer used by DataConsumers.
+	 * Default 268435456.
+	 */
+	SctpSendBufferSize int `json:"sctpSendBufferSize,omitempty"`
+
+	IsDataChannel bool `json:"isDataChannel,omitempty"`
 }

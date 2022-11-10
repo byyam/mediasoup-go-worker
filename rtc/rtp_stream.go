@@ -121,6 +121,10 @@ func (r *RtpStream) GetId() string {
 	return r.id
 }
 
+func (r *RtpStream) GetRid() string {
+	return r.params.Rid
+}
+
 func (r *RtpStream) GetSsrc() uint32 {
 	return r.params.Ssrc
 }
@@ -189,7 +193,7 @@ func (r *RtpStream) GetExpectedPackets() uint32 {
 }
 
 func (r *RtpStream) InitSeq(seq uint16) {
-	r.logger.Trace().Msg("init seq")
+	r.logger.Debug().Msg("init seq")
 	// Initialize/reset RTP counters.
 	r.baseSeq = uint32(seq)
 	r.maxSeq = seq

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultMtu = 1200
+	defaultMtu = 2000
 )
 
 var (

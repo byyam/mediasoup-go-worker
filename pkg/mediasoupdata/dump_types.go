@@ -32,7 +32,7 @@ type TransportDump struct {
 	DataConsumerIds         []string                 `json:"dataConsumerIds,omitempty"`
 	RecvRtpHeaderExtensions *RecvRtpHeaderExtensions `json:"recvRtpHeaderExtensions,omitempty"`
 	RtpListener             *RtpListener             `json:"rtpListener,omitempty"`
-	SctpParameters          SctpParameters           `json:"SctpParameters,omitempty"`
+	SctpParameters          SctpParameters           `json:"sctpParameters,omitempty"`
 	SctpState               SctpState                `json:"sctpState,omitempty"`
 	SctpListener            *SctpListener            `json:"sctpListener,omitempty"`
 	TraceEventTypes         string                   `json:"traceEventTypes,omitempty"`
@@ -53,14 +53,14 @@ type PlainTransportDump struct {
 }
 
 type WebRtcTransportDump struct {
-	IceRole          string          `json:"iceRole,omitempty"`
-	IceParameters    IceParameters   `json:"iceParameters,omitempty"`
-	IceCandidates    []IceCandidate  `json:"iceCandidates,omitempty"`
-	IceState         IceState        `json:"iceState,omitempty"`
-	IceSelectedTuple *TransportTuple `json:"iceSelectedTuple,omitempty"`
-	DtlsParameters   DtlsParameters  `json:"dtlsParameters,omitempty"`
-	DtlsState        DtlsState       `json:"dtlsState,omitempty"`
-	DtlsRemoteCert   string          `json:"dtlsRemoteCert,omitempty"`
+	IceRole          string         `json:"iceRole,omitempty"`
+	IceParameters    IceParameters  `json:"iceParameters,omitempty"`
+	IceCandidates    []IceCandidate `json:"iceCandidates,omitempty"`
+	IceState         IceState       `json:"iceState,omitempty"`
+	IceSelectedTuple TransportTuple `json:"iceSelectedTuple,omitempty"`
+	DtlsParameters   DtlsParameters `json:"dtlsParameters,omitempty"`
+	DtlsState        DtlsState      `json:"dtlsState,omitempty"`
+	DtlsRemoteCert   string         `json:"dtlsRemoteCert,omitempty"`
 }
 
 type ConsumerDump struct {

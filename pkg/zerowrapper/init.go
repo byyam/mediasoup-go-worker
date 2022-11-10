@@ -44,9 +44,9 @@ func InitLog(config Config) {
 		case zerolog.TimeFormatUnixMs:
 			consoleWriter.TimeFormat = TimeFormatRFC3339
 		}
-		consoleWriter.FormatLevel = func(i interface{}) string {
-			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-		}
+		//consoleWriter.FormatLevel = func(i interface{}) string {
+		//	return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+		//}
 		var writers []io.Writer
 		if config.ConsoleLoggingEnabled {
 			consoleWriter.Out = os.Stdout

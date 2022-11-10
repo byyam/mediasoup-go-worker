@@ -7,28 +7,7 @@ type PipeTransportOptions struct {
 	ListenIp TransportListenIp `json:"listenIp,omitempty"`
 	Port     uint16            `json:"port,omitempty"`
 
-	/**
-	 * Create a SCTP association. Default false.
-	 */
-	EnableSctp bool `json:"enableSctp,omitempty"`
-
-	/**
-	 * SCTP streams number.
-	 */
-	NumSctpStreams NumSctpStreams `json:"numSctpStreams,omitempty"`
-
-	/**
-	 * Maximum allowed size for SCTP messages sent by DataProducers.
-	 * Default 268435456.
-	 */
-	MaxSctpMessageSize int `json:"maxSctpMessageSize,omitempty"`
-
-	/**
-	 * Maximum SCTP send buffer used by DataConsumers.
-	 * Default 268435456.
-	 */
-	SctpSendBufferSize int `json:"sctpSendBufferSize,omitempty"`
-
+	SctpOptions
 	/**
 	 * Enable RTX and NACK for RTP retransmission. Useful if both Routers are
 	 * located in different hosts and there is packet lost in the link. For this

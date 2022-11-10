@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kr/pretty"
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
@@ -22,6 +23,7 @@ import (
 type ITransport interface {
 	Connected()
 	Close()
+	GetJson(data *mediasoupdata.TransportDump)
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
@@ -29,16 +31,17 @@ type ITransport interface {
 }
 
 type Transport struct {
-	id             string
-	direct         bool
-	maxMessageSize uint32
-	logger         zerolog.Logger
+	id      string
+	options mediasoupdata.TransportOptions
+	logger  zerolog.Logger
 
-	mapProducers       sync.Map //map[string]*Producer
-	mapConsumers       sync.Map
-	mapSsrcConsumer    sync.Map
-	mapRtxSsrcConsumer sync.Map
-	rtpListener        *RtpListener
+	mapProducers              sync.Map //map[string]*Producer
+	mapConsumers              sync.Map
+	mapSsrcConsumer           sync.Map
+	mapRtxSsrcConsumer        sync.Map
+	rtpListener               *RtpListener
+	sctpAssociation           *SctpAssociation
+	recvRtpHeaderExtensionIds RtpHeaderExtensionIds
 
 	// handler
 	onTransportNewProducerHandler                 atomic.Value
@@ -66,32 +69,26 @@ func (t *Transport) Close() {
 	})
 }
 
-func (t *Transport) FillJson() json.RawMessage {
+func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
 	var producerIds []string
 	t.mapProducers.Range(func(key, value interface{}) bool {
 		producerIds = append(producerIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata.TransportDump{
-		Id:                      t.id,
-		Direct:                  false,
-		ProducerIds:             producerIds,
-		ConsumerIds:             nil,
-		MapSsrcConsumerId:       nil,
-		MapRtxSsrcConsumerId:    nil,
-		DataProducerIds:         nil,
-		DataConsumerIds:         nil,
-		RecvRtpHeaderExtensions: nil,
-		RtpListener:             nil,
-		SctpParameters:          mediasoupdata.SctpParameters{},
-		SctpState:               "",
-		SctpListener:            nil,
-		TraceEventTypes:         "",
-		PlainTransportDump:      nil,
-		WebRtcTransportDump:     nil,
+
+	data.Id = t.id
+	data.Direct = t.options.Direct
+	data.ProducerIds = producerIds
+	if t.sctpAssociation != nil {
+		data.SctpParameters = t.sctpAssociation.GetSctpAssociationParam()
 	}
-	data, _ := json.Marshal(&dumpData)
-	t.logger.Debug().Msgf("dumpData:%+v", dumpData)
+}
+
+func (t *Transport) FillJson() json.RawMessage {
+	dumpData := &mediasoupdata.TransportDump{}
+
+	data, _ := json.Marshal(dumpData)
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data
 }
 
@@ -129,8 +126,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 
 type transportParam struct {
 	Id                                     string
-	Direct                                 bool
-	MaxMessageSize                         uint32
+	Options                                mediasoupdata.TransportOptions
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)
 	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
@@ -159,15 +155,15 @@ func (t transportParam) valid() bool {
 }
 
 func newTransport(param transportParam) (ITransport, error) {
+	var err error
 	if !param.valid() {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
-		id:             param.Id,
-		direct:         param.Direct,
-		maxMessageSize: param.MaxMessageSize,
-		logger:         zerowrapper.NewScope("transport", param.Id),
-		rtpListener:    newRtpListener(),
+		id:          param.Id,
+		options:     param.Options,
+		logger:      zerowrapper.NewScope("transport", param.Id),
+		rtpListener: newRtpListener(),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
@@ -181,6 +177,16 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
 	transport.notifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
+
+	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.options))
+
+	if transport.options.EnableSctp {
+		transport.sctpAssociation, err = newSctpAssociation(transport.options.SctpOptions)
+		if err != nil {
+			transport.logger.Err(err).Msg("newSctpAssociation failed")
+			return nil, err
+		}
+	}
 
 	return transport, nil
 }
@@ -364,6 +370,13 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	}
 	t.mapProducers.Store(id, producer)
 	t.logger.Debug().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
+	// Take the transport related RTP header extensions of the Producer and
+	// add them to the Transport.
+	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
+	// header extension ids of the Producer (and not their mapped values).
+	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
+	t.logger.Debug().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
+
 	// todo
 
 	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
@@ -373,7 +386,7 @@ func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOpt
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
-	dataProducer, err := newDataProducer(id, t.maxMessageSize, options)
+	dataProducer, err := newDataProducer(id, t.options.MaxMessageSize, options)
 	if err != nil {
 		t.logger.Err(err).Msg("data produce failed")
 		return nil, err
@@ -384,6 +397,9 @@ func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOpt
 }
 
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
+	// Apply the Transport RTP header extension ids so the RTP listener can use them.
+	packet.SetMidExtensionId(t.recvRtpHeaderExtensionIds.Mid)
+	packet.SetRidExtensionId(t.recvRtpHeaderExtensionIds.Rid)
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {

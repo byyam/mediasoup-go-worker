@@ -82,7 +82,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	transportData := mediasoupdata.WebrtcTransportData{
+	webrtcTransportData := &mediasoupdata.WebRtcTransportDump{
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -91,11 +91,15 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
 		DtlsRemoteCert:   "",
-		SctpParameters:   mediasoupdata.SctpParameters{},
-		SctpState:        "",
 	}
-	data, _ := json.Marshal(&transportData)
-	t.logger.Debug().Msgf("transportData:%+v", transportData)
+	dataDump := &mediasoupdata.TransportDump{
+		WebRtcTransportDump: webrtcTransportData,
+	}
+
+	t.ITransport.GetJson(dataDump)
+	data, _ := json.Marshal(dataDump)
+
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data
 }
 
@@ -207,7 +211,7 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 		t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 		return
 	}
-	zaplog.NewLogger().Info("OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
+	zaplog.NewLogger().Info("WebrtcTransport: OnRtpDataReceived", zap.String("rtpPacket", rtpPacket.String()))
 
 	t.ITransport.ReceiveRtpPacket(rtpPacket)
 }
@@ -217,7 +221,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 		t.logger.Warn().Msg("webrtc not connected, ignore send rtp packet")
 		return
 	}
-	zaplog.NewLogger().Info("SendRtpPacket", zap.String("rtpPacket", packet.String()))
+	zaplog.NewLogger().Info("WebrtcTransport: SendRtpPacket", zap.String("rtpPacket", packet.String()))
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
 		t.logger.Error().Err(err).Msg("rtpPacket.Marshal error")
