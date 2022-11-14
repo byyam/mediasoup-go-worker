@@ -148,7 +148,7 @@ func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtp
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
-		p.logger.Warn().Msgf("no stream found for received packet [ssrc:%d]", packet.SSRC)
+		p.logger.Warn().Str("packet", packet.String()).Msg("no stream found for received packet")
 		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
 		return ReceiveRtpPacketResultDISCARDED
 	}

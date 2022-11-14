@@ -299,9 +299,10 @@ const (
 	RtpParametersType_Simulcast                   = "simulcast"
 	RtpParametersType_Svc                         = "svc"
 	RtpParametersType_Pipe                        = "pipe"
+	RtpParametersType_None                        = "none"
 )
 
-func (r RtpParameters) Valid() bool {
+func (r *RtpParameters) Valid() bool {
 	// encodings are mandatory.
 	if r.Encodings == nil || len(r.Encodings) == 0 {
 		return false
@@ -313,9 +314,16 @@ func (r RtpParameters) Valid() bool {
 	return true
 }
 
-func (r RtpParameters) GetType() ProducerType {
-	// todo
-	return RtpParametersType_Simple
+func (r *RtpParameters) GetType() ProducerType {
+	if len(r.Encodings) == 1 {
+		if r.Encodings[0].SpatialLayers > 1 || r.Encodings[0].TemporalLayers > 1 {
+			return RtpParametersType_Svc
+		}
+		return RtpParametersType_Simple
+	} else if len(r.Encodings) > 1 {
+		return RtpParametersType_Simulcast
+	}
+	return RtpParametersType_None
 }
 
 func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
@@ -418,11 +426,11 @@ func (r RtpCodecParameters) isRtxCodec() bool {
  */
 type RtpCodecSpecificParameters struct {
 	h264.RtpParameter          // used by h264 codec
-	ProfileId           uint8  `json:"profile-id,omitempty"`   // used by vp9  https://www.webmproject.org/vp9/profiles/
-	Apt                 byte   `json:"apt,omitempty"`          // used by rtx codec
+	ProfileId           uint8  `json:"profile-id,omitempty"` // used by vp9  https://www.webmproject.org/vp9/profiles/
+	Apt                 byte   `json:"apt,omitempty"` // used by rtx codec
 	SpropStereo         uint8  `json:"sprop-stereo,omitempty"` // used by audio, 1 or 0
 	Useinbandfec        uint8  `json:"useinbandfec,omitempty"` // used by audio, 1 or 0
-	Usedtx              uint8  `json:"usedtx,omitempty"`       // used by audio, 1 or 0
+	Usedtx              uint8  `json:"usedtx,omitempty"` // used by audio, 1 or 0
 	Maxplaybackrate     uint32 `json:"maxplaybackrate,omitempty"`
 	XGoogleMinBitrate   uint32 `json:"x-google-min-bitrate,omitempty"`
 	XGoogleMaxBitrate   uint32 `json:"x-google-max-bitrate,omitempty"`
