@@ -299,9 +299,10 @@ const (
 	RtpParametersType_Simulcast                   = "simulcast"
 	RtpParametersType_Svc                         = "svc"
 	RtpParametersType_Pipe                        = "pipe"
+	RtpParametersType_None                        = "none"
 )
 
-func (r RtpParameters) Valid() bool {
+func (r *RtpParameters) Valid() bool {
 	// encodings are mandatory.
 	if r.Encodings == nil || len(r.Encodings) == 0 {
 		return false
@@ -313,9 +314,16 @@ func (r RtpParameters) Valid() bool {
 	return true
 }
 
-func (r RtpParameters) GetType() ProducerType {
-	// todo
-	return RtpParametersType_Simple
+func (r *RtpParameters) GetType() ProducerType {
+	if len(r.Encodings) == 1 {
+		if r.Encodings[0].SpatialLayers > 1 || r.Encodings[0].TemporalLayers > 1 {
+			return RtpParametersType_Svc
+		}
+		return RtpParametersType_Simple
+	} else if len(r.Encodings) > 1 {
+		return RtpParametersType_Simulcast
+	}
+	return RtpParametersType_None
 }
 
 func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
