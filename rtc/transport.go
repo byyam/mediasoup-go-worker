@@ -315,8 +315,22 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
 		})
 
-	case mediasoupdata.ConsumerType_Simulcast: // todo...
+	case mediasoupdata.ConsumerType_Simulcast:
+		consumer, err = newSimulcastConsumer(simulcastConsumerParam{
+			consumerParam: consumerParam{
+				id:                     consumerId,
+				producerId:             producerId,
+				kind:                   options.Kind,
+				rtpParameters:          options.RtpParameters,
+				consumableRtpEncodings: options.ConsumableRtpEncodings,
+			},
+			OnConsumerSendRtpPacket:       t.OnConsumerSendRtpPacket,
+			OnConsumerKeyFrameRequested:   t.OnConsumerKeyFrameRequested,
+			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
+		})
+
 	case mediasoupdata.ConsumerType_Svc:
+		// todo
 	default:
 		t.logger.Error().Str("type", string(options.Type)).Msg("unsupported consumer type")
 		return nil, mserror.ErrInvalidParam

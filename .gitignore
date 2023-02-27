@@ -28,6 +28,5 @@ go.sum
 # Vscode files
 .vscode
 
-*/mediasoup-worker/mediasoup-worker
 bin/
 log/

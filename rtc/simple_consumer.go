@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
-	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -19,11 +18,9 @@ import (
 
 type SimpleConsumer struct {
 	IConsumer
-	logger           zerolog.Logger
-	rtpStream        *RtpStreamSend
-	rtpStreams       []*RtpStreamSend
-	maxRtcpInterval  time.Duration
-	lastRtcpSentTime time.Time
+	logger     zerolog.Logger
+	rtpStream  *RtpStreamSend
+	rtpStreams []*RtpStreamSend
 
 	// handler
 	onConsumerSendRtpPacketHandler     func(consumer IConsumer, packet *rtpparser.Packet)
@@ -50,12 +47,7 @@ func newSimpleConsumer(param simpleConsumerParam) (*SimpleConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Set the RTCP report generation interval.
-	if c.GetKind() == mediasoupdata.MediaKind_Audio {
-		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
-	} else {
-		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
-	}
+
 	// Create RtpStreamSend instance for sending a single stream to the remote.
 	c.CreateRtpStream()
 
@@ -143,10 +135,10 @@ func (c *SimpleConsumer) GetRtpStreams() []*RtpStreamSend {
 }
 
 func (c *SimpleConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
-	if now.Sub(c.lastRtcpSentTime) < c.maxRtcpInterval {
+	if now.Sub(c.GetLastRtcpSentTime()) < c.GetMaxRtcpInterval() {
 		return nil
 	}
-	c.lastRtcpSentTime = now
+	c.SetLastRtcpSentTime(now)
 	var packets []rtcp.Packet
 	report := rtpStream.GetRtcpSenderReport(now)
 	if report == nil {

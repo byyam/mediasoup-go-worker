@@ -9,6 +9,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -32,6 +33,12 @@ type IConsumer interface {
 	GetRtpStreams() []*RtpStreamSend
 	GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet
 	NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8)
+
+	// maxRtcpInterval
+	GetMaxRtcpInterval() time.Duration
+	// lastRtcpSentTime
+	GetLastRtcpSentTime() time.Time
+	SetLastRtcpSentTime(v time.Time)
 }
 
 type Consumer struct {
@@ -43,12 +50,28 @@ type Consumer struct {
 	rtxSsrcs                   []uint32
 	supportedCodecPayloadTypes []uint8
 
+	maxRtcpInterval  time.Duration
+	lastRtcpSentTime time.Time
+
 	consumerType           mediasoupdata.ConsumerType
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
 	fillJsonStatsFunc      func() json.RawMessage
 
 	logger zerolog.Logger
+}
+
+// getter & setter
+func (c *Consumer) GetMaxRtcpInterval() time.Duration {
+	return c.maxRtcpInterval
+}
+
+func (c *Consumer) GetLastRtcpSentTime() time.Time {
+	return c.lastRtcpSentTime
+}
+
+func (c *Consumer) SetLastRtcpSentTime(v time.Time) {
+	c.lastRtcpSentTime = v
 }
 
 func (c *Consumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
@@ -157,6 +180,13 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.rtpParameters))
 	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
 	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
+
+	// Set the RTCP report generation interval.
+	if c.GetKind() == mediasoupdata.MediaKind_Audio {
+		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
+	} else {
+		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
+	}
 
 	return c, nil
 }
