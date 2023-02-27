@@ -16,7 +16,7 @@ import (
 
 	"github.com/pion/ice/v2"
 	"github.com/pion/stun"
-	"github.com/pion/transport/packetio"
+	"github.com/pion/transport/v2/packetio"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"

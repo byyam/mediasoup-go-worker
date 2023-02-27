@@ -2,9 +2,10 @@ package workerchannel
 
 const (
 	NativeJsonVersion = "3.9.0"
-	NativeVersion     = "3.10.5" // todo
+	NativeVersion     = "3.10.5"
 )
 
+// start from CustomerPipeStart
 const (
 	ConsumerChannelFd        = 3 // read fd
 	ProducerChannelFd        = 4 // write fd
