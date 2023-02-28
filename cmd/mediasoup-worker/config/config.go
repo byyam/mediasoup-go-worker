@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -13,7 +14,8 @@ func InitConfig() {
 	app := &cli.App{
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "logLevel", Value: "warn", Aliases: []string{"l"}},
-			&cli.StringSliceFlag{Name: "logTag", Aliases: []string{"t"}},
+			&cli.StringSliceFlag{Name: "logTags", Aliases: []string{"t"}},
+			&cli.StringSliceFlag{Name: "logTag"}, // mediasoup old version use logTag
 			&cli.IntFlag{Name: "rtcMinPort", Value: 0, Aliases: []string{"m"}},
 			&cli.IntFlag{Name: "rtcMaxPort", Value: 0, Aliases: []string{"M"}},
 			&cli.StringFlag{Name: "dtlsCertificateFile", Aliases: []string{"c"}},
@@ -28,9 +30,16 @@ func InitConfig() {
 
 	app.Action = func(c *cli.Context) error {
 		conf.Settings.LogLevel = mediasoupdata.WorkerLogLevel(c.String("logLevel"))
-		logTags := c.StringSlice("logTag")
+		logTags := c.StringSlice("logTags")
 		for _, t := range logTags {
 			conf.Settings.LogTags = append(conf.Settings.LogTags, mediasoupdata.WorkerLogTag(t))
+		}
+		logTag := c.StringSlice("logTag")
+		if len(logTag) > 0 {
+			fmt.Println("use mediasoup old version: logTag option name")
+			for _, t := range logTag {
+				conf.Settings.LogTags = append(conf.Settings.LogTags, mediasoupdata.WorkerLogTag(t))
+			}
 		}
 		conf.Settings.RtcMinPort = uint16(c.Int("rtcMinPort"))
 		conf.Settings.RtcMaxPort = uint16(c.Int("rtcMaxPort"))
