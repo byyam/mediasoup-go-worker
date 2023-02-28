@@ -4,8 +4,10 @@ go 1.18
 
 require (
 	github.com/google/gops v0.3.22
+	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-version v1.4.0
 	github.com/imdario/mergo v0.3.12
+	github.com/jiyeyuran/go-protoo v1.0.7
 	github.com/kr/pretty v0.3.0
 	github.com/pion/dtls/v2 v2.2.4
 	github.com/pion/ice/v2 v2.3.0
@@ -30,8 +32,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/zerologr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/jiyeyuran/go-eventemitter v1.4.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
