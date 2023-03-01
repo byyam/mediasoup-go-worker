@@ -3,8 +3,8 @@ package basehandler
 import (
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/democonf"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/democonf"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
 )
 
 func ProducerOptions(kind mediasoupdata.MediaKind, streamId uint64, rtpParameters mediasoupdata.RtpParameters) (*mediasoupdata.ProducerOptions, error) {

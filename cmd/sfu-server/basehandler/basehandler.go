@@ -8,9 +8,9 @@ import (
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/democonf"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/workerapi"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/democonf"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 )
 
 var (

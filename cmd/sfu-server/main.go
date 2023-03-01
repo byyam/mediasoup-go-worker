@@ -16,17 +16,17 @@ import (
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/pipetransport"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/sfuconf"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/pipetransport"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/sfuconf"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/workerapi"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 
 	"github.com/gorilla/websocket"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/webrtctransport"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/webrtctransport"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/wsconn"
 )
@@ -58,12 +58,14 @@ var (
 	githash    string
 	gitbranch  string
 	buildstamp string
+	goversion  string
 )
 
 func printVersion() {
 	log.Printf("%11s %s", "GIT_HASH:", githash)
 	log.Printf("%11s %s", "GIT_BRANCH:", gitbranch)
 	log.Printf("%11s %s", "BUILD_TIME:", buildstamp)
+	log.Printf("%11s %s", "GO_VERSION:", goversion)
 }
 
 //Define a map to implement routing table.

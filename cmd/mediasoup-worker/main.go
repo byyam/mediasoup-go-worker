@@ -24,6 +24,20 @@ var (
 	pid    int
 )
 
+var (
+	githash    string
+	gitbranch  string
+	buildstamp string
+	goversion  string
+)
+
+func printVersion() {
+	log.Printf("%11s %s", "GIT_HASH:", githash)
+	log.Printf("%11s %s", "GIT_BRANCH:", gitbranch)
+	log.Printf("%11s %s", "BUILD_TIME:", buildstamp)
+	log.Printf("%11s %s", "GO_VERSION:", goversion)
+}
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)
@@ -44,7 +58,7 @@ func initLog() {
 	})
 	zerowrapper.InitLog(zerowrapper.Config{
 		ConsoleLoggingEnabled: true,
-		FileLoggingEnabled:    false,
+		FileLoggingEnabled:    true,
 		Directory:             "./log",
 		Filename:              "signal.log",
 		MaxSize:               1,
@@ -55,6 +69,7 @@ func initLog() {
 }
 
 func main() {
+	printVersion()
 	// init configurations
 	config.InitConfig()
 	logger.Info().Msgf("argv:%+v", conf.Settings)

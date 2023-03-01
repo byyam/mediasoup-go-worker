@@ -11,8 +11,8 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/workerapi"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 )
 
 func (h *Handler) subscribeHandler(message protoo.Message) (interface{}, *protoo.Error) {

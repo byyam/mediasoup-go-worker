@@ -7,8 +7,8 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/basehandler"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/basehandler"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
 
 	"github.com/google/uuid"
 
@@ -17,8 +17,8 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/democonf"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/workerapi"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/democonf"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 )
 
 func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, transportId string) (*mediasoupdata.WebrtcTransportData, error) {

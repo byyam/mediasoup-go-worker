@@ -9,8 +9,8 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
 
-	"github.com/byyam/mediasoup-go-worker/cmd/server/basehandler"
-	"github.com/byyam/mediasoup-go-worker/cmd/server/demoutils"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/basehandler"
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
 )
 
 type Handler struct {
