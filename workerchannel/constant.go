@@ -2,7 +2,7 @@ package workerchannel
 
 const (
 	NativeJsonVersion = "3.9.0"
-	NativeVersion     = "3.10.5" // todo
+	NativeVersion     = "3.10.5"
 )
 
 const (

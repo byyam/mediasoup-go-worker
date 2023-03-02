@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -80,6 +81,10 @@ func main() {
 
 	// init worker
 	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")
+	if mediasoupVersion == "" {
+		// old version mediasoup channel message format changed
+		checkError(errors.New("MEDIASOUP_VERSION should be set in os.env"))
+	}
 	channel, payloadChannel, err := mediasoup_go_worker.InitWorker(mediasoupVersion)
 	checkError(err)
 
