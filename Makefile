@@ -23,11 +23,11 @@ all: mediasoup-worker sfu-server
 
 mediasoup-worker:
 	@go version
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build $(LDFLAGS) -mod=${MOD} -o bin/mediasoup-worker-${GOOS} cmd/mediasoup-worker/main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build $(LDFLAGS) -mod=${MOD} -o bin/mediasoup-worker cmd/mediasoup-worker/main.go
 
 sfu-server:
 	@go version
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build $(LDFLAGS) -mod=${MOD} -o bin/sfu-server-${GOOS} cmd/sfu-server/main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build $(LDFLAGS) -mod=${MOD} -o bin/sfu-server cmd/sfu-server/main.go
 
 
 clean:

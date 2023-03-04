@@ -17,7 +17,7 @@ func settings() []string {
 
 func main() {
 	opts := settings()
-	controller, err := udschannel.NewController("../controlled/controlled", opts, 2)
+	controller, err := udschannel.NewController("./example-uds-controlled", opts, 2)
 	if err != nil {
 		panic(err)
 	}
