@@ -7,26 +7,31 @@ import (
 	"syscall"
 )
 
+const (
+	CustomerPipeStart = 3
+)
+
 // add a file reference, in case of File object gc
 var socketPairFiles []*os.File
 
 //NOTICE :the stdioMapping param is a analogy of nodejs spawn stdio map , like stdio:["ignore", "inherit", "pipe"]
-func NewUdsChannel(filePath string, args []string, channelNum int) (*UdsChannel, error) {
+func NewController(filePath string, args []string, channelNum int) (*UdsChannel, error) {
 	// create socketpair * (numOf(stdio."pipe") + num *2) descriped by stdioMapping and channelNum
 	procAttr := &os.ProcAttr{
 		//pass all env vars
 		Env:   os.Environ(),
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 	}
-	pipes := make([][2]int, channelNum*2+3)
-	for i := 0; i < channelNum*2+3; i++ {
+	// 2 means fixed read and write pipe.
+	pipes := make([][2]int, channelNum*2+CustomerPipeStart)
+	for i := 0; i < channelNum*2+CustomerPipeStart; i++ {
 		if pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.FD_CLOEXEC, 0); err == nil {
 			pipes[i] = pair
 
 			// son ony use pair[1]
 			// currently we just pass pipes[3:][1]
 			// the os.StartProcess will do the dup2 auto
-			if i >= 3 {
+			if i >= CustomerPipeStart {
 				procAttr.Files = append(procAttr.Files, os.NewFile(uintptr(pair[1]), "pipe1"))
 			}
 		} else {

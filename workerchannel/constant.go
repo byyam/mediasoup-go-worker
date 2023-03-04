@@ -5,6 +5,7 @@ const (
 	NativeVersion     = "3.10.5"
 )
 
+// start from CustomerPipeStart
 const (
 	ConsumerChannelFd        = 3 // read fd
 	ProducerChannelFd        = 4 // write fd
