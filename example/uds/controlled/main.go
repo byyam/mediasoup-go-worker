@@ -13,6 +13,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("controlled pid:%d start", os.Getpid())
+	fmt.Printf("controlled pid:%d start\n", os.Getpid())
 	select {}
 }
