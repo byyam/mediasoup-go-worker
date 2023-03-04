@@ -1,16 +1,16 @@
-GOOS=darwin
-ifeq ($(os),linux)
-	GOOS=linux
+GOARCH=
+ifneq ($(arch), )
+	GOARCH=$(arch)
+endif
+
+GOOS=
+ifneq ($(os), )
+	GOOS=$(os)
 endif
 
 MOD=mod
 ifeq ($(mod),vendor)
 	MOD=vendor
-endif
-
-GOARCH=arm64
-ifeq ($(arch),amd64)
-	GOARCH=amd64
 endif
 
 BUILD_DATE=`date '+%Y-%m-%d_%H:%M:%S'`
