@@ -14,10 +14,11 @@ Motivation is to provide a mediasoup APIs implementation of [Pion](https://githu
 ### Features
 #### Mediasoup worker Protocol
 
-|  version  | stream protocol type |         support         |
-|:---------:|:--------------------:|:-----------------------:|
-|  < 3.9.0  |      netstring       | :ballot_box_with_check: |
-| \>= 3.9.0 |        native        | :ballot_box_with_check: |
+|  version   |           stream protocol type            |         support         |
+|:----------:|:-----------------------------------------:|:-----------------------:|
+|  < 3.9.0   |                 netstring                 | :ballot_box_with_check: |
+| \>= 3.9.0  |                  native                   | :ballot_box_with_check: |
+| \>= 3.10.5 | native <br/> message wrapper without JSON | :ballot_box_with_check: |
 
 
 ~~~shell
@@ -159,7 +160,7 @@ BenchmarkNetStrings_ReadBuffer-10       15113563                77.66 ns/op     
 build out executable file.
 
 ``` shell
-$ ./build.sh
+$ make
 ```
 
 Replace the worker Binary in [mediasoup](https://github.com/versatica/mediasoup) project.

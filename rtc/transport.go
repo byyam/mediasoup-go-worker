@@ -383,13 +383,13 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		}
 	}
 	t.mapProducers.Store(id, producer)
-	t.logger.Debug().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
+	t.logger.Info().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// Take the transport related RTP header extensions of the Producer and
 	// add them to the Transport.
 	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
 	// header extension ids of the Producer (and not their mapped values).
 	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
-	t.logger.Debug().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
+	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
 
 	// todo
 

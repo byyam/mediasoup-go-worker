@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -24,6 +25,20 @@ var (
 	pid    int
 )
 
+var (
+	githash    string
+	gitbranch  string
+	buildstamp string
+	goversion  string
+)
+
+func printVersion() {
+	log.Printf("%11s %s", "GIT_HASH:", githash)
+	log.Printf("%11s %s", "GIT_BRANCH:", gitbranch)
+	log.Printf("%11s %s", "BUILD_TIME:", buildstamp)
+	log.Printf("%11s %s", "GO_VERSION:", goversion)
+}
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)
@@ -44,7 +59,7 @@ func initLog() {
 	})
 	zerowrapper.InitLog(zerowrapper.Config{
 		ConsoleLoggingEnabled: true,
-		FileLoggingEnabled:    false,
+		FileLoggingEnabled:    true,
 		Directory:             "./log",
 		Filename:              "signal.log",
 		MaxSize:               1,
@@ -55,6 +70,7 @@ func initLog() {
 }
 
 func main() {
+	printVersion()
 	// init configurations
 	config.InitConfig()
 	logger.Info().Msgf("argv:%+v", conf.Settings)
@@ -65,6 +81,10 @@ func main() {
 
 	// init worker
 	mediasoupVersion := os.Getenv("MEDIASOUP_VERSION")
+	if mediasoupVersion == "" {
+		// old version mediasoup channel message format changed
+		checkError(errors.New("MEDIASOUP_VERSION should be set in os.env"))
+	}
 	channel, payloadChannel, err := mediasoup_go_worker.InitWorker(mediasoupVersion)
 	checkError(err)
 
