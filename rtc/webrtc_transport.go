@@ -6,8 +6,11 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
@@ -36,7 +39,7 @@ type WebrtcTransport struct {
 }
 
 type webrtcTransportParam struct {
-	options mediasoupdata.WebRtcTransportOptions
+	optionsFBS *FBS__WebRtcTransport.WebRtcTransportOptionsT
 	transportParam
 }
 
@@ -65,11 +68,11 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
 		transportId: param.Id,
-		role:        mediasoupdata.DtlsRole_Auto,
+		role:        FBS__WebRtcTransport.DtlsRoleAUTO,
 	}); err != nil {
 		return nil, err
 	}
-	t.logger.Info().Msgf("newWebrtcTransport options:%# v", pretty.Formatter(param.options))
+	t.logger.Info().Msgf("newWebrtcTransport options:%# v", pretty.Formatter(param.optionsFBS))
 	go func() {
 		<-t.iceServer.CloseChannel()
 		t.logger.Warn().Msg("ice closed")
@@ -82,7 +85,10 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	webrtcTransportData := &mediasoupdata.WebRtcTransportDump{
+	dataDump := &FBS__Transport.DumpT{}
+	t.ITransport.GetJson(dataDump)
+	webrtcTransportDump := &FBS__WebRtcTransport.DumpResponseT{
+		Base:             dataDump,
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -90,14 +96,8 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		IceSelectedTuple: t.iceServer.GetSelectedTuple(),
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
-		DtlsRemoteCert:   "",
 	}
-	dataDump := &mediasoupdata.TransportDump{
-		WebRtcTransportDump: webrtcTransportData,
-	}
-
-	t.ITransport.GetJson(dataDump)
-	data, _ := json.Marshal(dataDump)
+	data, _ := json.Marshal(webrtcTransportDump)
 
 	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data
@@ -106,23 +106,26 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
-	switch request.Method {
-	case mediasoupdata.MethodTransportConnect:
-		var options mediasoupdata.TransportConnectOptions
-		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.connect(options)
-		response.Data, _ = json.Marshal(data)
+	switch request.MethodType {
+	case FBS__Request.MethodWEBRTCTRANSPORT_CONNECT:
+		requestT := request.Request.Body.Value.(*FBS__WebRtcTransport.ConnectRequestT)
+		data, err := t.connect(requestT.DtlsParameters)
 		response.Err = err
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWebRtcTransport_ConnectResponse,
+			Value: data,
+		}
+		response.RspBody = rspBody
 
-	case mediasoupdata.MethodTransportRestartIce:
+	case FBS__Request.MethodTRANSPORT_RESTART_ICE:
 
 	default:
 		t.ITransport.HandleRequest(request, response)
 	}
 }
 
-func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions) (*mediasoupdata.TransportConnectData, error) {
-	if options.DtlsParameters == nil {
+func (t *WebrtcTransport) connect(options *FBS__WebRtcTransport.DtlsParametersT) (*FBS__WebRtcTransport.ConnectResponseT, error) {
+	if options == nil {
 		return nil, mserror.ErrInvalidParam
 	}
 	go func() {
@@ -155,7 +158,7 @@ func (t *WebrtcTransport) connect(options mediasoupdata.TransportConnectOptions)
 
 	t.ITransport.Connected()
 
-	return t.dtlsTransport.SetRole(options.DtlsParameters)
+	return t.dtlsTransport.SetRole(options)
 }
 
 func (t *WebrtcTransport) OnPacketReceived(data []byte) {

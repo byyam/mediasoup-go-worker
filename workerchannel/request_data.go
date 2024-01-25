@@ -3,6 +3,9 @@ package workerchannel
 import (
 	"encoding/json"
 	"fmt"
+
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 )
 
 type InternalData struct {
@@ -20,21 +23,48 @@ func (i *InternalData) Unmarshal(data json.RawMessage) error {
 }
 
 type RequestData struct {
-	Method    string
-	HandlerId string `json:"handlerId,omitempty"`
-	Internal  InternalData
-	Data      json.RawMessage
+	MethodType FBS__Request.Method
+	Method     string
+	HandlerId  string `json:"handlerId,omitempty"`
+	Internal   InternalData
+	Data       json.RawMessage
+	// FBS request
+	Request *FBS__Request.RequestT
 }
 
 func (d RequestData) String() string {
-	return fmt.Sprintf("Method:%s,Internal:%+v,Data:%s", d.Method, d.Internal, string(d.Data))
+	return fmt.Sprintf("Id:%d,HandlerId:%s,Method:%s,Data:%s",
+		d.Request.Id,
+		d.Request.HandlerId,
+		FBS__Request.EnumNamesMethod[d.MethodType],
+		string(d.Data))
 }
 
 type ResponseData struct {
-	Err  error
-	Data json.RawMessage
+	Id         uint32
+	MethodType FBS__Request.Method
+	Err        error
+	Data       json.RawMessage
+	// FBS data
+	RspBody *FBS__Response.BodyT
 }
 
 func (d ResponseData) String() string {
-	return fmt.Sprintf("Err:%v,Data:%s", d.Err, string(d.Data))
+	// print rsp data
+	var data json.RawMessage
+	if d.Data != nil {
+		data = d.Data
+	} else {
+		data, _ = json.Marshal(d.RspBody)
+	}
+	var bodyType string
+	if d.RspBody != nil {
+		bodyType = FBS__Response.EnumNamesBody[d.RspBody.Type]
+	}
+	return fmt.Sprintf("Id:%d,Method:%s,BodyType:%s,Err:%v,Data:%s",
+		d.Id,
+		FBS__Request.EnumNamesMethod[d.MethodType],
+		bodyType,
+		d.Err,
+		string(data))
 }

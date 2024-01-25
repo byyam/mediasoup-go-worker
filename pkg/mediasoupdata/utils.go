@@ -51,7 +51,7 @@ func generateRandomNumber() uint32 {
 	return uint32(rand.Int63n(900000000)) + 100000000
 }
 
-func clone(from, to interface{}) (err error) {
+func Clone(from, to interface{}) (err error) {
 	data, err := json.Marshal(from)
 	if err != nil {
 		return err

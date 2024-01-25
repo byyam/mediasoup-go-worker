@@ -3,7 +3,7 @@ package rtc
 import (
 	"github.com/rs/zerolog"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 )
@@ -22,8 +22,8 @@ func (t *RtpObserver) HandleRequest(request workerchannel.RequestData, response 
 		t.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
 	}()
 
-	switch request.Method {
-	case mediasoupdata.MethodRtpObserverAddProducer:
+	switch request.MethodType {
+	case FBS__Request.MethodRTPOBSERVER_ADD_PRODUCER:
 		t.logger.Info().Msg("add producer")
 
 	default:
