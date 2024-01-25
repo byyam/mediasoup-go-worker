@@ -5,62 +5,8 @@ package WebRtcTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type IceCandidateT struct {
-	Foundation string `json:"foundation"`
-	Priority uint32 `json:"priority"`
-	Ip string `json:"ip"`
-	Protocol FBS__Transport.Protocol `json:"protocol"`
-	Port uint16 `json:"port"`
-	Type IceCandidateType `json:"type"`
-	TcpType *IceCandidateTcpType `json:"tcp_type"`
-}
-
-func (t *IceCandidateT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	foundationOffset := flatbuffers.UOffsetT(0)
-	if t.Foundation != "" {
-		foundationOffset = builder.CreateString(t.Foundation)
-	}
-	ipOffset := flatbuffers.UOffsetT(0)
-	if t.Ip != "" {
-		ipOffset = builder.CreateString(t.Ip)
-	}
-	IceCandidateStart(builder)
-	IceCandidateAddFoundation(builder, foundationOffset)
-	IceCandidateAddPriority(builder, t.Priority)
-	IceCandidateAddIp(builder, ipOffset)
-	IceCandidateAddProtocol(builder, t.Protocol)
-	IceCandidateAddPort(builder, t.Port)
-	IceCandidateAddType(builder, t.Type)
-	if t.TcpType != nil {
-		IceCandidateAddTcpType(builder, *t.TcpType)
-	}
-	return IceCandidateEnd(builder)
-}
-
-func (rcv *IceCandidate) UnPackTo(t *IceCandidateT) {
-	t.Foundation = string(rcv.Foundation())
-	t.Priority = rcv.Priority()
-	t.Ip = string(rcv.Ip())
-	t.Protocol = rcv.Protocol()
-	t.Port = rcv.Port()
-	t.Type = rcv.Type()
-	t.TcpType = rcv.TcpType()
-}
-
-func (rcv *IceCandidate) UnPack() *IceCandidateT {
-	if rcv == nil {
-		return nil
-	}
-	t := &IceCandidateT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type IceCandidate struct {
 	_tab flatbuffers.Table

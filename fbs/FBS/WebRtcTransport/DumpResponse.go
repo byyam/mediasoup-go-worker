@@ -5,78 +5,8 @@ package WebRtcTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type DumpResponseT struct {
-	Base *FBS__Transport.DumpT `json:"base"`
-	IceRole IceRole `json:"ice_role"`
-	IceParameters *IceParametersT `json:"ice_parameters"`
-	IceCandidates []*IceCandidateT `json:"ice_candidates"`
-	IceState IceState `json:"ice_state"`
-	IceSelectedTuple *FBS__Transport.TupleT `json:"ice_selected_tuple"`
-	DtlsParameters *DtlsParametersT `json:"dtls_parameters"`
-	DtlsState DtlsState `json:"dtls_state"`
-}
-
-func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	iceParametersOffset := t.IceParameters.Pack(builder)
-	iceCandidatesOffset := flatbuffers.UOffsetT(0)
-	if t.IceCandidates != nil {
-		iceCandidatesLength := len(t.IceCandidates)
-		iceCandidatesOffsets := make([]flatbuffers.UOffsetT, iceCandidatesLength)
-		for j := 0; j < iceCandidatesLength; j++ {
-			iceCandidatesOffsets[j] = t.IceCandidates[j].Pack(builder)
-		}
-		DumpResponseStartIceCandidatesVector(builder, iceCandidatesLength)
-		for j := iceCandidatesLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(iceCandidatesOffsets[j])
-		}
-		iceCandidatesOffset = builder.EndVector(iceCandidatesLength)
-	}
-	iceSelectedTupleOffset := t.IceSelectedTuple.Pack(builder)
-	dtlsParametersOffset := t.DtlsParameters.Pack(builder)
-	DumpResponseStart(builder)
-	DumpResponseAddBase(builder, baseOffset)
-	DumpResponseAddIceRole(builder, t.IceRole)
-	DumpResponseAddIceParameters(builder, iceParametersOffset)
-	DumpResponseAddIceCandidates(builder, iceCandidatesOffset)
-	DumpResponseAddIceState(builder, t.IceState)
-	DumpResponseAddIceSelectedTuple(builder, iceSelectedTupleOffset)
-	DumpResponseAddDtlsParameters(builder, dtlsParametersOffset)
-	DumpResponseAddDtlsState(builder, t.DtlsState)
-	return DumpResponseEnd(builder)
-}
-
-func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
-	t.Base = rcv.Base(nil).UnPack()
-	t.IceRole = rcv.IceRole()
-	t.IceParameters = rcv.IceParameters(nil).UnPack()
-	iceCandidatesLength := rcv.IceCandidatesLength()
-	t.IceCandidates = make([]*IceCandidateT, iceCandidatesLength)
-	for j := 0; j < iceCandidatesLength; j++ {
-		x := IceCandidate{}
-		rcv.IceCandidates(&x, j)
-		t.IceCandidates[j] = x.UnPack()
-	}
-	t.IceState = rcv.IceState()
-	t.IceSelectedTuple = rcv.IceSelectedTuple(nil).UnPack()
-	t.DtlsParameters = rcv.DtlsParameters(nil).UnPack()
-	t.DtlsState = rcv.DtlsState()
-}
-
-func (rcv *DumpResponse) UnPack() *DumpResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &DumpResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type DumpResponse struct {
 	_tab flatbuffers.Table

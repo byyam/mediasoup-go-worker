@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -255,25 +256,37 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	return rspData, nil
 }
 
-func (c *Channel) Event(targetId int, event string) {
+func (c *Channel) Event(targetId int, event Notification.Event) {
 	switch c.bufferFormat {
 	case NativeJsonFormat, NativeFormat:
 		c.eventJson(targetId, event)
-	//case FlatBufferFormat:
-
+	case FlatBufferFormat:
+		c.eventFB(targetId, event)
 	default:
 		c.logger.Error().Int("[Event]bufferFormat", c.bufferFormat).Send()
 	}
 }
 
-func (c *Channel) eventJson(targetId int, event string) {
+func (c *Channel) eventJson(targetId int, event Notification.Event) {
 	msg := channelData{
 		TargetId: strconv.Itoa(targetId),
-		Event:    event,
+		Event:    EventMap[event],
 	}
 	jsonByte, _ := json.Marshal(&msg)
 	err := c.netParser.WriteBuffer(jsonByte)
-	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Str("event", msg.Event).Msg("send Event msg")
+	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Int("event", int(event)).Msg("[eventJson]send Event msg")
+}
+
+func (c *Channel) eventFB(targetId int, event Notification.Event) {
+	//b := flatbuffers.NewBuilder(0)
+	//r := Notification.Notification{
+	//	HandlerId: strconv.Itoa(targetId),
+	//	Event:     event,
+	//	Body:      nil,
+	//}
+	//b.Finish(r.Pack(b))
+	//err := c.netParser.WriteBuffer(b.FinishedBytes())
+	//c.logger.Info().Err(err).Int("targetId", targetId).Int("event", int(event)).Msg("[eventFB]send Event msg")
 }
 
 func (c *Channel) Close() {

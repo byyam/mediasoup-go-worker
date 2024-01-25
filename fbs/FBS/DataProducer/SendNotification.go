@@ -6,60 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SendNotificationT struct {
-	Ppid uint32 `json:"ppid"`
-	Data []byte `json:"data"`
-	Subchannels []uint16 `json:"subchannels"`
-	RequiredSubchannel *uint16 `json:"required_subchannel"`
-}
-
-func (t *SendNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataOffset := flatbuffers.UOffsetT(0)
-	if t.Data != nil {
-		dataOffset = builder.CreateByteString(t.Data)
-	}
-	subchannelsOffset := flatbuffers.UOffsetT(0)
-	if t.Subchannels != nil {
-		subchannelsLength := len(t.Subchannels)
-		SendNotificationStartSubchannelsVector(builder, subchannelsLength)
-		for j := subchannelsLength - 1; j >= 0; j-- {
-			builder.PrependUint16(t.Subchannels[j])
-		}
-		subchannelsOffset = builder.EndVector(subchannelsLength)
-	}
-	SendNotificationStart(builder)
-	SendNotificationAddPpid(builder, t.Ppid)
-	SendNotificationAddData(builder, dataOffset)
-	SendNotificationAddSubchannels(builder, subchannelsOffset)
-	if t.RequiredSubchannel != nil {
-		SendNotificationAddRequiredSubchannel(builder, *t.RequiredSubchannel)
-	}
-	return SendNotificationEnd(builder)
-}
-
-func (rcv *SendNotification) UnPackTo(t *SendNotificationT) {
-	t.Ppid = rcv.Ppid()
-	t.Data = rcv.DataBytes()
-	subchannelsLength := rcv.SubchannelsLength()
-	t.Subchannels = make([]uint16, subchannelsLength)
-	for j := 0; j < subchannelsLength; j++ {
-		t.Subchannels[j] = rcv.Subchannels(j)
-	}
-	t.RequiredSubchannel = rcv.RequiredSubchannel()
-}
-
-func (rcv *SendNotification) UnPack() *SendNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SendNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SendNotification struct {
 	_tab flatbuffers.Table
 }

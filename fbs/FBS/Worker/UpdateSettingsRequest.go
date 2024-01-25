@@ -6,56 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type UpdateSettingsRequestT struct {
-	LogLevel string `json:"log_level"`
-	LogTags []string `json:"log_tags"`
-}
-
-func (t *UpdateSettingsRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	logLevelOffset := flatbuffers.UOffsetT(0)
-	if t.LogLevel != "" {
-		logLevelOffset = builder.CreateString(t.LogLevel)
-	}
-	logTagsOffset := flatbuffers.UOffsetT(0)
-	if t.LogTags != nil {
-		logTagsLength := len(t.LogTags)
-		logTagsOffsets := make([]flatbuffers.UOffsetT, logTagsLength)
-		for j := 0; j < logTagsLength; j++ {
-			logTagsOffsets[j] = builder.CreateString(t.LogTags[j])
-		}
-		UpdateSettingsRequestStartLogTagsVector(builder, logTagsLength)
-		for j := logTagsLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(logTagsOffsets[j])
-		}
-		logTagsOffset = builder.EndVector(logTagsLength)
-	}
-	UpdateSettingsRequestStart(builder)
-	UpdateSettingsRequestAddLogLevel(builder, logLevelOffset)
-	UpdateSettingsRequestAddLogTags(builder, logTagsOffset)
-	return UpdateSettingsRequestEnd(builder)
-}
-
-func (rcv *UpdateSettingsRequest) UnPackTo(t *UpdateSettingsRequestT) {
-	t.LogLevel = string(rcv.LogLevel())
-	logTagsLength := rcv.LogTagsLength()
-	t.LogTags = make([]string, logTagsLength)
-	for j := 0; j < logTagsLength; j++ {
-		t.LogTags[j] = string(rcv.LogTags(j))
-	}
-}
-
-func (rcv *UpdateSettingsRequest) UnPack() *UpdateSettingsRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &UpdateSettingsRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type UpdateSettingsRequest struct {
 	_tab flatbuffers.Table
 }

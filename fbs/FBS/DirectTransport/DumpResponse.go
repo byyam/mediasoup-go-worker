@@ -5,35 +5,8 @@ package DirectTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type DumpResponseT struct {
-	Base *FBS__Transport.DumpT `json:"base"`
-}
-
-func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	DumpResponseStart(builder)
-	DumpResponseAddBase(builder, baseOffset)
-	return DumpResponseEnd(builder)
-}
-
-func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
-	t.Base = rcv.Base(nil).UnPack()
-}
-
-func (rcv *DumpResponse) UnPack() *DumpResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &DumpResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type DumpResponse struct {
 	_tab flatbuffers.Table

@@ -5,38 +5,8 @@ package Consumer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpPacket "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpPacket"
+	FBS__RtpPacket "FBS/RtpPacket"
 )
-
-type KeyFrameTraceInfoT struct {
-	RtpPacket *FBS__RtpPacket.DumpT `json:"rtp_packet"`
-	IsRtx bool `json:"is_rtx"`
-}
-
-func (t *KeyFrameTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	rtpPacketOffset := t.RtpPacket.Pack(builder)
-	KeyFrameTraceInfoStart(builder)
-	KeyFrameTraceInfoAddRtpPacket(builder, rtpPacketOffset)
-	KeyFrameTraceInfoAddIsRtx(builder, t.IsRtx)
-	return KeyFrameTraceInfoEnd(builder)
-}
-
-func (rcv *KeyFrameTraceInfo) UnPackTo(t *KeyFrameTraceInfoT) {
-	t.RtpPacket = rcv.RtpPacket(nil).UnPack()
-	t.IsRtx = rcv.IsRtx()
-}
-
-func (rcv *KeyFrameTraceInfo) UnPack() *KeyFrameTraceInfoT {
-	if rcv == nil {
-		return nil
-	}
-	t := &KeyFrameTraceInfoT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type KeyFrameTraceInfo struct {
 	_tab flatbuffers.Table

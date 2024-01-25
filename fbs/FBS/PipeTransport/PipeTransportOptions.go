@@ -5,45 +5,8 @@ package PipeTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type PipeTransportOptionsT struct {
-	Base *FBS__Transport.OptionsT `json:"base"`
-	ListenInfo *FBS__Transport.ListenInfoT `json:"listen_info"`
-	EnableRtx bool `json:"enable_rtx"`
-	EnableSrtp bool `json:"enable_srtp"`
-}
-
-func (t *PipeTransportOptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	listenInfoOffset := t.ListenInfo.Pack(builder)
-	PipeTransportOptionsStart(builder)
-	PipeTransportOptionsAddBase(builder, baseOffset)
-	PipeTransportOptionsAddListenInfo(builder, listenInfoOffset)
-	PipeTransportOptionsAddEnableRtx(builder, t.EnableRtx)
-	PipeTransportOptionsAddEnableSrtp(builder, t.EnableSrtp)
-	return PipeTransportOptionsEnd(builder)
-}
-
-func (rcv *PipeTransportOptions) UnPackTo(t *PipeTransportOptionsT) {
-	t.Base = rcv.Base(nil).UnPack()
-	t.ListenInfo = rcv.ListenInfo(nil).UnPack()
-	t.EnableRtx = rcv.EnableRtx()
-	t.EnableSrtp = rcv.EnableSrtp()
-}
-
-func (rcv *PipeTransportOptions) UnPack() *PipeTransportOptionsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &PipeTransportOptionsT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type PipeTransportOptions struct {
 	_tab flatbuffers.Table

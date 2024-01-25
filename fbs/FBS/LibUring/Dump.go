@@ -6,38 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type DumpT struct {
-	SqeProcessCount uint64 `json:"sqe_process_count"`
-	SqeMissCount uint64 `json:"sqe_miss_count"`
-	UserDataMissCount uint64 `json:"user_data_miss_count"`
-}
-
-func (t *DumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	DumpStart(builder)
-	DumpAddSqeProcessCount(builder, t.SqeProcessCount)
-	DumpAddSqeMissCount(builder, t.SqeMissCount)
-	DumpAddUserDataMissCount(builder, t.UserDataMissCount)
-	return DumpEnd(builder)
-}
-
-func (rcv *Dump) UnPackTo(t *DumpT) {
-	t.SqeProcessCount = rcv.SqeProcessCount()
-	t.SqeMissCount = rcv.SqeMissCount()
-	t.UserDataMissCount = rcv.UserDataMissCount()
-}
-
-func (rcv *Dump) UnPack() *DumpT {
-	if rcv == nil {
-		return nil
-	}
-	t := &DumpT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Dump struct {
 	_tab flatbuffers.Table
 }

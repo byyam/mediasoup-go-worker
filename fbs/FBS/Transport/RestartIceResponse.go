@@ -6,46 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RestartIceResponseT struct {
-	UsernameFragment string `json:"username_fragment"`
-	Password string `json:"password"`
-	IceLite bool `json:"ice_lite"`
-}
-
-func (t *RestartIceResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	usernameFragmentOffset := flatbuffers.UOffsetT(0)
-	if t.UsernameFragment != "" {
-		usernameFragmentOffset = builder.CreateString(t.UsernameFragment)
-	}
-	passwordOffset := flatbuffers.UOffsetT(0)
-	if t.Password != "" {
-		passwordOffset = builder.CreateString(t.Password)
-	}
-	RestartIceResponseStart(builder)
-	RestartIceResponseAddUsernameFragment(builder, usernameFragmentOffset)
-	RestartIceResponseAddPassword(builder, passwordOffset)
-	RestartIceResponseAddIceLite(builder, t.IceLite)
-	return RestartIceResponseEnd(builder)
-}
-
-func (rcv *RestartIceResponse) UnPackTo(t *RestartIceResponseT) {
-	t.UsernameFragment = string(rcv.UsernameFragment())
-	t.Password = string(rcv.Password())
-	t.IceLite = rcv.IceLite()
-}
-
-func (rcv *RestartIceResponse) UnPack() *RestartIceResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RestartIceResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type RestartIceResponse struct {
 	_tab flatbuffers.Table
 }

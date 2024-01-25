@@ -2,47 +2,34 @@
 
 package RtpStream
 
-import (
-	flatbuffers "github.com/google/flatbuffers/go"
-	"strconv"
+import "strconv"
 
-	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
+type StatsData byte
+
+const (
+	StatsDataNONE      StatsData = 0
+	StatsDataBaseStats StatsData = 1
+	StatsDataRecvStats StatsData = 2
+	StatsDataSendStats StatsData = 3
 )
 
-type StatsDataT struct {
-	Type StatsData
-	Value interface{}
+var EnumNamesStatsData = map[StatsData]string{
+	StatsDataNONE:      "NONE",
+	StatsDataBaseStats: "BaseStats",
+	StatsDataRecvStats: "RecvStats",
+	StatsDataSendStats: "SendStats",
 }
 
-func (t *StatsDataT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	switch t.Type {
-	case StatsDataBaseStats:
-		return t.Value.(*FBS__RtpStream.BaseStatsT).Pack(builder)
-	case StatsDataRecvStats:
-		return t.Value.(*FBS__RtpStream.RecvStatsT).Pack(builder)
-	case StatsDataSendStats:
-		return t.Value.(*FBS__RtpStream.SendStatsT).Pack(builder)
-	}
-	return 0
+var EnumValuesStatsData = map[string]StatsData{
+	"NONE":      StatsDataNONE,
+	"BaseStats": StatsDataBaseStats,
+	"RecvStats": StatsDataRecvStats,
+	"SendStats": StatsDataSendStats,
 }
 
-func (rcv StatsData) UnPack(table flatbuffers.Table) *StatsDataT {
-	switch rcv {
-	case StatsDataBaseStats:
-		var x FBS__RtpStream.BaseStats
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataBaseStats, Value: x.UnPack()}
-	case StatsDataRecvStats:
-		var x FBS__RtpStream.RecvStats
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataRecvStats, Value: x.UnPack()}
-	case StatsDataSendStats:
-		var x FBS__RtpStream.SendStats
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataSendStats, Value: x.UnPack()}
+func (v StatsData) String() string {
+	if s, ok := EnumNamesStatsData[v]; ok {
+		return s
 	}
-	return nil
+	return "StatsData(" + strconv.FormatInt(int64(v), 10) + ")"
 }

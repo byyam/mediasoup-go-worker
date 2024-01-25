@@ -6,36 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type CreateRouterRequestT struct {
-	RouterId string `json:"router_id"`
-}
-
-func (t *CreateRouterRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	routerIdOffset := flatbuffers.UOffsetT(0)
-	if t.RouterId != "" {
-		routerIdOffset = builder.CreateString(t.RouterId)
-	}
-	CreateRouterRequestStart(builder)
-	CreateRouterRequestAddRouterId(builder, routerIdOffset)
-	return CreateRouterRequestEnd(builder)
-}
-
-func (rcv *CreateRouterRequest) UnPackTo(t *CreateRouterRequestT) {
-	t.RouterId = string(rcv.RouterId())
-}
-
-func (rcv *CreateRouterRequest) UnPack() *CreateRouterRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CreateRouterRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type CreateRouterRequest struct {
 	_tab flatbuffers.Table
 }

@@ -5,49 +5,8 @@ package PlainTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type GetStatsResponseT struct {
-	Base *FBS__Transport.StatsT `json:"base"`
-	RtcpMux bool `json:"rtcp_mux"`
-	Comedia bool `json:"comedia"`
-	Tuple *FBS__Transport.TupleT `json:"tuple"`
-	RtcpTuple *FBS__Transport.TupleT `json:"rtcp_tuple"`
-}
-
-func (t *GetStatsResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	tupleOffset := t.Tuple.Pack(builder)
-	rtcpTupleOffset := t.RtcpTuple.Pack(builder)
-	GetStatsResponseStart(builder)
-	GetStatsResponseAddBase(builder, baseOffset)
-	GetStatsResponseAddRtcpMux(builder, t.RtcpMux)
-	GetStatsResponseAddComedia(builder, t.Comedia)
-	GetStatsResponseAddTuple(builder, tupleOffset)
-	GetStatsResponseAddRtcpTuple(builder, rtcpTupleOffset)
-	return GetStatsResponseEnd(builder)
-}
-
-func (rcv *GetStatsResponse) UnPackTo(t *GetStatsResponseT) {
-	t.Base = rcv.Base(nil).UnPack()
-	t.RtcpMux = rcv.RtcpMux()
-	t.Comedia = rcv.Comedia()
-	t.Tuple = rcv.Tuple(nil).UnPack()
-	t.RtcpTuple = rcv.RtcpTuple(nil).UnPack()
-}
-
-func (rcv *GetStatsResponse) UnPack() *GetStatsResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &GetStatsResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type GetStatsResponse struct {
 	_tab flatbuffers.Table

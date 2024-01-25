@@ -6,45 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type EnableTraceEventRequestT struct {
-	Events []TraceEventType `json:"events"`
-}
-
-func (t *EnableTraceEventRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	eventsOffset := flatbuffers.UOffsetT(0)
-	if t.Events != nil {
-		eventsLength := len(t.Events)
-		EnableTraceEventRequestStartEventsVector(builder, eventsLength)
-		for j := eventsLength - 1; j >= 0; j-- {
-			builder.PrependByte(byte(t.Events[j]))
-		}
-		eventsOffset = builder.EndVector(eventsLength)
-	}
-	EnableTraceEventRequestStart(builder)
-	EnableTraceEventRequestAddEvents(builder, eventsOffset)
-	return EnableTraceEventRequestEnd(builder)
-}
-
-func (rcv *EnableTraceEventRequest) UnPackTo(t *EnableTraceEventRequestT) {
-	eventsLength := rcv.EventsLength()
-	t.Events = make([]TraceEventType, eventsLength)
-	for j := 0; j < eventsLength; j++ {
-		t.Events[j] = rcv.Events(j)
-	}
-}
-
-func (rcv *EnableTraceEventRequest) UnPack() *EnableTraceEventRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &EnableTraceEventRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type EnableTraceEventRequest struct {
 	_tab flatbuffers.Table
 }

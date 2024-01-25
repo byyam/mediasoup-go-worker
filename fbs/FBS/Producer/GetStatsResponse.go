@@ -5,53 +5,8 @@ package Producer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
+	FBS__RtpStream "FBS/RtpStream"
 )
-
-type GetStatsResponseT struct {
-	Stats []*FBS__RtpStream.StatsT `json:"stats"`
-}
-
-func (t *GetStatsResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	statsOffset := flatbuffers.UOffsetT(0)
-	if t.Stats != nil {
-		statsLength := len(t.Stats)
-		statsOffsets := make([]flatbuffers.UOffsetT, statsLength)
-		for j := 0; j < statsLength; j++ {
-			statsOffsets[j] = t.Stats[j].Pack(builder)
-		}
-		GetStatsResponseStartStatsVector(builder, statsLength)
-		for j := statsLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(statsOffsets[j])
-		}
-		statsOffset = builder.EndVector(statsLength)
-	}
-	GetStatsResponseStart(builder)
-	GetStatsResponseAddStats(builder, statsOffset)
-	return GetStatsResponseEnd(builder)
-}
-
-func (rcv *GetStatsResponse) UnPackTo(t *GetStatsResponseT) {
-	statsLength := rcv.StatsLength()
-	t.Stats = make([]*FBS__RtpStream.StatsT, statsLength)
-	for j := 0; j < statsLength; j++ {
-		x := FBS__RtpStream.Stats{}
-		rcv.Stats(&x, j)
-		t.Stats[j] = x.UnPack()
-	}
-}
-
-func (rcv *GetStatsResponse) UnPack() *GetStatsResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &GetStatsResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type GetStatsResponse struct {
 	_tab flatbuffers.Table

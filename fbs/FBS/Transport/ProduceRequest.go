@@ -5,55 +5,8 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
+	FBS__RtpParameters "FBS/RtpParameters"
 )
-
-type ProduceRequestT struct {
-	ProducerId string `json:"producer_id"`
-	Kind FBS__RtpParameters.MediaKind `json:"kind"`
-	RtpParameters *FBS__RtpParameters.RtpParametersT `json:"rtp_parameters"`
-	RtpMapping *FBS__RtpParameters.RtpMappingT `json:"rtp_mapping"`
-	KeyFrameRequestDelay uint32 `json:"key_frame_request_delay"`
-	Paused bool `json:"paused"`
-}
-
-func (t *ProduceRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	producerIdOffset := flatbuffers.UOffsetT(0)
-	if t.ProducerId != "" {
-		producerIdOffset = builder.CreateString(t.ProducerId)
-	}
-	rtpParametersOffset := t.RtpParameters.Pack(builder)
-	rtpMappingOffset := t.RtpMapping.Pack(builder)
-	ProduceRequestStart(builder)
-	ProduceRequestAddProducerId(builder, producerIdOffset)
-	ProduceRequestAddKind(builder, t.Kind)
-	ProduceRequestAddRtpParameters(builder, rtpParametersOffset)
-	ProduceRequestAddRtpMapping(builder, rtpMappingOffset)
-	ProduceRequestAddKeyFrameRequestDelay(builder, t.KeyFrameRequestDelay)
-	ProduceRequestAddPaused(builder, t.Paused)
-	return ProduceRequestEnd(builder)
-}
-
-func (rcv *ProduceRequest) UnPackTo(t *ProduceRequestT) {
-	t.ProducerId = string(rcv.ProducerId())
-	t.Kind = rcv.Kind()
-	t.RtpParameters = rcv.RtpParameters(nil).UnPack()
-	t.RtpMapping = rcv.RtpMapping(nil).UnPack()
-	t.KeyFrameRequestDelay = rcv.KeyFrameRequestDelay()
-	t.Paused = rcv.Paused()
-}
-
-func (rcv *ProduceRequest) UnPack() *ProduceRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ProduceRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ProduceRequest struct {
 	_tab flatbuffers.Table

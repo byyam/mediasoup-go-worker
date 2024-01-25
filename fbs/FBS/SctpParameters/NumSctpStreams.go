@@ -6,35 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type NumSctpStreamsT struct {
-	Os uint16 `json:"os"`
-	Mis uint16 `json:"mis"`
-}
-
-func (t *NumSctpStreamsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	NumSctpStreamsStart(builder)
-	NumSctpStreamsAddOs(builder, t.Os)
-	NumSctpStreamsAddMis(builder, t.Mis)
-	return NumSctpStreamsEnd(builder)
-}
-
-func (rcv *NumSctpStreams) UnPackTo(t *NumSctpStreamsT) {
-	t.Os = rcv.Os()
-	t.Mis = rcv.Mis()
-}
-
-func (rcv *NumSctpStreams) UnPack() *NumSctpStreamsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &NumSctpStreamsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type NumSctpStreams struct {
 	_tab flatbuffers.Table
 }

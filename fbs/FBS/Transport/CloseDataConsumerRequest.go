@@ -6,36 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type CloseDataConsumerRequestT struct {
-	DataConsumerId string `json:"data_consumer_id"`
-}
-
-func (t *CloseDataConsumerRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataConsumerIdOffset := flatbuffers.UOffsetT(0)
-	if t.DataConsumerId != "" {
-		dataConsumerIdOffset = builder.CreateString(t.DataConsumerId)
-	}
-	CloseDataConsumerRequestStart(builder)
-	CloseDataConsumerRequestAddDataConsumerId(builder, dataConsumerIdOffset)
-	return CloseDataConsumerRequestEnd(builder)
-}
-
-func (rcv *CloseDataConsumerRequest) UnPackTo(t *CloseDataConsumerRequestT) {
-	t.DataConsumerId = string(rcv.DataConsumerId())
-}
-
-func (rcv *CloseDataConsumerRequest) UnPack() *CloseDataConsumerRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CloseDataConsumerRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type CloseDataConsumerRequest struct {
 	_tab flatbuffers.Table
 }

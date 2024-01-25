@@ -2,59 +2,40 @@
 
 package Producer
 
-import (
-	flatbuffers "github.com/google/flatbuffers/go"
-	"strconv"
+import "strconv"
 
-	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
+type TraceInfo byte
+
+const (
+	TraceInfoNONE              TraceInfo = 0
+	TraceInfoKeyFrameTraceInfo TraceInfo = 1
+	TraceInfoFirTraceInfo      TraceInfo = 2
+	TraceInfoPliTraceInfo      TraceInfo = 3
+	TraceInfoRtpTraceInfo      TraceInfo = 4
+	TraceInfoSrTraceInfo       TraceInfo = 5
 )
 
-type TraceInfoT struct {
-	Type TraceInfo
-	Value interface{}
+var EnumNamesTraceInfo = map[TraceInfo]string{
+	TraceInfoNONE:              "NONE",
+	TraceInfoKeyFrameTraceInfo: "KeyFrameTraceInfo",
+	TraceInfoFirTraceInfo:      "FirTraceInfo",
+	TraceInfoPliTraceInfo:      "PliTraceInfo",
+	TraceInfoRtpTraceInfo:      "RtpTraceInfo",
+	TraceInfoSrTraceInfo:       "SrTraceInfo",
 }
 
-func (t *TraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	switch t.Type {
-	case TraceInfoKeyFrameTraceInfo:
-		return t.Value.(*FBS__Producer.KeyFrameTraceInfoT).Pack(builder)
-	case TraceInfoFirTraceInfo:
-		return t.Value.(*FBS__Producer.FirTraceInfoT).Pack(builder)
-	case TraceInfoPliTraceInfo:
-		return t.Value.(*FBS__Producer.PliTraceInfoT).Pack(builder)
-	case TraceInfoRtpTraceInfo:
-		return t.Value.(*FBS__Producer.RtpTraceInfoT).Pack(builder)
-	case TraceInfoSrTraceInfo:
-		return t.Value.(*FBS__Producer.SrTraceInfoT).Pack(builder)
-	}
-	return 0
+var EnumValuesTraceInfo = map[string]TraceInfo{
+	"NONE":              TraceInfoNONE,
+	"KeyFrameTraceInfo": TraceInfoKeyFrameTraceInfo,
+	"FirTraceInfo":      TraceInfoFirTraceInfo,
+	"PliTraceInfo":      TraceInfoPliTraceInfo,
+	"RtpTraceInfo":      TraceInfoRtpTraceInfo,
+	"SrTraceInfo":       TraceInfoSrTraceInfo,
 }
 
-func (rcv TraceInfo) UnPack(table flatbuffers.Table) *TraceInfoT {
-	switch rcv {
-	case TraceInfoKeyFrameTraceInfo:
-		var x FBS__Producer.KeyFrameTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Producer.TraceInfoT{Type: TraceInfoKeyFrameTraceInfo, Value: x.UnPack()}
-	case TraceInfoFirTraceInfo:
-		var x FBS__Producer.FirTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Producer.TraceInfoT{Type: TraceInfoFirTraceInfo, Value: x.UnPack()}
-	case TraceInfoPliTraceInfo:
-		var x FBS__Producer.PliTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Producer.TraceInfoT{Type: TraceInfoPliTraceInfo, Value: x.UnPack()}
-	case TraceInfoRtpTraceInfo:
-		var x FBS__Producer.RtpTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Producer.TraceInfoT{Type: TraceInfoRtpTraceInfo, Value: x.UnPack()}
-	case TraceInfoSrTraceInfo:
-		var x FBS__Producer.SrTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Producer.TraceInfoT{Type: TraceInfoSrTraceInfo, Value: x.UnPack()}
+func (v TraceInfo) String() string {
+	if s, ok := EnumNamesTraceInfo[v]; ok {
+		return s
 	}
-	return nil
+	return "TraceInfo(" + strconv.FormatInt(int64(v), 10) + ")"
 }

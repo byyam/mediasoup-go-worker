@@ -6,32 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type IceStateChangeNotificationT struct {
-	IceState IceState `json:"ice_state"`
-}
-
-func (t *IceStateChangeNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	IceStateChangeNotificationStart(builder)
-	IceStateChangeNotificationAddIceState(builder, t.IceState)
-	return IceStateChangeNotificationEnd(builder)
-}
-
-func (rcv *IceStateChangeNotification) UnPackTo(t *IceStateChangeNotificationT) {
-	t.IceState = rcv.IceState()
-}
-
-func (rcv *IceStateChangeNotification) UnPack() *IceStateChangeNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &IceStateChangeNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type IceStateChangeNotification struct {
 	_tab flatbuffers.Table
 }

@@ -6,60 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ResponseT struct {
-	Id uint32 `json:"id"`
-	Accepted bool `json:"accepted"`
-	Body *BodyT `json:"body"`
-	Error string `json:"error"`
-	Reason string `json:"reason"`
-}
-
-func (t *ResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	bodyOffset := t.Body.Pack(builder)
-
-	errorOffset := flatbuffers.UOffsetT(0)
-	if t.Error != "" {
-		errorOffset = builder.CreateString(t.Error)
-	}
-	reasonOffset := flatbuffers.UOffsetT(0)
-	if t.Reason != "" {
-		reasonOffset = builder.CreateString(t.Reason)
-	}
-	ResponseStart(builder)
-	ResponseAddId(builder, t.Id)
-	ResponseAddAccepted(builder, t.Accepted)
-	if t.Body != nil {
-		ResponseAddBodyType(builder, t.Body.Type)
-	}
-	ResponseAddBody(builder, bodyOffset)
-	ResponseAddError(builder, errorOffset)
-	ResponseAddReason(builder, reasonOffset)
-	return ResponseEnd(builder)
-}
-
-func (rcv *Response) UnPackTo(t *ResponseT) {
-	t.Id = rcv.Id()
-	t.Accepted = rcv.Accepted()
-	bodyTable := flatbuffers.Table{}
-	if rcv.Body(&bodyTable) {
-		t.Body = rcv.BodyType().UnPack(bodyTable)
-	}
-	t.Error = string(rcv.Error())
-	t.Reason = string(rcv.Reason())
-}
-
-func (rcv *Response) UnPack() *ResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Response struct {
 	_tab flatbuffers.Table
 }

@@ -6,53 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RequestT struct {
-	Id uint32 `json:"id"`
-	Method Method `json:"method"`
-	HandlerId string `json:"handler_id"`
-	Body *BodyT `json:"body"`
-}
-
-func (t *RequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	handlerIdOffset := flatbuffers.UOffsetT(0)
-	if t.HandlerId != "" {
-		handlerIdOffset = builder.CreateString(t.HandlerId)
-	}
-	bodyOffset := t.Body.Pack(builder)
-
-	RequestStart(builder)
-	RequestAddId(builder, t.Id)
-	RequestAddMethod(builder, t.Method)
-	RequestAddHandlerId(builder, handlerIdOffset)
-	if t.Body != nil {
-		RequestAddBodyType(builder, t.Body.Type)
-	}
-	RequestAddBody(builder, bodyOffset)
-	return RequestEnd(builder)
-}
-
-func (rcv *Request) UnPackTo(t *RequestT) {
-	t.Id = rcv.Id()
-	t.Method = rcv.Method()
-	t.HandlerId = string(rcv.HandlerId())
-	bodyTable := flatbuffers.Table{}
-	if rcv.Body(&bodyTable) {
-		t.Body = rcv.BodyType().UnPack(bodyTable)
-	}
-}
-
-func (rcv *Request) UnPack() *RequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Request struct {
 	_tab flatbuffers.Table
 }

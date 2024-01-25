@@ -5,86 +5,9 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
-	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+	FBS__DataProducer "FBS/DataProducer"
+	FBS__SctpParameters "FBS/SctpParameters"
 )
-
-type ConsumeDataRequestT struct {
-	DataConsumerId string `json:"data_consumer_id"`
-	DataProducerId string `json:"data_producer_id"`
-	Type FBS__DataProducer.Type `json:"type"`
-	SctpStreamParameters *FBS__SctpParameters.SctpStreamParametersT `json:"sctp_stream_parameters"`
-	Label string `json:"label"`
-	Protocol string `json:"protocol"`
-	Paused bool `json:"paused"`
-	Subchannels []uint16 `json:"subchannels"`
-}
-
-func (t *ConsumeDataRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataConsumerIdOffset := flatbuffers.UOffsetT(0)
-	if t.DataConsumerId != "" {
-		dataConsumerIdOffset = builder.CreateString(t.DataConsumerId)
-	}
-	dataProducerIdOffset := flatbuffers.UOffsetT(0)
-	if t.DataProducerId != "" {
-		dataProducerIdOffset = builder.CreateString(t.DataProducerId)
-	}
-	sctpStreamParametersOffset := t.SctpStreamParameters.Pack(builder)
-	labelOffset := flatbuffers.UOffsetT(0)
-	if t.Label != "" {
-		labelOffset = builder.CreateString(t.Label)
-	}
-	protocolOffset := flatbuffers.UOffsetT(0)
-	if t.Protocol != "" {
-		protocolOffset = builder.CreateString(t.Protocol)
-	}
-	subchannelsOffset := flatbuffers.UOffsetT(0)
-	if t.Subchannels != nil {
-		subchannelsLength := len(t.Subchannels)
-		ConsumeDataRequestStartSubchannelsVector(builder, subchannelsLength)
-		for j := subchannelsLength - 1; j >= 0; j-- {
-			builder.PrependUint16(t.Subchannels[j])
-		}
-		subchannelsOffset = builder.EndVector(subchannelsLength)
-	}
-	ConsumeDataRequestStart(builder)
-	ConsumeDataRequestAddDataConsumerId(builder, dataConsumerIdOffset)
-	ConsumeDataRequestAddDataProducerId(builder, dataProducerIdOffset)
-	ConsumeDataRequestAddType(builder, t.Type)
-	ConsumeDataRequestAddSctpStreamParameters(builder, sctpStreamParametersOffset)
-	ConsumeDataRequestAddLabel(builder, labelOffset)
-	ConsumeDataRequestAddProtocol(builder, protocolOffset)
-	ConsumeDataRequestAddPaused(builder, t.Paused)
-	ConsumeDataRequestAddSubchannels(builder, subchannelsOffset)
-	return ConsumeDataRequestEnd(builder)
-}
-
-func (rcv *ConsumeDataRequest) UnPackTo(t *ConsumeDataRequestT) {
-	t.DataConsumerId = string(rcv.DataConsumerId())
-	t.DataProducerId = string(rcv.DataProducerId())
-	t.Type = rcv.Type()
-	t.SctpStreamParameters = rcv.SctpStreamParameters(nil).UnPack()
-	t.Label = string(rcv.Label())
-	t.Protocol = string(rcv.Protocol())
-	t.Paused = rcv.Paused()
-	subchannelsLength := rcv.SubchannelsLength()
-	t.Subchannels = make([]uint16, subchannelsLength)
-	for j := 0; j < subchannelsLength; j++ {
-		t.Subchannels[j] = rcv.Subchannels(j)
-	}
-}
-
-func (rcv *ConsumeDataRequest) UnPack() *ConsumeDataRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConsumeDataRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ConsumeDataRequest struct {
 	_tab flatbuffers.Table

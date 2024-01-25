@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type StringUint8T struct {
-	Key string `json:"key"`
-	Value byte `json:"value"`
-}
-
-func (t *StringUint8T) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	keyOffset := flatbuffers.UOffsetT(0)
-	if t.Key != "" {
-		keyOffset = builder.CreateString(t.Key)
-	}
-	StringUint8Start(builder)
-	StringUint8AddKey(builder, keyOffset)
-	StringUint8AddValue(builder, t.Value)
-	return StringUint8End(builder)
-}
-
-func (rcv *StringUint8) UnPackTo(t *StringUint8T) {
-	t.Key = string(rcv.Key())
-	t.Value = rcv.Value()
-}
-
-func (rcv *StringUint8) UnPack() *StringUint8T {
-	if rcv == nil {
-		return nil
-	}
-	t := &StringUint8T{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type StringUint8 struct {
 	_tab flatbuffers.Table
 }

@@ -6,50 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SctpParametersT struct {
-	Port uint16 `json:"port"`
-	Os uint16 `json:"os"`
-	Mis uint16 `json:"mis"`
-	MaxMessageSize uint32 `json:"max_message_size"`
-	SendBufferSize uint32 `json:"send_buffer_size"`
-	SctpBufferedAmount uint32 `json:"sctp_buffered_amount"`
-	IsDataChannel bool `json:"is_data_channel"`
-}
-
-func (t *SctpParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	SctpParametersStart(builder)
-	SctpParametersAddPort(builder, t.Port)
-	SctpParametersAddOs(builder, t.Os)
-	SctpParametersAddMis(builder, t.Mis)
-	SctpParametersAddMaxMessageSize(builder, t.MaxMessageSize)
-	SctpParametersAddSendBufferSize(builder, t.SendBufferSize)
-	SctpParametersAddSctpBufferedAmount(builder, t.SctpBufferedAmount)
-	SctpParametersAddIsDataChannel(builder, t.IsDataChannel)
-	return SctpParametersEnd(builder)
-}
-
-func (rcv *SctpParameters) UnPackTo(t *SctpParametersT) {
-	t.Port = rcv.Port()
-	t.Os = rcv.Os()
-	t.Mis = rcv.Mis()
-	t.MaxMessageSize = rcv.MaxMessageSize()
-	t.SendBufferSize = rcv.SendBufferSize()
-	t.SctpBufferedAmount = rcv.SctpBufferedAmount()
-	t.IsDataChannel = rcv.IsDataChannel()
-}
-
-func (rcv *SctpParameters) UnPack() *SctpParametersT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SctpParametersT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SctpParameters struct {
 	_tab flatbuffers.Table
 }

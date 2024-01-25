@@ -6,32 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ActiveSpeakerObserverOptionsT struct {
-	Interval uint16 `json:"interval"`
-}
-
-func (t *ActiveSpeakerObserverOptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ActiveSpeakerObserverOptionsStart(builder)
-	ActiveSpeakerObserverOptionsAddInterval(builder, t.Interval)
-	return ActiveSpeakerObserverOptionsEnd(builder)
-}
-
-func (rcv *ActiveSpeakerObserverOptions) UnPackTo(t *ActiveSpeakerObserverOptionsT) {
-	t.Interval = rcv.Interval()
-}
-
-func (rcv *ActiveSpeakerObserverOptions) UnPack() *ActiveSpeakerObserverOptionsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ActiveSpeakerObserverOptionsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ActiveSpeakerObserverOptions struct {
 	_tab flatbuffers.Table
 }

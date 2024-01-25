@@ -5,42 +5,8 @@ package Router
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__AudioLevelObserver "github.com/byyam/mediasoup-go-worker/fbs/FBS/AudioLevelObserver"
+	FBS__AudioLevelObserver "FBS/AudioLevelObserver"
 )
-
-type CreateAudioLevelObserverRequestT struct {
-	RtpObserverId string `json:"rtp_observer_id"`
-	Options *FBS__AudioLevelObserver.AudioLevelObserverOptionsT `json:"options"`
-}
-
-func (t *CreateAudioLevelObserverRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	rtpObserverIdOffset := flatbuffers.UOffsetT(0)
-	if t.RtpObserverId != "" {
-		rtpObserverIdOffset = builder.CreateString(t.RtpObserverId)
-	}
-	optionsOffset := t.Options.Pack(builder)
-	CreateAudioLevelObserverRequestStart(builder)
-	CreateAudioLevelObserverRequestAddRtpObserverId(builder, rtpObserverIdOffset)
-	CreateAudioLevelObserverRequestAddOptions(builder, optionsOffset)
-	return CreateAudioLevelObserverRequestEnd(builder)
-}
-
-func (rcv *CreateAudioLevelObserverRequest) UnPackTo(t *CreateAudioLevelObserverRequestT) {
-	t.RtpObserverId = string(rcv.RtpObserverId())
-	t.Options = rcv.Options(nil).UnPack()
-}
-
-func (rcv *CreateAudioLevelObserverRequest) UnPack() *CreateAudioLevelObserverRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CreateAudioLevelObserverRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type CreateAudioLevelObserverRequest struct {
 	_tab flatbuffers.Table

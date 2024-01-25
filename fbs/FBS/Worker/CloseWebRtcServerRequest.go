@@ -6,36 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type CloseWebRtcServerRequestT struct {
-	WebRtcServerId string `json:"web_rtc_server_id"`
-}
-
-func (t *CloseWebRtcServerRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	webRtcServerIdOffset := flatbuffers.UOffsetT(0)
-	if t.WebRtcServerId != "" {
-		webRtcServerIdOffset = builder.CreateString(t.WebRtcServerId)
-	}
-	CloseWebRtcServerRequestStart(builder)
-	CloseWebRtcServerRequestAddWebRtcServerId(builder, webRtcServerIdOffset)
-	return CloseWebRtcServerRequestEnd(builder)
-}
-
-func (rcv *CloseWebRtcServerRequest) UnPackTo(t *CloseWebRtcServerRequestT) {
-	t.WebRtcServerId = string(rcv.WebRtcServerId())
-}
-
-func (rcv *CloseWebRtcServerRequest) UnPack() *CloseWebRtcServerRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CloseWebRtcServerRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type CloseWebRtcServerRequest struct {
 	_tab flatbuffers.Table
 }

@@ -6,69 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ChannelMessageHandlersT struct {
-	ChannelRequestHandlers []string `json:"channel_request_handlers"`
-	ChannelNotificationHandlers []string `json:"channel_notification_handlers"`
-}
-
-func (t *ChannelMessageHandlersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	channelRequestHandlersOffset := flatbuffers.UOffsetT(0)
-	if t.ChannelRequestHandlers != nil {
-		channelRequestHandlersLength := len(t.ChannelRequestHandlers)
-		channelRequestHandlersOffsets := make([]flatbuffers.UOffsetT, channelRequestHandlersLength)
-		for j := 0; j < channelRequestHandlersLength; j++ {
-			channelRequestHandlersOffsets[j] = builder.CreateString(t.ChannelRequestHandlers[j])
-		}
-		ChannelMessageHandlersStartChannelRequestHandlersVector(builder, channelRequestHandlersLength)
-		for j := channelRequestHandlersLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(channelRequestHandlersOffsets[j])
-		}
-		channelRequestHandlersOffset = builder.EndVector(channelRequestHandlersLength)
-	}
-	channelNotificationHandlersOffset := flatbuffers.UOffsetT(0)
-	if t.ChannelNotificationHandlers != nil {
-		channelNotificationHandlersLength := len(t.ChannelNotificationHandlers)
-		channelNotificationHandlersOffsets := make([]flatbuffers.UOffsetT, channelNotificationHandlersLength)
-		for j := 0; j < channelNotificationHandlersLength; j++ {
-			channelNotificationHandlersOffsets[j] = builder.CreateString(t.ChannelNotificationHandlers[j])
-		}
-		ChannelMessageHandlersStartChannelNotificationHandlersVector(builder, channelNotificationHandlersLength)
-		for j := channelNotificationHandlersLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(channelNotificationHandlersOffsets[j])
-		}
-		channelNotificationHandlersOffset = builder.EndVector(channelNotificationHandlersLength)
-	}
-	ChannelMessageHandlersStart(builder)
-	ChannelMessageHandlersAddChannelRequestHandlers(builder, channelRequestHandlersOffset)
-	ChannelMessageHandlersAddChannelNotificationHandlers(builder, channelNotificationHandlersOffset)
-	return ChannelMessageHandlersEnd(builder)
-}
-
-func (rcv *ChannelMessageHandlers) UnPackTo(t *ChannelMessageHandlersT) {
-	channelRequestHandlersLength := rcv.ChannelRequestHandlersLength()
-	t.ChannelRequestHandlers = make([]string, channelRequestHandlersLength)
-	for j := 0; j < channelRequestHandlersLength; j++ {
-		t.ChannelRequestHandlers[j] = string(rcv.ChannelRequestHandlers(j))
-	}
-	channelNotificationHandlersLength := rcv.ChannelNotificationHandlersLength()
-	t.ChannelNotificationHandlers = make([]string, channelNotificationHandlersLength)
-	for j := 0; j < channelNotificationHandlersLength; j++ {
-		t.ChannelNotificationHandlers[j] = string(rcv.ChannelNotificationHandlers(j))
-	}
-}
-
-func (rcv *ChannelMessageHandlers) UnPack() *ChannelMessageHandlersT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ChannelMessageHandlersT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ChannelMessageHandlers struct {
 	_tab flatbuffers.Table
 }

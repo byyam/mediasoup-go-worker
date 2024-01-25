@@ -5,92 +5,9 @@ package DataConsumer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
-	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+	FBS__DataProducer "FBS/DataProducer"
+	FBS__SctpParameters "FBS/SctpParameters"
 )
-
-type DumpResponseT struct {
-	Id string `json:"id"`
-	DataProducerId string `json:"data_producer_id"`
-	Type FBS__DataProducer.Type `json:"type"`
-	SctpStreamParameters *FBS__SctpParameters.SctpStreamParametersT `json:"sctp_stream_parameters"`
-	Label string `json:"label"`
-	Protocol string `json:"protocol"`
-	BufferedAmountLowThreshold uint32 `json:"buffered_amount_low_threshold"`
-	Paused bool `json:"paused"`
-	DataProducerPaused bool `json:"data_producer_paused"`
-	Subchannels []uint16 `json:"subchannels"`
-}
-
-func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	idOffset := flatbuffers.UOffsetT(0)
-	if t.Id != "" {
-		idOffset = builder.CreateString(t.Id)
-	}
-	dataProducerIdOffset := flatbuffers.UOffsetT(0)
-	if t.DataProducerId != "" {
-		dataProducerIdOffset = builder.CreateString(t.DataProducerId)
-	}
-	sctpStreamParametersOffset := t.SctpStreamParameters.Pack(builder)
-	labelOffset := flatbuffers.UOffsetT(0)
-	if t.Label != "" {
-		labelOffset = builder.CreateString(t.Label)
-	}
-	protocolOffset := flatbuffers.UOffsetT(0)
-	if t.Protocol != "" {
-		protocolOffset = builder.CreateString(t.Protocol)
-	}
-	subchannelsOffset := flatbuffers.UOffsetT(0)
-	if t.Subchannels != nil {
-		subchannelsLength := len(t.Subchannels)
-		DumpResponseStartSubchannelsVector(builder, subchannelsLength)
-		for j := subchannelsLength - 1; j >= 0; j-- {
-			builder.PrependUint16(t.Subchannels[j])
-		}
-		subchannelsOffset = builder.EndVector(subchannelsLength)
-	}
-	DumpResponseStart(builder)
-	DumpResponseAddId(builder, idOffset)
-	DumpResponseAddDataProducerId(builder, dataProducerIdOffset)
-	DumpResponseAddType(builder, t.Type)
-	DumpResponseAddSctpStreamParameters(builder, sctpStreamParametersOffset)
-	DumpResponseAddLabel(builder, labelOffset)
-	DumpResponseAddProtocol(builder, protocolOffset)
-	DumpResponseAddBufferedAmountLowThreshold(builder, t.BufferedAmountLowThreshold)
-	DumpResponseAddPaused(builder, t.Paused)
-	DumpResponseAddDataProducerPaused(builder, t.DataProducerPaused)
-	DumpResponseAddSubchannels(builder, subchannelsOffset)
-	return DumpResponseEnd(builder)
-}
-
-func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
-	t.Id = string(rcv.Id())
-	t.DataProducerId = string(rcv.DataProducerId())
-	t.Type = rcv.Type()
-	t.SctpStreamParameters = rcv.SctpStreamParameters(nil).UnPack()
-	t.Label = string(rcv.Label())
-	t.Protocol = string(rcv.Protocol())
-	t.BufferedAmountLowThreshold = rcv.BufferedAmountLowThreshold()
-	t.Paused = rcv.Paused()
-	t.DataProducerPaused = rcv.DataProducerPaused()
-	subchannelsLength := rcv.SubchannelsLength()
-	t.Subchannels = make([]uint16, subchannelsLength)
-	for j := 0; j < subchannelsLength; j++ {
-		t.Subchannels[j] = rcv.Subchannels(j)
-	}
-}
-
-func (rcv *DumpResponse) UnPack() *DumpResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &DumpResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type DumpResponse struct {
 	_tab flatbuffers.Table

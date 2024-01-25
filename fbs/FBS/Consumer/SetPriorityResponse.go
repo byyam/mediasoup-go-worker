@@ -6,32 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SetPriorityResponseT struct {
-	Priority byte `json:"priority"`
-}
-
-func (t *SetPriorityResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	SetPriorityResponseStart(builder)
-	SetPriorityResponseAddPriority(builder, t.Priority)
-	return SetPriorityResponseEnd(builder)
-}
-
-func (rcv *SetPriorityResponse) UnPackTo(t *SetPriorityResponseT) {
-	t.Priority = rcv.Priority()
-}
-
-func (rcv *SetPriorityResponse) UnPack() *SetPriorityResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SetPriorityResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SetPriorityResponse struct {
 	_tab flatbuffers.Table
 }

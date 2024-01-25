@@ -5,63 +5,9 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
-	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+	FBS__DataProducer "FBS/DataProducer"
+	FBS__SctpParameters "FBS/SctpParameters"
 )
-
-type ProduceDataRequestT struct {
-	DataProducerId string `json:"data_producer_id"`
-	Type FBS__DataProducer.Type `json:"type"`
-	SctpStreamParameters *FBS__SctpParameters.SctpStreamParametersT `json:"sctp_stream_parameters"`
-	Label string `json:"label"`
-	Protocol string `json:"protocol"`
-	Paused bool `json:"paused"`
-}
-
-func (t *ProduceDataRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataProducerIdOffset := flatbuffers.UOffsetT(0)
-	if t.DataProducerId != "" {
-		dataProducerIdOffset = builder.CreateString(t.DataProducerId)
-	}
-	sctpStreamParametersOffset := t.SctpStreamParameters.Pack(builder)
-	labelOffset := flatbuffers.UOffsetT(0)
-	if t.Label != "" {
-		labelOffset = builder.CreateString(t.Label)
-	}
-	protocolOffset := flatbuffers.UOffsetT(0)
-	if t.Protocol != "" {
-		protocolOffset = builder.CreateString(t.Protocol)
-	}
-	ProduceDataRequestStart(builder)
-	ProduceDataRequestAddDataProducerId(builder, dataProducerIdOffset)
-	ProduceDataRequestAddType(builder, t.Type)
-	ProduceDataRequestAddSctpStreamParameters(builder, sctpStreamParametersOffset)
-	ProduceDataRequestAddLabel(builder, labelOffset)
-	ProduceDataRequestAddProtocol(builder, protocolOffset)
-	ProduceDataRequestAddPaused(builder, t.Paused)
-	return ProduceDataRequestEnd(builder)
-}
-
-func (rcv *ProduceDataRequest) UnPackTo(t *ProduceDataRequestT) {
-	t.DataProducerId = string(rcv.DataProducerId())
-	t.Type = rcv.Type()
-	t.SctpStreamParameters = rcv.SctpStreamParameters(nil).UnPack()
-	t.Label = string(rcv.Label())
-	t.Protocol = string(rcv.Protocol())
-	t.Paused = rcv.Paused()
-}
-
-func (rcv *ProduceDataRequest) UnPack() *ProduceDataRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ProduceDataRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ProduceDataRequest struct {
 	_tab flatbuffers.Table

@@ -6,32 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type AddSubchannelRequestT struct {
-	Subchannel uint16 `json:"subchannel"`
-}
-
-func (t *AddSubchannelRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	AddSubchannelRequestStart(builder)
-	AddSubchannelRequestAddSubchannel(builder, t.Subchannel)
-	return AddSubchannelRequestEnd(builder)
-}
-
-func (rcv *AddSubchannelRequest) UnPackTo(t *AddSubchannelRequestT) {
-	t.Subchannel = rcv.Subchannel()
-}
-
-func (rcv *AddSubchannelRequest) UnPack() *AddSubchannelRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &AddSubchannelRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type AddSubchannelRequest struct {
 	_tab flatbuffers.Table
 }

@@ -5,34 +5,8 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SctpAssociation "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpAssociation"
+	FBS__SctpAssociation "FBS/SctpAssociation"
 )
-
-type SctpStateChangeNotificationT struct {
-	SctpState FBS__SctpAssociation.SctpState `json:"sctp_state"`
-}
-
-func (t *SctpStateChangeNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	SctpStateChangeNotificationStart(builder)
-	SctpStateChangeNotificationAddSctpState(builder, t.SctpState)
-	return SctpStateChangeNotificationEnd(builder)
-}
-
-func (rcv *SctpStateChangeNotification) UnPackTo(t *SctpStateChangeNotificationT) {
-	t.SctpState = rcv.SctpState()
-}
-
-func (rcv *SctpStateChangeNotification) UnPack() *SctpStateChangeNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SctpStateChangeNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type SctpStateChangeNotification struct {
 	_tab flatbuffers.Table

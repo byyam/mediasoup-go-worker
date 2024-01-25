@@ -6,45 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RemoveSubchannelResponseT struct {
-	Subchannels []uint16 `json:"subchannels"`
-}
-
-func (t *RemoveSubchannelResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	subchannelsOffset := flatbuffers.UOffsetT(0)
-	if t.Subchannels != nil {
-		subchannelsLength := len(t.Subchannels)
-		RemoveSubchannelResponseStartSubchannelsVector(builder, subchannelsLength)
-		for j := subchannelsLength - 1; j >= 0; j-- {
-			builder.PrependUint16(t.Subchannels[j])
-		}
-		subchannelsOffset = builder.EndVector(subchannelsLength)
-	}
-	RemoveSubchannelResponseStart(builder)
-	RemoveSubchannelResponseAddSubchannels(builder, subchannelsOffset)
-	return RemoveSubchannelResponseEnd(builder)
-}
-
-func (rcv *RemoveSubchannelResponse) UnPackTo(t *RemoveSubchannelResponseT) {
-	subchannelsLength := rcv.SubchannelsLength()
-	t.Subchannels = make([]uint16, subchannelsLength)
-	for j := 0; j < subchannelsLength; j++ {
-		t.Subchannels[j] = rcv.Subchannels(j)
-	}
-}
-
-func (rcv *RemoveSubchannelResponse) UnPack() *RemoveSubchannelResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RemoveSubchannelResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type RemoveSubchannelResponse struct {
 	_tab flatbuffers.Table
 }

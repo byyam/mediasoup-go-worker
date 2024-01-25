@@ -6,43 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type IceUserNameFragmentT struct {
-	LocalIceUsernameFragment string `json:"local_ice_username_fragment"`
-	WebRtcTransportId string `json:"web_rtc_transport_id"`
-}
-
-func (t *IceUserNameFragmentT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	localIceUsernameFragmentOffset := flatbuffers.UOffsetT(0)
-	if t.LocalIceUsernameFragment != "" {
-		localIceUsernameFragmentOffset = builder.CreateString(t.LocalIceUsernameFragment)
-	}
-	webRtcTransportIdOffset := flatbuffers.UOffsetT(0)
-	if t.WebRtcTransportId != "" {
-		webRtcTransportIdOffset = builder.CreateString(t.WebRtcTransportId)
-	}
-	IceUserNameFragmentStart(builder)
-	IceUserNameFragmentAddLocalIceUsernameFragment(builder, localIceUsernameFragmentOffset)
-	IceUserNameFragmentAddWebRtcTransportId(builder, webRtcTransportIdOffset)
-	return IceUserNameFragmentEnd(builder)
-}
-
-func (rcv *IceUserNameFragment) UnPackTo(t *IceUserNameFragmentT) {
-	t.LocalIceUsernameFragment = string(rcv.LocalIceUsernameFragment())
-	t.WebRtcTransportId = string(rcv.WebRtcTransportId())
-}
-
-func (rcv *IceUserNameFragment) UnPack() *IceUserNameFragmentT {
-	if rcv == nil {
-		return nil
-	}
-	t := &IceUserNameFragmentT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type IceUserNameFragment struct {
 	_tab flatbuffers.Table
 }

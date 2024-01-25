@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RtcpParametersT struct {
-	Cname string `json:"cname"`
-	ReducedSize bool `json:"reduced_size"`
-}
-
-func (t *RtcpParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	cnameOffset := flatbuffers.UOffsetT(0)
-	if t.Cname != "" {
-		cnameOffset = builder.CreateString(t.Cname)
-	}
-	RtcpParametersStart(builder)
-	RtcpParametersAddCname(builder, cnameOffset)
-	RtcpParametersAddReducedSize(builder, t.ReducedSize)
-	return RtcpParametersEnd(builder)
-}
-
-func (rcv *RtcpParameters) UnPackTo(t *RtcpParametersT) {
-	t.Cname = string(rcv.Cname())
-	t.ReducedSize = rcv.ReducedSize()
-}
-
-func (rcv *RtcpParameters) UnPack() *RtcpParametersT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RtcpParametersT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type RtcpParameters struct {
 	_tab flatbuffers.Table
 }

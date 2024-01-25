@@ -5,47 +5,8 @@ package PipeTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SrtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SrtpParameters"
+	FBS__SrtpParameters "FBS/SrtpParameters"
 )
-
-type ConnectRequestT struct {
-	Ip string `json:"ip"`
-	Port *uint16 `json:"port"`
-	SrtpParameters *FBS__SrtpParameters.SrtpParametersT `json:"srtp_parameters"`
-}
-
-func (t *ConnectRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ipOffset := flatbuffers.UOffsetT(0)
-	if t.Ip != "" {
-		ipOffset = builder.CreateString(t.Ip)
-	}
-	srtpParametersOffset := t.SrtpParameters.Pack(builder)
-	ConnectRequestStart(builder)
-	ConnectRequestAddIp(builder, ipOffset)
-	if t.Port != nil {
-		ConnectRequestAddPort(builder, *t.Port)
-	}
-	ConnectRequestAddSrtpParameters(builder, srtpParametersOffset)
-	return ConnectRequestEnd(builder)
-}
-
-func (rcv *ConnectRequest) UnPackTo(t *ConnectRequestT) {
-	t.Ip = string(rcv.Ip())
-	t.Port = rcv.Port()
-	t.SrtpParameters = rcv.SrtpParameters(nil).UnPack()
-}
-
-func (rcv *ConnectRequest) UnPack() *ConnectRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConnectRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ConnectRequest struct {
 	_tab flatbuffers.Table

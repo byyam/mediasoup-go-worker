@@ -6,35 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SocketFlagsT struct {
-	Ipv6Only bool `json:"ipv6_only"`
-	UdpReusePort bool `json:"udp_reuse_port"`
-}
-
-func (t *SocketFlagsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	SocketFlagsStart(builder)
-	SocketFlagsAddIpv6Only(builder, t.Ipv6Only)
-	SocketFlagsAddUdpReusePort(builder, t.UdpReusePort)
-	return SocketFlagsEnd(builder)
-}
-
-func (rcv *SocketFlags) UnPackTo(t *SocketFlagsT) {
-	t.Ipv6Only = rcv.Ipv6Only()
-	t.UdpReusePort = rcv.UdpReusePort()
-}
-
-func (rcv *SocketFlags) UnPack() *SocketFlagsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SocketFlagsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SocketFlags struct {
 	_tab flatbuffers.Table
 }

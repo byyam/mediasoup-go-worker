@@ -6,51 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type EncodingMappingT struct {
-	Rid string `json:"rid"`
-	Ssrc *uint32 `json:"ssrc"`
-	ScalabilityMode string `json:"scalability_mode"`
-	MappedSsrc uint32 `json:"mapped_ssrc"`
-}
-
-func (t *EncodingMappingT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ridOffset := flatbuffers.UOffsetT(0)
-	if t.Rid != "" {
-		ridOffset = builder.CreateString(t.Rid)
-	}
-	scalabilityModeOffset := flatbuffers.UOffsetT(0)
-	if t.ScalabilityMode != "" {
-		scalabilityModeOffset = builder.CreateString(t.ScalabilityMode)
-	}
-	EncodingMappingStart(builder)
-	EncodingMappingAddRid(builder, ridOffset)
-	if t.Ssrc != nil {
-		EncodingMappingAddSsrc(builder, *t.Ssrc)
-	}
-	EncodingMappingAddScalabilityMode(builder, scalabilityModeOffset)
-	EncodingMappingAddMappedSsrc(builder, t.MappedSsrc)
-	return EncodingMappingEnd(builder)
-}
-
-func (rcv *EncodingMapping) UnPackTo(t *EncodingMappingT) {
-	t.Rid = string(rcv.Rid())
-	t.Ssrc = rcv.Ssrc()
-	t.ScalabilityMode = string(rcv.ScalabilityMode())
-	t.MappedSsrc = rcv.MappedSsrc()
-}
-
-func (rcv *EncodingMapping) UnPack() *EncodingMappingT {
-	if rcv == nil {
-		return nil
-	}
-	t := &EncodingMappingT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type EncodingMapping struct {
 	_tab flatbuffers.Table
 }

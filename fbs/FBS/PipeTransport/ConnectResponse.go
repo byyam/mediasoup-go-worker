@@ -5,35 +5,8 @@ package PipeTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type ConnectResponseT struct {
-	Tuple *FBS__Transport.TupleT `json:"tuple"`
-}
-
-func (t *ConnectResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	tupleOffset := t.Tuple.Pack(builder)
-	ConnectResponseStart(builder)
-	ConnectResponseAddTuple(builder, tupleOffset)
-	return ConnectResponseEnd(builder)
-}
-
-func (rcv *ConnectResponse) UnPackTo(t *ConnectResponseT) {
-	t.Tuple = rcv.Tuple(nil).UnPack()
-}
-
-func (rcv *ConnectResponse) UnPack() *ConnectResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConnectResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ConnectResponse struct {
 	_tab flatbuffers.Table

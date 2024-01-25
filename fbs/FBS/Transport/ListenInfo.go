@@ -6,59 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ListenInfoT struct {
-	Protocol Protocol `json:"protocol"`
-	Ip string `json:"ip"`
-	AnnouncedIp string `json:"announced_ip"`
-	Port uint16 `json:"port"`
-	Flags *SocketFlagsT `json:"flags"`
-	SendBufferSize uint32 `json:"send_buffer_size"`
-	RecvBufferSize uint32 `json:"recv_buffer_size"`
-}
-
-func (t *ListenInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ipOffset := flatbuffers.UOffsetT(0)
-	if t.Ip != "" {
-		ipOffset = builder.CreateString(t.Ip)
-	}
-	announcedIpOffset := flatbuffers.UOffsetT(0)
-	if t.AnnouncedIp != "" {
-		announcedIpOffset = builder.CreateString(t.AnnouncedIp)
-	}
-	flagsOffset := t.Flags.Pack(builder)
-	ListenInfoStart(builder)
-	ListenInfoAddProtocol(builder, t.Protocol)
-	ListenInfoAddIp(builder, ipOffset)
-	ListenInfoAddAnnouncedIp(builder, announcedIpOffset)
-	ListenInfoAddPort(builder, t.Port)
-	ListenInfoAddFlags(builder, flagsOffset)
-	ListenInfoAddSendBufferSize(builder, t.SendBufferSize)
-	ListenInfoAddRecvBufferSize(builder, t.RecvBufferSize)
-	return ListenInfoEnd(builder)
-}
-
-func (rcv *ListenInfo) UnPackTo(t *ListenInfoT) {
-	t.Protocol = rcv.Protocol()
-	t.Ip = string(rcv.Ip())
-	t.AnnouncedIp = string(rcv.AnnouncedIp())
-	t.Port = rcv.Port()
-	t.Flags = rcv.Flags(nil).UnPack()
-	t.SendBufferSize = rcv.SendBufferSize()
-	t.RecvBufferSize = rcv.RecvBufferSize()
-}
-
-func (rcv *ListenInfo) UnPack() *ListenInfoT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ListenInfoT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ListenInfo struct {
 	_tab flatbuffers.Table
 }

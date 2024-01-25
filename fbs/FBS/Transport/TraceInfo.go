@@ -2,35 +2,28 @@
 
 package Transport
 
-import (
-	flatbuffers "github.com/google/flatbuffers/go"
-	"strconv"
+import "strconv"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+type TraceInfo byte
+
+const (
+	TraceInfoNONE         TraceInfo = 0
+	TraceInfoBweTraceInfo TraceInfo = 1
 )
 
-type TraceInfoT struct {
-	Type TraceInfo
-	Value interface{}
+var EnumNamesTraceInfo = map[TraceInfo]string{
+	TraceInfoNONE:         "NONE",
+	TraceInfoBweTraceInfo: "BweTraceInfo",
 }
 
-func (t *TraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	switch t.Type {
-	case TraceInfoBweTraceInfo:
-		return t.Value.(*FBS__Transport.BweTraceInfoT).Pack(builder)
-	}
-	return 0
+var EnumValuesTraceInfo = map[string]TraceInfo{
+	"NONE":         TraceInfoNONE,
+	"BweTraceInfo": TraceInfoBweTraceInfo,
 }
 
-func (rcv TraceInfo) UnPack(table flatbuffers.Table) *TraceInfoT {
-	switch rcv {
-	case TraceInfoBweTraceInfo:
-		var x FBS__Transport.BweTraceInfo
-		x.Init(table.Bytes, table.Pos)
-		return &FBS__Transport.TraceInfoT{Type: TraceInfoBweTraceInfo, Value: x.UnPack()}
+func (v TraceInfo) String() string {
+	if s, ok := EnumNamesTraceInfo[v]; ok {
+		return s
 	}
-	return nil
+	return "TraceInfo(" + strconv.FormatInt(int64(v), 10) + ")"
 }

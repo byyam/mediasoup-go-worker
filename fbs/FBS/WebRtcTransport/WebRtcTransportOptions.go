@@ -5,58 +5,8 @@ package WebRtcTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__Transport "FBS/Transport"
 )
-
-type WebRtcTransportOptionsT struct {
-	Base *FBS__Transport.OptionsT `json:"base"`
-	Listen *ListenT `json:"listen"`
-	EnableUdp bool `json:"enable_udp"`
-	EnableTcp bool `json:"enable_tcp"`
-	PreferUdp bool `json:"prefer_udp"`
-	PreferTcp bool `json:"prefer_tcp"`
-}
-
-func (t *WebRtcTransportOptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	listenOffset := t.Listen.Pack(builder)
-
-	WebRtcTransportOptionsStart(builder)
-	WebRtcTransportOptionsAddBase(builder, baseOffset)
-	if t.Listen != nil {
-		WebRtcTransportOptionsAddListenType(builder, t.Listen.Type)
-	}
-	WebRtcTransportOptionsAddListen(builder, listenOffset)
-	WebRtcTransportOptionsAddEnableUdp(builder, t.EnableUdp)
-	WebRtcTransportOptionsAddEnableTcp(builder, t.EnableTcp)
-	WebRtcTransportOptionsAddPreferUdp(builder, t.PreferUdp)
-	WebRtcTransportOptionsAddPreferTcp(builder, t.PreferTcp)
-	return WebRtcTransportOptionsEnd(builder)
-}
-
-func (rcv *WebRtcTransportOptions) UnPackTo(t *WebRtcTransportOptionsT) {
-	t.Base = rcv.Base(nil).UnPack()
-	listenTable := flatbuffers.Table{}
-	if rcv.Listen(&listenTable) {
-		t.Listen = rcv.ListenType().UnPack(listenTable)
-	}
-	t.EnableUdp = rcv.EnableUdp()
-	t.EnableTcp = rcv.EnableTcp()
-	t.PreferUdp = rcv.PreferUdp()
-	t.PreferTcp = rcv.PreferTcp()
-}
-
-func (rcv *WebRtcTransportOptions) UnPack() *WebRtcTransportOptionsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &WebRtcTransportOptionsT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type WebRtcTransportOptions struct {
 	_tab flatbuffers.Table

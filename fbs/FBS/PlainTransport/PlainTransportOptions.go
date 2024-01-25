@@ -5,58 +5,9 @@ package PlainTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SrtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SrtpParameters"
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__SrtpParameters "FBS/SrtpParameters"
+	FBS__Transport "FBS/Transport"
 )
-
-type PlainTransportOptionsT struct {
-	Base *FBS__Transport.OptionsT `json:"base"`
-	ListenInfo *FBS__Transport.ListenInfoT `json:"listen_info"`
-	RtcpListenInfo *FBS__Transport.ListenInfoT `json:"rtcp_listen_info"`
-	RtcpMux bool `json:"rtcp_mux"`
-	Comedia bool `json:"comedia"`
-	EnableSrtp bool `json:"enable_srtp"`
-	SrtpCryptoSuite *FBS__SrtpParameters.SrtpCryptoSuite `json:"srtp_crypto_suite"`
-}
-
-func (t *PlainTransportOptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	listenInfoOffset := t.ListenInfo.Pack(builder)
-	rtcpListenInfoOffset := t.RtcpListenInfo.Pack(builder)
-	PlainTransportOptionsStart(builder)
-	PlainTransportOptionsAddBase(builder, baseOffset)
-	PlainTransportOptionsAddListenInfo(builder, listenInfoOffset)
-	PlainTransportOptionsAddRtcpListenInfo(builder, rtcpListenInfoOffset)
-	PlainTransportOptionsAddRtcpMux(builder, t.RtcpMux)
-	PlainTransportOptionsAddComedia(builder, t.Comedia)
-	PlainTransportOptionsAddEnableSrtp(builder, t.EnableSrtp)
-	if t.SrtpCryptoSuite != nil {
-		PlainTransportOptionsAddSrtpCryptoSuite(builder, *t.SrtpCryptoSuite)
-	}
-	return PlainTransportOptionsEnd(builder)
-}
-
-func (rcv *PlainTransportOptions) UnPackTo(t *PlainTransportOptionsT) {
-	t.Base = rcv.Base(nil).UnPack()
-	t.ListenInfo = rcv.ListenInfo(nil).UnPack()
-	t.RtcpListenInfo = rcv.RtcpListenInfo(nil).UnPack()
-	t.RtcpMux = rcv.RtcpMux()
-	t.Comedia = rcv.Comedia()
-	t.EnableSrtp = rcv.EnableSrtp()
-	t.SrtpCryptoSuite = rcv.SrtpCryptoSuite()
-}
-
-func (rcv *PlainTransportOptions) UnPack() *PlainTransportOptionsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &PlainTransportOptionsT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type PlainTransportOptions struct {
 	_tab flatbuffers.Table

@@ -6,33 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ScoreNotificationT struct {
-	Score *ConsumerScoreT `json:"score"`
-}
-
-func (t *ScoreNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	scoreOffset := t.Score.Pack(builder)
-	ScoreNotificationStart(builder)
-	ScoreNotificationAddScore(builder, scoreOffset)
-	return ScoreNotificationEnd(builder)
-}
-
-func (rcv *ScoreNotification) UnPackTo(t *ScoreNotificationT) {
-	t.Score = rcv.Score(nil).UnPack()
-}
-
-func (rcv *ScoreNotification) UnPack() *ScoreNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ScoreNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ScoreNotification struct {
 	_tab flatbuffers.Table
 }

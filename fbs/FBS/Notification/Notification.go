@@ -6,50 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type NotificationT struct {
-	HandlerId string `json:"handler_id"`
-	Event Event `json:"event"`
-	Body *BodyT `json:"body"`
-}
-
-func (t *NotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	handlerIdOffset := flatbuffers.UOffsetT(0)
-	if t.HandlerId != "" {
-		handlerIdOffset = builder.CreateString(t.HandlerId)
-	}
-	bodyOffset := t.Body.Pack(builder)
-
-	NotificationStart(builder)
-	NotificationAddHandlerId(builder, handlerIdOffset)
-	NotificationAddEvent(builder, t.Event)
-	if t.Body != nil {
-		NotificationAddBodyType(builder, t.Body.Type)
-	}
-	NotificationAddBody(builder, bodyOffset)
-	return NotificationEnd(builder)
-}
-
-func (rcv *Notification) UnPackTo(t *NotificationT) {
-	t.HandlerId = string(rcv.HandlerId())
-	t.Event = rcv.Event()
-	bodyTable := flatbuffers.Table{}
-	if rcv.Body(&bodyTable) {
-		t.Body = rcv.BodyType().UnPack(bodyTable)
-	}
-}
-
-func (rcv *Notification) UnPack() *NotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &NotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Notification struct {
 	_tab flatbuffers.Table
 }

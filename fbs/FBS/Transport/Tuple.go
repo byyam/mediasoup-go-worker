@@ -6,52 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type TupleT struct {
-	LocalIp string `json:"local_ip"`
-	LocalPort uint16 `json:"local_port"`
-	RemoteIp string `json:"remote_ip"`
-	RemotePort uint16 `json:"remote_port"`
-	Protocol Protocol `json:"protocol"`
-}
-
-func (t *TupleT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	localIpOffset := flatbuffers.UOffsetT(0)
-	if t.LocalIp != "" {
-		localIpOffset = builder.CreateString(t.LocalIp)
-	}
-	remoteIpOffset := flatbuffers.UOffsetT(0)
-	if t.RemoteIp != "" {
-		remoteIpOffset = builder.CreateString(t.RemoteIp)
-	}
-	TupleStart(builder)
-	TupleAddLocalIp(builder, localIpOffset)
-	TupleAddLocalPort(builder, t.LocalPort)
-	TupleAddRemoteIp(builder, remoteIpOffset)
-	TupleAddRemotePort(builder, t.RemotePort)
-	TupleAddProtocol(builder, t.Protocol)
-	return TupleEnd(builder)
-}
-
-func (rcv *Tuple) UnPackTo(t *TupleT) {
-	t.LocalIp = string(rcv.LocalIp())
-	t.LocalPort = rcv.LocalPort()
-	t.RemoteIp = string(rcv.RemoteIp())
-	t.RemotePort = rcv.RemotePort()
-	t.Protocol = rcv.Protocol()
-}
-
-func (rcv *Tuple) UnPack() *TupleT {
-	if rcv == nil {
-		return nil
-	}
-	t := &TupleT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Tuple struct {
 	_tab flatbuffers.Table
 }

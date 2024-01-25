@@ -6,38 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type VideoOrientationChangeNotificationT struct {
-	Camera bool `json:"camera"`
-	Flip bool `json:"flip"`
-	Rotation uint16 `json:"rotation"`
-}
-
-func (t *VideoOrientationChangeNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	VideoOrientationChangeNotificationStart(builder)
-	VideoOrientationChangeNotificationAddCamera(builder, t.Camera)
-	VideoOrientationChangeNotificationAddFlip(builder, t.Flip)
-	VideoOrientationChangeNotificationAddRotation(builder, t.Rotation)
-	return VideoOrientationChangeNotificationEnd(builder)
-}
-
-func (rcv *VideoOrientationChangeNotification) UnPackTo(t *VideoOrientationChangeNotificationT) {
-	t.Camera = rcv.Camera()
-	t.Flip = rcv.Flip()
-	t.Rotation = rcv.Rotation()
-}
-
-func (rcv *VideoOrientationChangeNotification) UnPack() *VideoOrientationChangeNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &VideoOrientationChangeNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type VideoOrientationChangeNotification struct {
 	_tab flatbuffers.Table
 }

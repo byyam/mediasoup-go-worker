@@ -6,59 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ParamsT struct {
-	Ssrc uint32 `json:"ssrc"`
-	PayloadType byte `json:"payload_type"`
-	MimeType string `json:"mime_type"`
-	ClockRate uint32 `json:"clock_rate"`
-	Rrid string `json:"rrid"`
-	Cname string `json:"cname"`
-}
-
-func (t *ParamsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	mimeTypeOffset := flatbuffers.UOffsetT(0)
-	if t.MimeType != "" {
-		mimeTypeOffset = builder.CreateString(t.MimeType)
-	}
-	rridOffset := flatbuffers.UOffsetT(0)
-	if t.Rrid != "" {
-		rridOffset = builder.CreateString(t.Rrid)
-	}
-	cnameOffset := flatbuffers.UOffsetT(0)
-	if t.Cname != "" {
-		cnameOffset = builder.CreateString(t.Cname)
-	}
-	ParamsStart(builder)
-	ParamsAddSsrc(builder, t.Ssrc)
-	ParamsAddPayloadType(builder, t.PayloadType)
-	ParamsAddMimeType(builder, mimeTypeOffset)
-	ParamsAddClockRate(builder, t.ClockRate)
-	ParamsAddRrid(builder, rridOffset)
-	ParamsAddCname(builder, cnameOffset)
-	return ParamsEnd(builder)
-}
-
-func (rcv *Params) UnPackTo(t *ParamsT) {
-	t.Ssrc = rcv.Ssrc()
-	t.PayloadType = rcv.PayloadType()
-	t.MimeType = string(rcv.MimeType())
-	t.ClockRate = rcv.ClockRate()
-	t.Rrid = string(rcv.Rrid())
-	t.Cname = string(rcv.Cname())
-}
-
-func (rcv *Params) UnPack() *ParamsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ParamsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Params struct {
 	_tab flatbuffers.Table
 }

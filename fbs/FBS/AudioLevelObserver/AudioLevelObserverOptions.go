@@ -6,38 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type AudioLevelObserverOptionsT struct {
-	MaxEntries uint16 `json:"max_entries"`
-	Threshold int8 `json:"threshold"`
-	Interval uint16 `json:"interval"`
-}
-
-func (t *AudioLevelObserverOptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	AudioLevelObserverOptionsStart(builder)
-	AudioLevelObserverOptionsAddMaxEntries(builder, t.MaxEntries)
-	AudioLevelObserverOptionsAddThreshold(builder, t.Threshold)
-	AudioLevelObserverOptionsAddInterval(builder, t.Interval)
-	return AudioLevelObserverOptionsEnd(builder)
-}
-
-func (rcv *AudioLevelObserverOptions) UnPackTo(t *AudioLevelObserverOptionsT) {
-	t.MaxEntries = rcv.MaxEntries()
-	t.Threshold = rcv.Threshold()
-	t.Interval = rcv.Interval()
-}
-
-func (rcv *AudioLevelObserverOptions) UnPack() *AudioLevelObserverOptionsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &AudioLevelObserverOptionsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type AudioLevelObserverOptions struct {
 	_tab flatbuffers.Table
 }

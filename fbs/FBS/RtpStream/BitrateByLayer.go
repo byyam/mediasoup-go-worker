@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type BitrateByLayerT struct {
-	Layer string `json:"layer"`
-	Bitrate uint32 `json:"bitrate"`
-}
-
-func (t *BitrateByLayerT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	layerOffset := flatbuffers.UOffsetT(0)
-	if t.Layer != "" {
-		layerOffset = builder.CreateString(t.Layer)
-	}
-	BitrateByLayerStart(builder)
-	BitrateByLayerAddLayer(builder, layerOffset)
-	BitrateByLayerAddBitrate(builder, t.Bitrate)
-	return BitrateByLayerEnd(builder)
-}
-
-func (rcv *BitrateByLayer) UnPackTo(t *BitrateByLayerT) {
-	t.Layer = string(rcv.Layer())
-	t.Bitrate = rcv.Bitrate()
-}
-
-func (rcv *BitrateByLayer) UnPack() *BitrateByLayerT {
-	if rcv == nil {
-		return nil
-	}
-	t := &BitrateByLayerT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type BitrateByLayer struct {
 	_tab flatbuffers.Table
 }

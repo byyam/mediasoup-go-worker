@@ -6,45 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type Integer32ArrayT struct {
-	Value []int32 `json:"value"`
-}
-
-func (t *Integer32ArrayT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	valueOffset := flatbuffers.UOffsetT(0)
-	if t.Value != nil {
-		valueLength := len(t.Value)
-		Integer32ArrayStartValueVector(builder, valueLength)
-		for j := valueLength - 1; j >= 0; j-- {
-			builder.PrependInt32(t.Value[j])
-		}
-		valueOffset = builder.EndVector(valueLength)
-	}
-	Integer32ArrayStart(builder)
-	Integer32ArrayAddValue(builder, valueOffset)
-	return Integer32ArrayEnd(builder)
-}
-
-func (rcv *Integer32Array) UnPackTo(t *Integer32ArrayT) {
-	valueLength := rcv.ValueLength()
-	t.Value = make([]int32, valueLength)
-	for j := 0; j < valueLength; j++ {
-		t.Value[j] = rcv.Value(j)
-	}
-}
-
-func (rcv *Integer32Array) UnPack() *Integer32ArrayT {
-	if rcv == nil {
-		return nil
-	}
-	t := &Integer32ArrayT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Integer32Array struct {
 	_tab flatbuffers.Table
 }

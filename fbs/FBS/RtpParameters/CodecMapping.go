@@ -6,35 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type CodecMappingT struct {
-	PayloadType byte `json:"payload_type"`
-	MappedPayloadType byte `json:"mapped_payload_type"`
-}
-
-func (t *CodecMappingT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	CodecMappingStart(builder)
-	CodecMappingAddPayloadType(builder, t.PayloadType)
-	CodecMappingAddMappedPayloadType(builder, t.MappedPayloadType)
-	return CodecMappingEnd(builder)
-}
-
-func (rcv *CodecMapping) UnPackTo(t *CodecMappingT) {
-	t.PayloadType = rcv.PayloadType()
-	t.MappedPayloadType = rcv.MappedPayloadType()
-}
-
-func (rcv *CodecMapping) UnPack() *CodecMappingT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CodecMappingT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type CodecMapping struct {
 	_tab flatbuffers.Table
 }

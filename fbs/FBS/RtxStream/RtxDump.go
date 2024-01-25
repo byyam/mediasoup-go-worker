@@ -6,33 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RtxDumpT struct {
-	Params *ParamsT `json:"params"`
-}
-
-func (t *RtxDumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	paramsOffset := t.Params.Pack(builder)
-	RtxDumpStart(builder)
-	RtxDumpAddParams(builder, paramsOffset)
-	return RtxDumpEnd(builder)
-}
-
-func (rcv *RtxDump) UnPackTo(t *RtxDumpT) {
-	t.Params = rcv.Params(nil).UnPack()
-}
-
-func (rcv *RtxDump) UnPack() *RtxDumpT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RtxDumpT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type RtxDump struct {
 	_tab flatbuffers.Table
 }

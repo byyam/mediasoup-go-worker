@@ -5,51 +5,8 @@ package Producer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Common "github.com/byyam/mediasoup-go-worker/fbs/FBS/Common"
+	FBS__Common "FBS/Common"
 )
-
-type TraceNotificationT struct {
-	Type TraceEventType `json:"type"`
-	Timestamp uint64 `json:"timestamp"`
-	Direction FBS__Common.TraceDirection `json:"direction"`
-	Info *TraceInfoT `json:"info"`
-}
-
-func (t *TraceNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	infoOffset := t.Info.Pack(builder)
-
-	TraceNotificationStart(builder)
-	TraceNotificationAddType(builder, t.Type)
-	TraceNotificationAddTimestamp(builder, t.Timestamp)
-	TraceNotificationAddDirection(builder, t.Direction)
-	if t.Info != nil {
-		TraceNotificationAddInfoType(builder, t.Info.Type)
-	}
-	TraceNotificationAddInfo(builder, infoOffset)
-	return TraceNotificationEnd(builder)
-}
-
-func (rcv *TraceNotification) UnPackTo(t *TraceNotificationT) {
-	t.Type = rcv.Type()
-	t.Timestamp = rcv.Timestamp()
-	t.Direction = rcv.Direction()
-	infoTable := flatbuffers.Table{}
-	if rcv.Info(&infoTable) {
-		t.Info = rcv.InfoType().UnPack(infoTable)
-	}
-}
-
-func (rcv *TraceNotification) UnPack() *TraceNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &TraceNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type TraceNotification struct {
 	_tab flatbuffers.Table

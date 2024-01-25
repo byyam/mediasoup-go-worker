@@ -6,51 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ScoreNotificationT struct {
-	Scores []*ScoreT `json:"scores"`
-}
-
-func (t *ScoreNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	scoresOffset := flatbuffers.UOffsetT(0)
-	if t.Scores != nil {
-		scoresLength := len(t.Scores)
-		scoresOffsets := make([]flatbuffers.UOffsetT, scoresLength)
-		for j := 0; j < scoresLength; j++ {
-			scoresOffsets[j] = t.Scores[j].Pack(builder)
-		}
-		ScoreNotificationStartScoresVector(builder, scoresLength)
-		for j := scoresLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(scoresOffsets[j])
-		}
-		scoresOffset = builder.EndVector(scoresLength)
-	}
-	ScoreNotificationStart(builder)
-	ScoreNotificationAddScores(builder, scoresOffset)
-	return ScoreNotificationEnd(builder)
-}
-
-func (rcv *ScoreNotification) UnPackTo(t *ScoreNotificationT) {
-	scoresLength := rcv.ScoresLength()
-	t.Scores = make([]*ScoreT, scoresLength)
-	for j := 0; j < scoresLength; j++ {
-		x := Score{}
-		rcv.Scores(&x, j)
-		t.Scores[j] = x.UnPack()
-	}
-}
-
-func (rcv *ScoreNotification) UnPack() *ScoreNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ScoreNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ScoreNotification struct {
 	_tab flatbuffers.Table
 }

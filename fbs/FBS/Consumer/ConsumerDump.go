@@ -5,87 +5,8 @@ package Consumer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
+	FBS__RtpStream "FBS/RtpStream"
 )
-
-type ConsumerDumpT struct {
-	Base *BaseConsumerDumpT `json:"base"`
-	RtpStreams []*FBS__RtpStream.DumpT `json:"rtp_streams"`
-	PreferredSpatialLayer *int16 `json:"preferred_spatial_layer"`
-	TargetSpatialLayer *int16 `json:"target_spatial_layer"`
-	CurrentSpatialLayer *int16 `json:"current_spatial_layer"`
-	PreferredTemporalLayer *int16 `json:"preferred_temporal_layer"`
-	TargetTemporalLayer *int16 `json:"target_temporal_layer"`
-	CurrentTemporalLayer *int16 `json:"current_temporal_layer"`
-}
-
-func (t *ConsumerDumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	baseOffset := t.Base.Pack(builder)
-	rtpStreamsOffset := flatbuffers.UOffsetT(0)
-	if t.RtpStreams != nil {
-		rtpStreamsLength := len(t.RtpStreams)
-		rtpStreamsOffsets := make([]flatbuffers.UOffsetT, rtpStreamsLength)
-		for j := 0; j < rtpStreamsLength; j++ {
-			rtpStreamsOffsets[j] = t.RtpStreams[j].Pack(builder)
-		}
-		ConsumerDumpStartRtpStreamsVector(builder, rtpStreamsLength)
-		for j := rtpStreamsLength - 1; j >= 0; j-- {
-			builder.PrependUOffsetT(rtpStreamsOffsets[j])
-		}
-		rtpStreamsOffset = builder.EndVector(rtpStreamsLength)
-	}
-	ConsumerDumpStart(builder)
-	ConsumerDumpAddBase(builder, baseOffset)
-	ConsumerDumpAddRtpStreams(builder, rtpStreamsOffset)
-	if t.PreferredSpatialLayer != nil {
-		ConsumerDumpAddPreferredSpatialLayer(builder, *t.PreferredSpatialLayer)
-	}
-	if t.TargetSpatialLayer != nil {
-		ConsumerDumpAddTargetSpatialLayer(builder, *t.TargetSpatialLayer)
-	}
-	if t.CurrentSpatialLayer != nil {
-		ConsumerDumpAddCurrentSpatialLayer(builder, *t.CurrentSpatialLayer)
-	}
-	if t.PreferredTemporalLayer != nil {
-		ConsumerDumpAddPreferredTemporalLayer(builder, *t.PreferredTemporalLayer)
-	}
-	if t.TargetTemporalLayer != nil {
-		ConsumerDumpAddTargetTemporalLayer(builder, *t.TargetTemporalLayer)
-	}
-	if t.CurrentTemporalLayer != nil {
-		ConsumerDumpAddCurrentTemporalLayer(builder, *t.CurrentTemporalLayer)
-	}
-	return ConsumerDumpEnd(builder)
-}
-
-func (rcv *ConsumerDump) UnPackTo(t *ConsumerDumpT) {
-	t.Base = rcv.Base(nil).UnPack()
-	rtpStreamsLength := rcv.RtpStreamsLength()
-	t.RtpStreams = make([]*FBS__RtpStream.DumpT, rtpStreamsLength)
-	for j := 0; j < rtpStreamsLength; j++ {
-		x := FBS__RtpStream.Dump{}
-		rcv.RtpStreams(&x, j)
-		t.RtpStreams[j] = x.UnPack()
-	}
-	t.PreferredSpatialLayer = rcv.PreferredSpatialLayer()
-	t.TargetSpatialLayer = rcv.TargetSpatialLayer()
-	t.CurrentSpatialLayer = rcv.CurrentSpatialLayer()
-	t.PreferredTemporalLayer = rcv.PreferredTemporalLayer()
-	t.TargetTemporalLayer = rcv.TargetTemporalLayer()
-	t.CurrentTemporalLayer = rcv.CurrentTemporalLayer()
-}
-
-func (rcv *ConsumerDump) UnPack() *ConsumerDumpT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConsumerDumpT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ConsumerDump struct {
 	_tab flatbuffers.Table

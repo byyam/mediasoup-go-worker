@@ -2,10 +2,7 @@
 
 package WebRtcTransport
 
-import (
-	flatbuffers "github.com/google/flatbuffers/go"
-	"strconv"
-)
+import "strconv"
 
 type Listen byte
 
@@ -32,36 +29,4 @@ func (v Listen) String() string {
 		return s
 	}
 	return "Listen(" + strconv.FormatInt(int64(v), 10) + ")"
-}
-
-type ListenT struct {
-	Type Listen
-	Value interface{}
-}
-
-func (t *ListenT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	switch t.Type {
-	case ListenListenIndividual:
-		return t.Value.(*ListenIndividualT).Pack(builder)
-	case ListenListenServer:
-		return t.Value.(*ListenServerT).Pack(builder)
-	}
-	return 0
-}
-
-func (rcv Listen) UnPack(table flatbuffers.Table) *ListenT {
-	switch rcv {
-	case ListenListenIndividual:
-		var x ListenIndividual
-		x.Init(table.Bytes, table.Pos)
-		return &ListenT{Type: ListenListenIndividual, Value: x.UnPack()}
-	case ListenListenServer:
-		var x ListenServer
-		x.Init(table.Bytes, table.Pos)
-		return &ListenT{Type: ListenListenServer, Value: x.UnPack()}
-	}
-	return nil
 }

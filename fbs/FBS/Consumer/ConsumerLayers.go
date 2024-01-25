@@ -6,37 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ConsumerLayersT struct {
-	SpatialLayer byte `json:"spatial_layer"`
-	TemporalLayer *byte `json:"temporal_layer"`
-}
-
-func (t *ConsumerLayersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ConsumerLayersStart(builder)
-	ConsumerLayersAddSpatialLayer(builder, t.SpatialLayer)
-	if t.TemporalLayer != nil {
-		ConsumerLayersAddTemporalLayer(builder, *t.TemporalLayer)
-	}
-	return ConsumerLayersEnd(builder)
-}
-
-func (rcv *ConsumerLayers) UnPackTo(t *ConsumerLayersT) {
-	t.SpatialLayer = rcv.SpatialLayer()
-	t.TemporalLayer = rcv.TemporalLayer()
-}
-
-func (rcv *ConsumerLayers) UnPack() *ConsumerLayersT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConsumerLayersT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ConsumerLayers struct {
 	_tab flatbuffers.Table
 }

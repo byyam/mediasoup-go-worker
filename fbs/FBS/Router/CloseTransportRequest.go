@@ -6,36 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type CloseTransportRequestT struct {
-	TransportId string `json:"transport_id"`
-}
-
-func (t *CloseTransportRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	transportIdOffset := flatbuffers.UOffsetT(0)
-	if t.TransportId != "" {
-		transportIdOffset = builder.CreateString(t.TransportId)
-	}
-	CloseTransportRequestStart(builder)
-	CloseTransportRequestAddTransportId(builder, transportIdOffset)
-	return CloseTransportRequestEnd(builder)
-}
-
-func (rcv *CloseTransportRequest) UnPackTo(t *CloseTransportRequestT) {
-	t.TransportId = string(rcv.TransportId())
-}
-
-func (rcv *CloseTransportRequest) UnPack() *CloseTransportRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &CloseTransportRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type CloseTransportRequest struct {
 	_tab flatbuffers.Table
 }

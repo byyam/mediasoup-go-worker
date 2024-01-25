@@ -6,36 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SendRtcpNotificationT struct {
-	Data []byte `json:"data"`
-}
-
-func (t *SendRtcpNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataOffset := flatbuffers.UOffsetT(0)
-	if t.Data != nil {
-		dataOffset = builder.CreateByteString(t.Data)
-	}
-	SendRtcpNotificationStart(builder)
-	SendRtcpNotificationAddData(builder, dataOffset)
-	return SendRtcpNotificationEnd(builder)
-}
-
-func (rcv *SendRtcpNotification) UnPackTo(t *SendRtcpNotificationT) {
-	t.Data = rcv.DataBytes()
-}
-
-func (rcv *SendRtcpNotification) UnPack() *SendRtcpNotificationT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SendRtcpNotificationT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SendRtcpNotification struct {
 	_tab flatbuffers.Table
 }

@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SrtpParametersT struct {
-	CryptoSuite SrtpCryptoSuite `json:"crypto_suite"`
-	KeyBase64 string `json:"key_base64"`
-}
-
-func (t *SrtpParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	keyBase64Offset := flatbuffers.UOffsetT(0)
-	if t.KeyBase64 != "" {
-		keyBase64Offset = builder.CreateString(t.KeyBase64)
-	}
-	SrtpParametersStart(builder)
-	SrtpParametersAddCryptoSuite(builder, t.CryptoSuite)
-	SrtpParametersAddKeyBase64(builder, keyBase64Offset)
-	return SrtpParametersEnd(builder)
-}
-
-func (rcv *SrtpParameters) UnPackTo(t *SrtpParametersT) {
-	t.CryptoSuite = rcv.CryptoSuite()
-	t.KeyBase64 = string(rcv.KeyBase64())
-}
-
-func (rcv *SrtpParameters) UnPack() *SrtpParametersT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SrtpParametersT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SrtpParameters struct {
 	_tab flatbuffers.Table
 }

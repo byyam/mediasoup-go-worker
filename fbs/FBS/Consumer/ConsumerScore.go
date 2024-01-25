@@ -6,42 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type ConsumerScoreT struct {
-	Score byte `json:"score"`
-	ProducerScore byte `json:"producer_score"`
-	ProducerScores []byte `json:"producer_scores"`
-}
-
-func (t *ConsumerScoreT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	producerScoresOffset := flatbuffers.UOffsetT(0)
-	if t.ProducerScores != nil {
-		producerScoresOffset = builder.CreateByteString(t.ProducerScores)
-	}
-	ConsumerScoreStart(builder)
-	ConsumerScoreAddScore(builder, t.Score)
-	ConsumerScoreAddProducerScore(builder, t.ProducerScore)
-	ConsumerScoreAddProducerScores(builder, producerScoresOffset)
-	return ConsumerScoreEnd(builder)
-}
-
-func (rcv *ConsumerScore) UnPackTo(t *ConsumerScoreT) {
-	t.Score = rcv.Score()
-	t.ProducerScore = rcv.ProducerScore()
-	t.ProducerScores = rcv.ProducerScoresBytes()
-}
-
-func (rcv *ConsumerScore) UnPack() *ConsumerScoreT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConsumerScoreT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type ConsumerScore struct {
 	_tab flatbuffers.Table
 }

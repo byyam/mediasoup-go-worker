@@ -6,45 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type SetSubchannelsRequestT struct {
-	Subchannels []uint16 `json:"subchannels"`
-}
-
-func (t *SetSubchannelsRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	subchannelsOffset := flatbuffers.UOffsetT(0)
-	if t.Subchannels != nil {
-		subchannelsLength := len(t.Subchannels)
-		SetSubchannelsRequestStartSubchannelsVector(builder, subchannelsLength)
-		for j := subchannelsLength - 1; j >= 0; j-- {
-			builder.PrependUint16(t.Subchannels[j])
-		}
-		subchannelsOffset = builder.EndVector(subchannelsLength)
-	}
-	SetSubchannelsRequestStart(builder)
-	SetSubchannelsRequestAddSubchannels(builder, subchannelsOffset)
-	return SetSubchannelsRequestEnd(builder)
-}
-
-func (rcv *SetSubchannelsRequest) UnPackTo(t *SetSubchannelsRequestT) {
-	subchannelsLength := rcv.SubchannelsLength()
-	t.Subchannels = make([]uint16, subchannelsLength)
-	for j := 0; j < subchannelsLength; j++ {
-		t.Subchannels[j] = rcv.Subchannels(j)
-	}
-}
-
-func (rcv *SetSubchannelsRequest) UnPack() *SetSubchannelsRequestT {
-	if rcv == nil {
-		return nil
-	}
-	t := &SetSubchannelsRequestT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type SetSubchannelsRequest struct {
 	_tab flatbuffers.Table
 }

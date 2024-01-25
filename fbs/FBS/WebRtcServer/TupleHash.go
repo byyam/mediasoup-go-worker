@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type TupleHashT struct {
-	TupleHash uint64 `json:"tuple_hash"`
-	WebRtcTransportId string `json:"web_rtc_transport_id"`
-}
-
-func (t *TupleHashT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	webRtcTransportIdOffset := flatbuffers.UOffsetT(0)
-	if t.WebRtcTransportId != "" {
-		webRtcTransportIdOffset = builder.CreateString(t.WebRtcTransportId)
-	}
-	TupleHashStart(builder)
-	TupleHashAddTupleHash(builder, t.TupleHash)
-	TupleHashAddWebRtcTransportId(builder, webRtcTransportIdOffset)
-	return TupleHashEnd(builder)
-}
-
-func (rcv *TupleHash) UnPackTo(t *TupleHashT) {
-	t.TupleHash = rcv.TupleHash()
-	t.WebRtcTransportId = string(rcv.WebRtcTransportId())
-}
-
-func (rcv *TupleHash) UnPack() *TupleHashT {
-	if rcv == nil {
-		return nil
-	}
-	t := &TupleHashT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type TupleHash struct {
 	_tab flatbuffers.Table
 }

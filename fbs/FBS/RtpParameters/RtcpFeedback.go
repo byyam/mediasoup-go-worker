@@ -6,43 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type RtcpFeedbackT struct {
-	Type string `json:"type"`
-	Parameter string `json:"parameter"`
-}
-
-func (t *RtcpFeedbackT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	type_Offset := flatbuffers.UOffsetT(0)
-	if t.Type != "" {
-		type_Offset = builder.CreateString(t.Type)
-	}
-	parameterOffset := flatbuffers.UOffsetT(0)
-	if t.Parameter != "" {
-		parameterOffset = builder.CreateString(t.Parameter)
-	}
-	RtcpFeedbackStart(builder)
-	RtcpFeedbackAddType(builder, type_Offset)
-	RtcpFeedbackAddParameter(builder, parameterOffset)
-	return RtcpFeedbackEnd(builder)
-}
-
-func (rcv *RtcpFeedback) UnPackTo(t *RtcpFeedbackT) {
-	t.Type = string(rcv.Type())
-	t.Parameter = string(rcv.Parameter())
-}
-
-func (rcv *RtcpFeedback) UnPack() *RtcpFeedbackT {
-	if rcv == nil {
-		return nil
-	}
-	t := &RtcpFeedbackT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type RtcpFeedback struct {
 	_tab flatbuffers.Table
 }

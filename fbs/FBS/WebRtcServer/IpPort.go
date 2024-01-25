@@ -6,39 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type IpPortT struct {
-	Ip string `json:"ip"`
-	Port uint16 `json:"port"`
-}
-
-func (t *IpPortT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	ipOffset := flatbuffers.UOffsetT(0)
-	if t.Ip != "" {
-		ipOffset = builder.CreateString(t.Ip)
-	}
-	IpPortStart(builder)
-	IpPortAddIp(builder, ipOffset)
-	IpPortAddPort(builder, t.Port)
-	return IpPortEnd(builder)
-}
-
-func (rcv *IpPort) UnPackTo(t *IpPortT) {
-	t.Ip = string(rcv.Ip())
-	t.Port = rcv.Port()
-}
-
-func (rcv *IpPort) UnPack() *IpPortT {
-	if rcv == nil {
-		return nil
-	}
-	t := &IpPortT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type IpPort struct {
 	_tab flatbuffers.Table
 }

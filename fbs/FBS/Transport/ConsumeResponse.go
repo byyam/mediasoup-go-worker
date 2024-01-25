@@ -5,45 +5,8 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__Consumer "FBS/Consumer"
 )
-
-type ConsumeResponseT struct {
-	Paused bool `json:"paused"`
-	ProducerPaused bool `json:"producer_paused"`
-	Score *FBS__Consumer.ConsumerScoreT `json:"score"`
-	PreferredLayers *FBS__Consumer.ConsumerLayersT `json:"preferred_layers"`
-}
-
-func (t *ConsumeResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	scoreOffset := t.Score.Pack(builder)
-	preferredLayersOffset := t.PreferredLayers.Pack(builder)
-	ConsumeResponseStart(builder)
-	ConsumeResponseAddPaused(builder, t.Paused)
-	ConsumeResponseAddProducerPaused(builder, t.ProducerPaused)
-	ConsumeResponseAddScore(builder, scoreOffset)
-	ConsumeResponseAddPreferredLayers(builder, preferredLayersOffset)
-	return ConsumeResponseEnd(builder)
-}
-
-func (rcv *ConsumeResponse) UnPackTo(t *ConsumeResponseT) {
-	t.Paused = rcv.Paused()
-	t.ProducerPaused = rcv.ProducerPaused()
-	t.Score = rcv.Score(nil).UnPack()
-	t.PreferredLayers = rcv.PreferredLayers(nil).UnPack()
-}
-
-func (rcv *ConsumeResponse) UnPack() *ConsumeResponseT {
-	if rcv == nil {
-		return nil
-	}
-	t := &ConsumeResponseT{}
-	rcv.UnPackTo(t)
-	return t
-}
 
 type ConsumeResponse struct {
 	_tab flatbuffers.Table

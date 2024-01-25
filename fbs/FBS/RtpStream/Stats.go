@@ -6,40 +6,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-type StatsT struct {
-	Data *StatsDataT `json:"data"`
-}
-
-func (t *StatsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
-	if t == nil {
-		return 0
-	}
-	dataOffset := t.Data.Pack(builder)
-
-	StatsStart(builder)
-	if t.Data != nil {
-		StatsAddDataType(builder, t.Data.Type)
-	}
-	StatsAddData(builder, dataOffset)
-	return StatsEnd(builder)
-}
-
-func (rcv *Stats) UnPackTo(t *StatsT) {
-	dataTable := flatbuffers.Table{}
-	if rcv.Data(&dataTable) {
-		t.Data = rcv.DataType().UnPack(dataTable)
-	}
-}
-
-func (rcv *Stats) UnPack() *StatsT {
-	if rcv == nil {
-		return nil
-	}
-	t := &StatsT{}
-	rcv.UnPackTo(t)
-	return t
-}
-
 type Stats struct {
 	_tab flatbuffers.Table
 }
