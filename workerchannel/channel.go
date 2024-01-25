@@ -28,22 +28,28 @@ const (
 	UNDEFINED = "undefined"
 )
 
+const (
+	NativeJsonFormat = iota + 1
+	NativeFormat
+	FlatBufferFormat
+)
+
 type Channel struct {
-	logger     zerolog.Logger
-	netParser  netparser.INetParser
-	jsonFormat bool
+	logger       zerolog.Logger
+	netParser    netparser.INetParser
+	bufferFormat int
 
 	// handle request message
 	OnRequestHandler atomic.Value // func(request RequestData) ResponseData
 }
 
-func NewChannel(netParser netparser.INetParser, id string, jsonFormat bool) *Channel {
+func NewChannel(netParser netparser.INetParser, id string, bufferFormat int) *Channel {
 	c := &Channel{
-		netParser:  netParser,
-		jsonFormat: jsonFormat,
-		logger:     zerowrapper.NewScope(fmt.Sprintf("channel-json[%v]", jsonFormat), id),
+		netParser:    netParser,
+		bufferFormat: bufferFormat,
+		logger:       zerowrapper.NewScope(fmt.Sprintf("channel-json[%v]", bufferFormat), id),
 	}
-	c.logger.Info().Msg("channel start")
+	c.logger.Info().Msgf("channel start, bufferFormat=%d", c.bufferFormat)
 	go c.runReadLoop()
 	return c
 }
@@ -54,14 +60,19 @@ func (c *Channel) runReadLoop() {
 	for {
 		n, err := c.netParser.ReadBuffer(payload)
 		if err != nil {
-			c.logger.Error().Err(err).Msg("Channel read buffer error")
+			c.logger.Error().Err(err).Msg("[runReadLoop]Channel read buffer error")
 			break
 		}
 		c.logger.Debug().Str("payload", string(payload[:n])).Send()
-		if !c.jsonFormat {
-			c.processPayload(payload[:n])
-		} else {
+		switch c.bufferFormat {
+		case NativeJsonFormat:
 			c.processPayloadJsonFormat(payload[:n])
+		case NativeFormat:
+			c.processPayload(payload[:n])
+		case FlatBufferFormat:
+			c.logger.Error().Msg("[runReadLoop]flat buffer format")
+		default:
+			c.logger.Error().Int("[runReadLoop]bufferFormat", c.bufferFormat).Send()
 		}
 	}
 }
@@ -245,6 +256,17 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 }
 
 func (c *Channel) Event(targetId int, event string) {
+	switch c.bufferFormat {
+	case NativeJsonFormat, NativeFormat:
+		c.eventJson(targetId, event)
+	//case FlatBufferFormat:
+
+	default:
+		c.logger.Error().Int("[Event]bufferFormat", c.bufferFormat).Send()
+	}
+}
+
+func (c *Channel) eventJson(targetId int, event string) {
 	msg := channelData{
 		TargetId: strconv.Itoa(targetId),
 		Event:    event,

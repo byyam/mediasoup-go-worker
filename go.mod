@@ -3,6 +3,7 @@ module github.com/byyam/mediasoup-go-worker
 go 1.18
 
 require (
+	github.com/google/flatbuffers v23.5.26+incompatible
 	github.com/google/gops v0.3.22
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0

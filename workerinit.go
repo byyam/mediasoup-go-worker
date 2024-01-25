@@ -31,14 +31,17 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 	var netParser netparser.INetParser
 	nativeJsonVersion, _ := version.NewVersion(workerchannel.NativeJsonVersion)
 	nativeVersion, _ := version.NewVersion(workerchannel.NativeVersion)
-	jsonFormat := true
+	flatBufferVersion, _ := version.NewVersion(workerchannel.FlatBufferVersion)
+	bufferFormat := workerchannel.NativeJsonFormat
 	if currentLatest.GreaterThanOrEqual(nativeJsonVersion) {
 		order := netparser.HostByteOrder()
 		netParser, err = netparser.NewNetNativeFd(workerchannel.ProducerChannelFd, workerchannel.ConsumerChannelFd, order)
 		logger.Info().Msgf("create native codec, host order:%s", order)
-		// https://github.com/versatica/mediasoup/pull/870
-		if currentLatest.GreaterThanOrEqual(nativeVersion) {
-			jsonFormat = false
+		if currentLatest.GreaterThanOrEqual(flatBufferVersion) {
+			bufferFormat = workerchannel.FlatBufferFormat
+		} else if currentLatest.GreaterThanOrEqual(nativeVersion) {
+			// https://github.com/versatica/mediasoup/pull/870
+			bufferFormat = workerchannel.NativeFormat
 		}
 	} else {
 		netParser, err = netparser.NewNetStringsFd(workerchannel.ProducerChannelFd, workerchannel.ConsumerChannelFd)
@@ -50,7 +53,7 @@ func InitWorker(mediasoupVersion string) (*workerchannel.Channel, *workerchannel
 		_ = netParser.Close()
 	}()
 
-	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("cfd=%d,pfd=%d", workerchannel.ConsumerChannelFd, workerchannel.ProducerChannelFd), jsonFormat)
+	channel := workerchannel.NewChannel(netParser, fmt.Sprintf("cfd=%d,pfd=%d", workerchannel.ConsumerChannelFd, workerchannel.ProducerChannelFd), bufferFormat)
 	payloadChannel := workerchannel.NewPayloadChannel()
 
 	return channel, payloadChannel, nil
