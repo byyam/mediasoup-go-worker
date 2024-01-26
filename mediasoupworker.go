@@ -2,6 +2,7 @@ package mediasoup_go_worker
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
@@ -27,6 +28,6 @@ func NewMediasoupWorker(channel *workerchannel.Channel, payloadChannel *workerch
 
 func (w *MediasoupWorker) Start() int {
 	global.InitGlobal()
-	w.channel.Event(w.pid, Notification.EventWORKER_RUNNING)
+	w.channel.Event(strconv.Itoa(w.pid), Notification.EventWORKER_RUNNING)
 	return w.pid
 }

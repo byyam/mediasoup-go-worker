@@ -8,8 +8,10 @@ import (
 	"strings"
 	"sync/atomic"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -256,7 +258,7 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	return rspData, nil
 }
 
-func (c *Channel) Event(targetId int, event Notification.Event) {
+func (c *Channel) Event(targetId string, event Notification.Event) {
 	switch c.bufferFormat {
 	case NativeJsonFormat, NativeFormat:
 		c.eventJson(targetId, event)
@@ -267,9 +269,9 @@ func (c *Channel) Event(targetId int, event Notification.Event) {
 	}
 }
 
-func (c *Channel) eventJson(targetId int, event Notification.Event) {
+func (c *Channel) eventJson(targetId string, event Notification.Event) {
 	msg := channelData{
-		TargetId: strconv.Itoa(targetId),
+		TargetId: targetId,
 		Event:    EventMap[event],
 	}
 	jsonByte, _ := json.Marshal(&msg)
@@ -277,16 +279,29 @@ func (c *Channel) eventJson(targetId int, event Notification.Event) {
 	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Int("event", int(event)).Msg("[eventJson]send Event msg")
 }
 
-func (c *Channel) eventFB(targetId int, event Notification.Event) {
-	//b := flatbuffers.NewBuilder(0)
-	//r := Notification.Notification{
-	//	HandlerId: strconv.Itoa(targetId),
-	//	Event:     event,
-	//	Body:      nil,
-	//}
-	//b.Finish(r.Pack(b))
-	//err := c.netParser.WriteBuffer(b.FinishedBytes())
-	//c.logger.Info().Err(err).Int("targetId", targetId).Int("event", int(event)).Msg("[eventFB]send Event msg")
+func (c *Channel) eventFB(targetId string, event Notification.Event) {
+	b := flatbuffers.NewBuilder(0)
+	// targetIdOffset
+	targetIdOffset := flatbuffers.UOffsetT(0)
+	if targetId != "" {
+		targetIdOffset = b.CreateString(targetId)
+	}
+	// notification offset
+	Notification.NotificationStart(b)
+	Notification.NotificationAddHandlerId(b, targetIdOffset)
+	Notification.NotificationAddEvent(b, Notification.EventWORKER_RUNNING)
+	Notification.NotificationAddBodyType(b, Notification.BodyNONE)
+	Notification.NotificationAddBody(b, flatbuffers.UOffsetT(0))
+	notificationOffset := Notification.NotificationEnd(b)
+	// msg offset
+	Message.MessageStart(b)
+	Message.MessageAddDataType(b, Message.BodyNotification)
+	Message.MessageAddData(b, notificationOffset)
+	messageOffset := Message.MessageEnd(b)
+	// send msg
+	b.Finish(messageOffset)
+	err := c.netParser.WriteBuffer(b.FinishedBytes())
+	c.logger.Info().Err(err).Str("targetId", targetId).Int("event", int(event)).Msg("[eventFB]send Event msg")
 }
 
 func (c *Channel) Close() {
