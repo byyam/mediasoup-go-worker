@@ -14,6 +14,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	"github.com/byyam/mediasoup-go-worker/fbswrapper/message_fbs"
+	"github.com/byyam/mediasoup-go-worker/fbswrapper/request_fbs"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -111,13 +112,11 @@ func (c *Channel) processPayload(nsPayload []byte) {
 func (c *Channel) processPayloadFB(nsPayload []byte) {
 	message := Message.GetRootAsMessage(nsPayload, 0)
 	bodyOffset := message_fbs.BodyUnPack(message.DataType(), message.Table())
-	c.logger.Info().Msgf("[processPayloadFB]type:%v", bodyOffset.Type)
+	c.logger.Info().Msgf("[processPayloadFB]msg type:%v", bodyOffset.Type)
 	switch bodyOffset.Type {
 	case Message.BodyRequest:
-		//requestOffset := new(Request.Request)
-		//if message.Data(requestOffset) {
-		//
-		//}
+		requestOffset := (bodyOffset.Value).(*request_fbs.RequestT)
+		c.logger.Info().Msgf("[processPayloadFB]request method:%v", requestOffset.Method)
 	default:
 		c.logger.Error().Int("DataType", int(message.DataType())).Msg("[processPayloadFB]unexpected data type")
 	}
