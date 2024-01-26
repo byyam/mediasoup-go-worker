@@ -5,7 +5,7 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SctpAssociation "FBS/SctpAssociation"
+	FBS__SctpAssociation "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpAssociation"
 )
 
 type Stats struct {

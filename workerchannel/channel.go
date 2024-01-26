@@ -13,6 +13,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
+	"github.com/byyam/mediasoup-go-worker/fbswrapper/message_fbs"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -73,7 +74,7 @@ func (c *Channel) runReadLoop() {
 		case NativeFormat:
 			c.processPayload(payload[:n])
 		case FlatBufferFormat:
-			c.logger.Error().Msg("[runReadLoop]flat buffer format")
+			c.processPayloadFB(payload[:n])
 		default:
 			c.logger.Error().Int("[runReadLoop]bufferFormat", c.bufferFormat).Send()
 		}
@@ -104,6 +105,21 @@ func (c *Channel) processPayload(nsPayload []byte) {
 	}
 	if err := c.processMessage(messages); err != nil {
 		c.logger.Error().Err(err).Msg("process message failed")
+	}
+}
+
+func (c *Channel) processPayloadFB(nsPayload []byte) {
+	message := Message.GetRootAsMessage(nsPayload, 0)
+	bodyOffset := message_fbs.BodyUnPack(message.DataType(), message.Table())
+	c.logger.Info().Msgf("[processPayloadFB]type:%v", bodyOffset.Type)
+	switch bodyOffset.Type {
+	case Message.BodyRequest:
+		//requestOffset := new(Request.Request)
+		//if message.Data(requestOffset) {
+		//
+		//}
+	default:
+		c.logger.Error().Int("DataType", int(message.DataType())).Msg("[processPayloadFB]unexpected data type")
 	}
 }
 

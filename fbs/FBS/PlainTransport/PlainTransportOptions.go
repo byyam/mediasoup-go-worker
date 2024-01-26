@@ -5,8 +5,8 @@ package PlainTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SrtpParameters "FBS/SrtpParameters"
-	FBS__Transport "FBS/Transport"
+	FBS__SrtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SrtpParameters"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
 type PlainTransportOptions struct {

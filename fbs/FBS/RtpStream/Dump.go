@@ -5,7 +5,7 @@ package RtpStream
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtxStream "FBS/RtxStream"
+	FBS__RtxStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtxStream"
 )
 
 type Dump struct {

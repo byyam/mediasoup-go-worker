@@ -5,7 +5,7 @@ package Router
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__PlainTransport "FBS/PlainTransport"
+	FBS__PlainTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PlainTransport"
 )
 
 type CreatePlainTransportRequest struct {

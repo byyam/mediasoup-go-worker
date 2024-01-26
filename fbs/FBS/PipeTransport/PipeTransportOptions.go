@@ -5,7 +5,7 @@ package PipeTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Transport "FBS/Transport"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
 type PipeTransportOptions struct {

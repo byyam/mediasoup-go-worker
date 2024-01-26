@@ -5,7 +5,7 @@ package Worker
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__LibUring "FBS/LibUring"
+	FBS__LibUring "github.com/byyam/mediasoup-go-worker/fbs/FBS/LibUring"
 )
 
 type DumpResponse struct {

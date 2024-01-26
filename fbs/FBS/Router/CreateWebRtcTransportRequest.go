@@ -5,7 +5,7 @@ package Router
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__WebRtcTransport "FBS/WebRtcTransport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 )
 
 type CreateWebRtcTransportRequest struct {

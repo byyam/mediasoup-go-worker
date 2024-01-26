@@ -5,7 +5,7 @@ package PipeTransport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__SrtpParameters "FBS/SrtpParameters"
+	FBS__SrtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SrtpParameters"
 )
 
 type ConnectRequest struct {

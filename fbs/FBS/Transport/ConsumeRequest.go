@@ -5,8 +5,8 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Consumer "FBS/Consumer"
-	FBS__RtpParameters "FBS/RtpParameters"
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
 type ConsumeRequest struct {

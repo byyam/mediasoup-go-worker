@@ -5,7 +5,7 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpParameters "FBS/RtpParameters"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
 type ProduceResponse struct {

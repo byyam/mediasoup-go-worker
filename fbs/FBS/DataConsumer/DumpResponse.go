@@ -5,8 +5,8 @@ package DataConsumer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__DataProducer "FBS/DataProducer"
-	FBS__SctpParameters "FBS/SctpParameters"
+	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 )
 
 type DumpResponse struct {

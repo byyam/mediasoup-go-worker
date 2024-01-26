@@ -5,7 +5,7 @@ package Router
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__PipeTransport "FBS/PipeTransport"
+	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
 )
 
 type CreatePipeTransportRequest struct {

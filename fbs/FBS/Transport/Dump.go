@@ -5,9 +5,9 @@ package Transport
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Common "FBS/Common"
-	FBS__SctpAssociation "FBS/SctpAssociation"
-	FBS__SctpParameters "FBS/SctpParameters"
+	FBS__Common "github.com/byyam/mediasoup-go-worker/fbs/FBS/Common"
+	FBS__SctpAssociation "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpAssociation"
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 )
 
 type Dump struct {

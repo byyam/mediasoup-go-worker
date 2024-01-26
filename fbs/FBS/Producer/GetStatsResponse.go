@@ -5,7 +5,7 @@ package Producer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__RtpStream "FBS/RtpStream"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 )
 
 type GetStatsResponse struct {

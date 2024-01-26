@@ -5,7 +5,7 @@ package Router
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__AudioLevelObserver "FBS/AudioLevelObserver"
+	FBS__AudioLevelObserver "github.com/byyam/mediasoup-go-worker/fbs/FBS/AudioLevelObserver"
 )
 
 type CreateAudioLevelObserverRequest struct {

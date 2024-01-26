@@ -5,7 +5,7 @@ package Producer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	FBS__Common "FBS/Common"
+	FBS__Common "github.com/byyam/mediasoup-go-worker/fbs/FBS/Common"
 )
 
 type TraceNotification struct {
