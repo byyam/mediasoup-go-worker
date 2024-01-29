@@ -13,8 +13,7 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
-	"github.com/byyam/mediasoup-go-worker/fbswrapper/message_fbs"
-	"github.com/byyam/mediasoup-go-worker/fbswrapper/request_fbs"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -73,7 +72,7 @@ func (c *Channel) runReadLoop() {
 		case NativeJsonFormat:
 			c.processPayloadJsonFormat(payload[:n])
 		case NativeFormat:
-			c.processPayload(payload[:n])
+			c.processPayloadNative(payload[:n])
 		case FlatBufferFormat:
 			c.processPayloadFB(payload[:n])
 		default:
@@ -86,7 +85,7 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 	switch nsPayload[0] {
 	case '{':
 		if err := c.processJsonMessage(nsPayload); err != nil {
-			c.logger.Error().Err(err).Msg("process message failed")
+			c.logger.Error().Err(err).Msg("[processPayloadJsonFormat] processJsonMessage failed")
 		}
 	case 'X':
 		c.logger.Debug().Str("payload", string(nsPayload[1:])).Send()
@@ -95,7 +94,7 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 	}
 }
 
-func (c *Channel) processPayload(nsPayload []byte) {
+func (c *Channel) processPayloadNative(nsPayload []byte) {
 	// https://github.com/versatica/mediasoup/commit/ed15a863a5ed095f58a16d972c8e25bf24f17933
 	// const request = `${id}:${method}:${handlerId}:${JSON.stringify(data)}`;
 	messages := strings.SplitN(string(nsPayload), ":", 4)
@@ -104,19 +103,23 @@ func (c *Channel) processPayload(nsPayload []byte) {
 		c.logger.Error().Strs("messages", messages).Msg("messages length invalid")
 		return
 	}
-	if err := c.processMessage(messages); err != nil {
-		c.logger.Error().Err(err).Msg("process message failed")
+	if err := c.processNativeMessage(messages); err != nil {
+		c.logger.Error().Err(err).Msg("[processPayloadNative] processNativeMessage failed")
 	}
 }
 
 func (c *Channel) processPayloadFB(nsPayload []byte) {
 	message := Message.GetRootAsMessage(nsPayload, 0)
-	bodyOffset := message_fbs.BodyUnPack(message.DataType(), message.Table())
-	c.logger.Info().Msgf("[processPayloadFB]msg type:%v", bodyOffset.Type)
+	messageOffset := message.UnPack()
+	bodyOffset := messageOffset.Data.Type.UnPack(message.Table())
+	c.logger.Info().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
 	switch bodyOffset.Type {
 	case Message.BodyRequest:
-		requestOffset := (bodyOffset.Value).(*request_fbs.RequestT)
-		c.logger.Info().Msgf("[processPayloadFB]request method:%v", requestOffset.Method)
+		requestOffset := bodyOffset.Value.(*FBS__Request.RequestT)
+		c.logger.Info().Msgf("[processPayloadFB]request method:%+v", requestOffset)
+		if err := c.processFBMessage(requestOffset); err != nil {
+			c.logger.Error().Err(err).Msg("[processPayloadFB] processFBMessage failed")
+		}
 	default:
 		c.logger.Error().Int("DataType", int(message.DataType())).Msg("[processPayloadFB]unexpected data type")
 	}
@@ -176,7 +179,30 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	return nil
 }
 
-func (c *Channel) processMessage(messages []string) error {
+func (c *Channel) processFBMessage(req *FBS__Request.RequestT) error {
+	reqData := &channelData{
+		Id:       int64(req.Id),
+		Method:   FBSRequestMethod[req.Method],
+		Internal: nil,
+		Data:     nil,
+	}
+	internal := &InternalData{
+		RouterId:       "",
+		TransportId:    "",
+		ProducerId:     "",
+		ConsumerId:     "",
+		DataProducerId: "",
+		DataConsumerId: "",
+		RtpObserverId:  "",
+	}
+	// handle
+	rspData, _ := c.handleMessage(reqData, internal)
+	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Msg("rspData")
+
+	return nil
+}
+
+func (c *Channel) processNativeMessage(messages []string) error {
 	idStr := messages[0]
 	method := messages[1]
 	handlerId := messages[2]
