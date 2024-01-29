@@ -14,6 +14,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -51,7 +52,7 @@ func NewChannel(netParser netparser.INetParser, id string, bufferFormat int) *Ch
 	c := &Channel{
 		netParser:    netParser,
 		bufferFormat: bufferFormat,
-		logger:       zerowrapper.NewScope(fmt.Sprintf("channel-json[%v]", bufferFormat), id),
+		logger:       zerowrapper.NewScope(fmt.Sprintf("workerchannel[%v]", bufferFormat), id),
 	}
 	c.logger.Info().Msgf("channel start, bufferFormat=%d", c.bufferFormat)
 	go c.runReadLoop()
@@ -111,11 +112,10 @@ func (c *Channel) processPayloadNative(nsPayload []byte) {
 func (c *Channel) processPayloadFB(nsPayload []byte) {
 	message := Message.GetRootAsMessage(nsPayload, 0)
 	messageOffset := message.UnPack()
-	bodyOffset := messageOffset.Data.Type.UnPack(message.Table())
 	c.logger.Info().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
-	switch bodyOffset.Type {
+	switch messageOffset.Data.Type {
 	case Message.BodyRequest:
-		requestOffset := bodyOffset.Value.(*FBS__Request.RequestT)
+		requestOffset := messageOffset.Data.Value.(*FBS__Request.RequestT)
 		c.logger.Info().Msgf("[processPayloadFB]request method:%+v", requestOffset)
 		if err := c.processFBMessage(requestOffset); err != nil {
 			c.logger.Error().Err(err).Msg("[processPayloadFB] processFBMessage failed")
@@ -179,15 +179,23 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	return nil
 }
 
-func (c *Channel) processFBMessage(req *FBS__Request.RequestT) error {
+func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
+	handlerId := ""
+	switch requestT.Method {
+	case FBS__Request.MethodWORKER_CREATE_ROUTER:
+		createRouterRequestT := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request method:%+v", createRouterRequestT)
+		handlerId = createRouterRequestT.RouterId
+	}
+
 	reqData := &channelData{
-		Id:       int64(req.Id),
-		Method:   FBSRequestMethod[req.Method],
+		Id:       int64(requestT.Id),
+		Method:   FBSRequestMethod[requestT.Method],
 		Internal: nil,
 		Data:     nil,
 	}
 	internal := &InternalData{
-		RouterId:       "",
+		RouterId:       handlerId,
 		TransportId:    "",
 		ProducerId:     "",
 		ConsumerId:     "",
