@@ -6,6 +6,47 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SrTraceInfoT struct {
+	Ssrc uint32 `json:"ssrc"`
+	NtpSec uint32 `json:"ntp_sec"`
+	NtpFrac uint32 `json:"ntp_frac"`
+	RtpTs uint32 `json:"rtp_ts"`
+	PacketCount uint32 `json:"packet_count"`
+	OctetCount uint32 `json:"octet_count"`
+}
+
+func (t *SrTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	SrTraceInfoStart(builder)
+	SrTraceInfoAddSsrc(builder, t.Ssrc)
+	SrTraceInfoAddNtpSec(builder, t.NtpSec)
+	SrTraceInfoAddNtpFrac(builder, t.NtpFrac)
+	SrTraceInfoAddRtpTs(builder, t.RtpTs)
+	SrTraceInfoAddPacketCount(builder, t.PacketCount)
+	SrTraceInfoAddOctetCount(builder, t.OctetCount)
+	return SrTraceInfoEnd(builder)
+}
+
+func (rcv *SrTraceInfo) UnPackTo(t *SrTraceInfoT) {
+	t.Ssrc = rcv.Ssrc()
+	t.NtpSec = rcv.NtpSec()
+	t.NtpFrac = rcv.NtpFrac()
+	t.RtpTs = rcv.RtpTs()
+	t.PacketCount = rcv.PacketCount()
+	t.OctetCount = rcv.OctetCount()
+}
+
+func (rcv *SrTraceInfo) UnPack() *SrTraceInfoT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SrTraceInfoT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SrTraceInfo struct {
 	_tab flatbuffers.Table
 }

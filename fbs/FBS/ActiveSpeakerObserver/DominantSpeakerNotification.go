@@ -6,6 +6,36 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type DominantSpeakerNotificationT struct {
+	ProducerId string `json:"producer_id"`
+}
+
+func (t *DominantSpeakerNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	producerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ProducerId != "" {
+		producerIdOffset = builder.CreateString(t.ProducerId)
+	}
+	DominantSpeakerNotificationStart(builder)
+	DominantSpeakerNotificationAddProducerId(builder, producerIdOffset)
+	return DominantSpeakerNotificationEnd(builder)
+}
+
+func (rcv *DominantSpeakerNotification) UnPackTo(t *DominantSpeakerNotificationT) {
+	t.ProducerId = string(rcv.ProducerId())
+}
+
+func (rcv *DominantSpeakerNotification) UnPack() *DominantSpeakerNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DominantSpeakerNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DominantSpeakerNotification struct {
 	_tab flatbuffers.Table
 }

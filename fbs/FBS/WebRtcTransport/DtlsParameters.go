@@ -6,6 +6,54 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type DtlsParametersT struct {
+	Fingerprints []*FingerprintT `json:"fingerprints"`
+	Role DtlsRole `json:"role"`
+}
+
+func (t *DtlsParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	fingerprintsOffset := flatbuffers.UOffsetT(0)
+	if t.Fingerprints != nil {
+		fingerprintsLength := len(t.Fingerprints)
+		fingerprintsOffsets := make([]flatbuffers.UOffsetT, fingerprintsLength)
+		for j := 0; j < fingerprintsLength; j++ {
+			fingerprintsOffsets[j] = t.Fingerprints[j].Pack(builder)
+		}
+		DtlsParametersStartFingerprintsVector(builder, fingerprintsLength)
+		for j := fingerprintsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(fingerprintsOffsets[j])
+		}
+		fingerprintsOffset = builder.EndVector(fingerprintsLength)
+	}
+	DtlsParametersStart(builder)
+	DtlsParametersAddFingerprints(builder, fingerprintsOffset)
+	DtlsParametersAddRole(builder, t.Role)
+	return DtlsParametersEnd(builder)
+}
+
+func (rcv *DtlsParameters) UnPackTo(t *DtlsParametersT) {
+	fingerprintsLength := rcv.FingerprintsLength()
+	t.Fingerprints = make([]*FingerprintT, fingerprintsLength)
+	for j := 0; j < fingerprintsLength; j++ {
+		x := Fingerprint{}
+		rcv.Fingerprints(&x, j)
+		t.Fingerprints[j] = x.UnPack()
+	}
+	t.Role = rcv.Role()
+}
+
+func (rcv *DtlsParameters) UnPack() *DtlsParametersT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DtlsParametersT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DtlsParameters struct {
 	_tab flatbuffers.Table
 }

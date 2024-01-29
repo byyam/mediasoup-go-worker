@@ -8,6 +8,33 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type IceSelectedTupleChangeNotificationT struct {
+	Tuple *FBS__Transport.TupleT `json:"tuple"`
+}
+
+func (t *IceSelectedTupleChangeNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	tupleOffset := t.Tuple.Pack(builder)
+	IceSelectedTupleChangeNotificationStart(builder)
+	IceSelectedTupleChangeNotificationAddTuple(builder, tupleOffset)
+	return IceSelectedTupleChangeNotificationEnd(builder)
+}
+
+func (rcv *IceSelectedTupleChangeNotification) UnPackTo(t *IceSelectedTupleChangeNotificationT) {
+	t.Tuple = rcv.Tuple(nil).UnPack()
+}
+
+func (rcv *IceSelectedTupleChangeNotification) UnPack() *IceSelectedTupleChangeNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &IceSelectedTupleChangeNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type IceSelectedTupleChangeNotification struct {
 	_tab flatbuffers.Table
 }

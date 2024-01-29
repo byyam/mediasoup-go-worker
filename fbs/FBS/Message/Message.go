@@ -6,6 +6,40 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type MessageT struct {
+	Data *BodyT `json:"data"`
+}
+
+func (t *MessageT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	dataOffset := t.Data.Pack(builder)
+
+	MessageStart(builder)
+	if t.Data != nil {
+		MessageAddDataType(builder, t.Data.Type)
+	}
+	MessageAddData(builder, dataOffset)
+	return MessageEnd(builder)
+}
+
+func (rcv *Message) UnPackTo(t *MessageT) {
+	dataTable := flatbuffers.Table{}
+	if rcv.Data(&dataTable) {
+		t.Data = rcv.DataType().UnPack(dataTable)
+	}
+}
+
+func (rcv *Message) UnPack() *MessageT {
+	if rcv == nil {
+		return nil
+	}
+	t := &MessageT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Message struct {
 	_tab flatbuffers.Table
 }

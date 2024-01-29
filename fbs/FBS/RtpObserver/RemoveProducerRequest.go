@@ -6,6 +6,36 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RemoveProducerRequestT struct {
+	ProducerId string `json:"producer_id"`
+}
+
+func (t *RemoveProducerRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	producerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ProducerId != "" {
+		producerIdOffset = builder.CreateString(t.ProducerId)
+	}
+	RemoveProducerRequestStart(builder)
+	RemoveProducerRequestAddProducerId(builder, producerIdOffset)
+	return RemoveProducerRequestEnd(builder)
+}
+
+func (rcv *RemoveProducerRequest) UnPackTo(t *RemoveProducerRequestT) {
+	t.ProducerId = string(rcv.ProducerId())
+}
+
+func (rcv *RemoveProducerRequest) UnPack() *RemoveProducerRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RemoveProducerRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RemoveProducerRequest struct {
 	_tab flatbuffers.Table
 }

@@ -8,6 +8,40 @@ import (
 	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
 )
 
+type CreatePipeTransportRequestT struct {
+	TransportId string `json:"transport_id"`
+	Options *FBS__PipeTransport.PipeTransportOptionsT `json:"options"`
+}
+
+func (t *CreatePipeTransportRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	transportIdOffset := flatbuffers.UOffsetT(0)
+	if t.TransportId != "" {
+		transportIdOffset = builder.CreateString(t.TransportId)
+	}
+	optionsOffset := t.Options.Pack(builder)
+	CreatePipeTransportRequestStart(builder)
+	CreatePipeTransportRequestAddTransportId(builder, transportIdOffset)
+	CreatePipeTransportRequestAddOptions(builder, optionsOffset)
+	return CreatePipeTransportRequestEnd(builder)
+}
+
+func (rcv *CreatePipeTransportRequest) UnPackTo(t *CreatePipeTransportRequestT) {
+	t.TransportId = string(rcv.TransportId())
+	t.Options = rcv.Options(nil).UnPack()
+}
+
+func (rcv *CreatePipeTransportRequest) UnPack() *CreatePipeTransportRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreatePipeTransportRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreatePipeTransportRequest struct {
 	_tab flatbuffers.Table
 }

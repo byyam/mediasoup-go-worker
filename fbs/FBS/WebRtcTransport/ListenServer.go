@@ -6,6 +6,36 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ListenServerT struct {
+	WebRtcServerId string `json:"web_rtc_server_id"`
+}
+
+func (t *ListenServerT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	webRtcServerIdOffset := flatbuffers.UOffsetT(0)
+	if t.WebRtcServerId != "" {
+		webRtcServerIdOffset = builder.CreateString(t.WebRtcServerId)
+	}
+	ListenServerStart(builder)
+	ListenServerAddWebRtcServerId(builder, webRtcServerIdOffset)
+	return ListenServerEnd(builder)
+}
+
+func (rcv *ListenServer) UnPackTo(t *ListenServerT) {
+	t.WebRtcServerId = string(rcv.WebRtcServerId())
+}
+
+func (rcv *ListenServer) UnPack() *ListenServerT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ListenServerT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ListenServer struct {
 	_tab flatbuffers.Table
 }

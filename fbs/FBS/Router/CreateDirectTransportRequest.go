@@ -8,6 +8,40 @@ import (
 	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
 )
 
+type CreateDirectTransportRequestT struct {
+	TransportId string `json:"transport_id"`
+	Options *FBS__DirectTransport.DirectTransportOptionsT `json:"options"`
+}
+
+func (t *CreateDirectTransportRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	transportIdOffset := flatbuffers.UOffsetT(0)
+	if t.TransportId != "" {
+		transportIdOffset = builder.CreateString(t.TransportId)
+	}
+	optionsOffset := t.Options.Pack(builder)
+	CreateDirectTransportRequestStart(builder)
+	CreateDirectTransportRequestAddTransportId(builder, transportIdOffset)
+	CreateDirectTransportRequestAddOptions(builder, optionsOffset)
+	return CreateDirectTransportRequestEnd(builder)
+}
+
+func (rcv *CreateDirectTransportRequest) UnPackTo(t *CreateDirectTransportRequestT) {
+	t.TransportId = string(rcv.TransportId())
+	t.Options = rcv.Options(nil).UnPack()
+}
+
+func (rcv *CreateDirectTransportRequest) UnPack() *CreateDirectTransportRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreateDirectTransportRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreateDirectTransportRequest struct {
 	_tab flatbuffers.Table
 }

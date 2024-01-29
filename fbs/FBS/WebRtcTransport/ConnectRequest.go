@@ -6,6 +6,33 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ConnectRequestT struct {
+	DtlsParameters *DtlsParametersT `json:"dtls_parameters"`
+}
+
+func (t *ConnectRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	dtlsParametersOffset := t.DtlsParameters.Pack(builder)
+	ConnectRequestStart(builder)
+	ConnectRequestAddDtlsParameters(builder, dtlsParametersOffset)
+	return ConnectRequestEnd(builder)
+}
+
+func (rcv *ConnectRequest) UnPackTo(t *ConnectRequestT) {
+	t.DtlsParameters = rcv.DtlsParameters(nil).UnPack()
+}
+
+func (rcv *ConnectRequest) UnPack() *ConnectRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ConnectRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ConnectRequest struct {
 	_tab flatbuffers.Table
 }

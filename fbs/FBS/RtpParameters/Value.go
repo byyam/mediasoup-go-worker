@@ -2,7 +2,10 @@
 
 package RtpParameters
 
-import "strconv"
+import (
+	flatbuffers "github.com/google/flatbuffers/go"
+	"strconv"
+)
 
 type Value byte
 
@@ -38,4 +41,54 @@ func (v Value) String() string {
 		return s
 	}
 	return "Value(" + strconv.FormatInt(int64(v), 10) + ")"
+}
+
+type ValueT struct {
+	Type Value
+	Value interface{}
+}
+
+func (t *ValueT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	switch t.Type {
+	case ValueBoolean:
+		return t.Value.(*BooleanT).Pack(builder)
+	case ValueInteger32:
+		return t.Value.(*Integer32T).Pack(builder)
+	case ValueDouble:
+		return t.Value.(*DoubleT).Pack(builder)
+	case ValueString:
+		return t.Value.(*StringT).Pack(builder)
+	case ValueInteger32Array:
+		return t.Value.(*Integer32ArrayT).Pack(builder)
+	}
+	return 0
+}
+
+func (rcv Value) UnPack(table flatbuffers.Table) *ValueT {
+	switch rcv {
+	case ValueBoolean:
+		var x Boolean
+		x.Init(table.Bytes, table.Pos)
+		return &ValueT{Type: ValueBoolean, Value: x.UnPack()}
+	case ValueInteger32:
+		var x Integer32
+		x.Init(table.Bytes, table.Pos)
+		return &ValueT{Type: ValueInteger32, Value: x.UnPack()}
+	case ValueDouble:
+		var x Double
+		x.Init(table.Bytes, table.Pos)
+		return &ValueT{Type: ValueDouble, Value: x.UnPack()}
+	case ValueString:
+		var x String
+		x.Init(table.Bytes, table.Pos)
+		return &ValueT{Type: ValueString, Value: x.UnPack()}
+	case ValueInteger32Array:
+		var x Integer32Array
+		x.Init(table.Bytes, table.Pos)
+		return &ValueT{Type: ValueInteger32Array, Value: x.UnPack()}
+	}
+	return nil
 }

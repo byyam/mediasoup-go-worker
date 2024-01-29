@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RtxT struct {
+	Ssrc uint32 `json:"ssrc"`
+}
+
+func (t *RtxT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	RtxStart(builder)
+	RtxAddSsrc(builder, t.Ssrc)
+	return RtxEnd(builder)
+}
+
+func (rcv *Rtx) UnPackTo(t *RtxT) {
+	t.Ssrc = rcv.Ssrc()
+}
+
+func (rcv *Rtx) UnPack() *RtxT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtxT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Rtx struct {
 	_tab flatbuffers.Table
 }

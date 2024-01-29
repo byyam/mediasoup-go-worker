@@ -2,7 +2,15 @@
 
 package Message
 
-import "strconv"
+import (
+	flatbuffers "github.com/google/flatbuffers/go"
+	"strconv"
+
+	FBS__Log "github.com/byyam/mediasoup-go-worker/fbs/FBS/Log"
+	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+)
 
 type Body byte
 
@@ -35,4 +43,48 @@ func (v Body) String() string {
 		return s
 	}
 	return "Body(" + strconv.FormatInt(int64(v), 10) + ")"
+}
+
+type BodyT struct {
+	Type Body
+	Value interface{}
+}
+
+func (t *BodyT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	switch t.Type {
+	case BodyRequest:
+		return t.Value.(*FBS__Request.RequestT).Pack(builder)
+	case BodyResponse:
+		return t.Value.(*FBS__Response.ResponseT).Pack(builder)
+	case BodyNotification:
+		return t.Value.(*FBS__Notification.NotificationT).Pack(builder)
+	case BodyLog:
+		return t.Value.(*FBS__Log.LogT).Pack(builder)
+	}
+	return 0
+}
+
+func (rcv Body) UnPack(table flatbuffers.Table) *BodyT {
+	switch rcv {
+	case BodyRequest:
+		var x FBS__Request.Request
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRequest, Value: x.UnPack()}
+	case BodyResponse:
+		var x FBS__Response.Response
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyResponse, Value: x.UnPack()}
+	case BodyNotification:
+		var x FBS__Notification.Notification
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyNotification, Value: x.UnPack()}
+	case BodyLog:
+		var x FBS__Log.Log
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyLog, Value: x.UnPack()}
+	}
+	return nil
 }

@@ -8,6 +8,40 @@ import (
 	FBS__RtxStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtxStream"
 )
 
+type DumpT struct {
+	Params *ParamsT `json:"params"`
+	Score byte `json:"score"`
+	RtxStream *FBS__RtxStream.RtxDumpT `json:"rtx_stream"`
+}
+
+func (t *DumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	paramsOffset := t.Params.Pack(builder)
+	rtxStreamOffset := t.RtxStream.Pack(builder)
+	DumpStart(builder)
+	DumpAddParams(builder, paramsOffset)
+	DumpAddScore(builder, t.Score)
+	DumpAddRtxStream(builder, rtxStreamOffset)
+	return DumpEnd(builder)
+}
+
+func (rcv *Dump) UnPackTo(t *DumpT) {
+	t.Params = rcv.Params(nil).UnPack()
+	t.Score = rcv.Score()
+	t.RtxStream = rcv.RtxStream(nil).UnPack()
+}
+
+func (rcv *Dump) UnPack() *DumpT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Dump struct {
 	_tab flatbuffers.Table
 }

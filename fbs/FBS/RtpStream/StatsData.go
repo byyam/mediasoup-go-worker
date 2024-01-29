@@ -2,7 +2,10 @@
 
 package RtpStream
 
-import "strconv"
+import (
+	flatbuffers "github.com/google/flatbuffers/go"
+	"strconv"
+)
 
 type StatsData byte
 
@@ -32,4 +35,42 @@ func (v StatsData) String() string {
 		return s
 	}
 	return "StatsData(" + strconv.FormatInt(int64(v), 10) + ")"
+}
+
+type StatsDataT struct {
+	Type StatsData
+	Value interface{}
+}
+
+func (t *StatsDataT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	switch t.Type {
+	case StatsDataBaseStats:
+		return t.Value.(*BaseStatsT).Pack(builder)
+	case StatsDataRecvStats:
+		return t.Value.(*RecvStatsT).Pack(builder)
+	case StatsDataSendStats:
+		return t.Value.(*SendStatsT).Pack(builder)
+	}
+	return 0
+}
+
+func (rcv StatsData) UnPack(table flatbuffers.Table) *StatsDataT {
+	switch rcv {
+	case StatsDataBaseStats:
+		var x BaseStats
+		x.Init(table.Bytes, table.Pos)
+		return &StatsDataT{Type: StatsDataBaseStats, Value: x.UnPack()}
+	case StatsDataRecvStats:
+		var x RecvStats
+		x.Init(table.Bytes, table.Pos)
+		return &StatsDataT{Type: StatsDataRecvStats, Value: x.UnPack()}
+	case StatsDataSendStats:
+		var x SendStats
+		x.Init(table.Bytes, table.Pos)
+		return &StatsDataT{Type: StatsDataSendStats, Value: x.UnPack()}
+	}
+	return nil
 }

@@ -8,6 +8,40 @@ import (
 	FBS__ActiveSpeakerObserver "github.com/byyam/mediasoup-go-worker/fbs/FBS/ActiveSpeakerObserver"
 )
 
+type CreateActiveSpeakerObserverRequestT struct {
+	RtpObserverId string `json:"rtp_observer_id"`
+	Options *FBS__ActiveSpeakerObserver.ActiveSpeakerObserverOptionsT `json:"options"`
+}
+
+func (t *CreateActiveSpeakerObserverRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	rtpObserverIdOffset := flatbuffers.UOffsetT(0)
+	if t.RtpObserverId != "" {
+		rtpObserverIdOffset = builder.CreateString(t.RtpObserverId)
+	}
+	optionsOffset := t.Options.Pack(builder)
+	CreateActiveSpeakerObserverRequestStart(builder)
+	CreateActiveSpeakerObserverRequestAddRtpObserverId(builder, rtpObserverIdOffset)
+	CreateActiveSpeakerObserverRequestAddOptions(builder, optionsOffset)
+	return CreateActiveSpeakerObserverRequestEnd(builder)
+}
+
+func (rcv *CreateActiveSpeakerObserverRequest) UnPackTo(t *CreateActiveSpeakerObserverRequestT) {
+	t.RtpObserverId = string(rcv.RtpObserverId())
+	t.Options = rcv.Options(nil).UnPack()
+}
+
+func (rcv *CreateActiveSpeakerObserverRequest) UnPack() *CreateActiveSpeakerObserverRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreateActiveSpeakerObserverRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreateActiveSpeakerObserverRequest struct {
 	_tab flatbuffers.Table
 }

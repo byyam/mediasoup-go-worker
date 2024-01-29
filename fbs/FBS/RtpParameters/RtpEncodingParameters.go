@@ -6,6 +6,65 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RtpEncodingParametersT struct {
+	Ssrc *uint32 `json:"ssrc"`
+	Rid string `json:"rid"`
+	CodecPayloadType *byte `json:"codec_payload_type"`
+	Rtx *RtxT `json:"rtx"`
+	Dtx bool `json:"dtx"`
+	ScalabilityMode string `json:"scalability_mode"`
+	MaxBitrate *uint32 `json:"max_bitrate"`
+}
+
+func (t *RtpEncodingParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	ridOffset := flatbuffers.UOffsetT(0)
+	if t.Rid != "" {
+		ridOffset = builder.CreateString(t.Rid)
+	}
+	rtxOffset := t.Rtx.Pack(builder)
+	scalabilityModeOffset := flatbuffers.UOffsetT(0)
+	if t.ScalabilityMode != "" {
+		scalabilityModeOffset = builder.CreateString(t.ScalabilityMode)
+	}
+	RtpEncodingParametersStart(builder)
+	if t.Ssrc != nil {
+		RtpEncodingParametersAddSsrc(builder, *t.Ssrc)
+	}
+	RtpEncodingParametersAddRid(builder, ridOffset)
+	if t.CodecPayloadType != nil {
+		RtpEncodingParametersAddCodecPayloadType(builder, *t.CodecPayloadType)
+	}
+	RtpEncodingParametersAddRtx(builder, rtxOffset)
+	RtpEncodingParametersAddDtx(builder, t.Dtx)
+	RtpEncodingParametersAddScalabilityMode(builder, scalabilityModeOffset)
+	if t.MaxBitrate != nil {
+		RtpEncodingParametersAddMaxBitrate(builder, *t.MaxBitrate)
+	}
+	return RtpEncodingParametersEnd(builder)
+}
+
+func (rcv *RtpEncodingParameters) UnPackTo(t *RtpEncodingParametersT) {
+	t.Ssrc = rcv.Ssrc()
+	t.Rid = string(rcv.Rid())
+	t.CodecPayloadType = rcv.CodecPayloadType()
+	t.Rtx = rcv.Rtx(nil).UnPack()
+	t.Dtx = rcv.Dtx()
+	t.ScalabilityMode = string(rcv.ScalabilityMode())
+	t.MaxBitrate = rcv.MaxBitrate()
+}
+
+func (rcv *RtpEncodingParameters) UnPack() *RtpEncodingParametersT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtpEncodingParametersT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtpEncodingParameters struct {
 	_tab flatbuffers.Table
 }

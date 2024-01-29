@@ -8,6 +8,40 @@ import (
 	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 )
 
+type CreateWebRtcTransportRequestT struct {
+	TransportId string `json:"transport_id"`
+	Options *FBS__WebRtcTransport.WebRtcTransportOptionsT `json:"options"`
+}
+
+func (t *CreateWebRtcTransportRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	transportIdOffset := flatbuffers.UOffsetT(0)
+	if t.TransportId != "" {
+		transportIdOffset = builder.CreateString(t.TransportId)
+	}
+	optionsOffset := t.Options.Pack(builder)
+	CreateWebRtcTransportRequestStart(builder)
+	CreateWebRtcTransportRequestAddTransportId(builder, transportIdOffset)
+	CreateWebRtcTransportRequestAddOptions(builder, optionsOffset)
+	return CreateWebRtcTransportRequestEnd(builder)
+}
+
+func (rcv *CreateWebRtcTransportRequest) UnPackTo(t *CreateWebRtcTransportRequestT) {
+	t.TransportId = string(rcv.TransportId())
+	t.Options = rcv.Options(nil).UnPack()
+}
+
+func (rcv *CreateWebRtcTransportRequest) UnPack() *CreateWebRtcTransportRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreateWebRtcTransportRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreateWebRtcTransportRequest struct {
 	_tab flatbuffers.Table
 }

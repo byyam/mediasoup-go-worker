@@ -9,6 +9,85 @@ import (
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
+type ConsumeRequestT struct {
+	ConsumerId string `json:"consumer_id"`
+	ProducerId string `json:"producer_id"`
+	Kind FBS__RtpParameters.MediaKind `json:"kind"`
+	RtpParameters *FBS__RtpParameters.RtpParametersT `json:"rtp_parameters"`
+	Type FBS__RtpParameters.Type `json:"type"`
+	ConsumableRtpEncodings []*FBS__RtpParameters.RtpEncodingParametersT `json:"consumable_rtp_encodings"`
+	Paused bool `json:"paused"`
+	PreferredLayers *FBS__Consumer.ConsumerLayersT `json:"preferred_layers"`
+	IgnoreDtx bool `json:"ignore_dtx"`
+}
+
+func (t *ConsumeRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	consumerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ConsumerId != "" {
+		consumerIdOffset = builder.CreateString(t.ConsumerId)
+	}
+	producerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ProducerId != "" {
+		producerIdOffset = builder.CreateString(t.ProducerId)
+	}
+	rtpParametersOffset := t.RtpParameters.Pack(builder)
+	consumableRtpEncodingsOffset := flatbuffers.UOffsetT(0)
+	if t.ConsumableRtpEncodings != nil {
+		consumableRtpEncodingsLength := len(t.ConsumableRtpEncodings)
+		consumableRtpEncodingsOffsets := make([]flatbuffers.UOffsetT, consumableRtpEncodingsLength)
+		for j := 0; j < consumableRtpEncodingsLength; j++ {
+			consumableRtpEncodingsOffsets[j] = t.ConsumableRtpEncodings[j].Pack(builder)
+		}
+		ConsumeRequestStartConsumableRtpEncodingsVector(builder, consumableRtpEncodingsLength)
+		for j := consumableRtpEncodingsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(consumableRtpEncodingsOffsets[j])
+		}
+		consumableRtpEncodingsOffset = builder.EndVector(consumableRtpEncodingsLength)
+	}
+	preferredLayersOffset := t.PreferredLayers.Pack(builder)
+	ConsumeRequestStart(builder)
+	ConsumeRequestAddConsumerId(builder, consumerIdOffset)
+	ConsumeRequestAddProducerId(builder, producerIdOffset)
+	ConsumeRequestAddKind(builder, t.Kind)
+	ConsumeRequestAddRtpParameters(builder, rtpParametersOffset)
+	ConsumeRequestAddType(builder, t.Type)
+	ConsumeRequestAddConsumableRtpEncodings(builder, consumableRtpEncodingsOffset)
+	ConsumeRequestAddPaused(builder, t.Paused)
+	ConsumeRequestAddPreferredLayers(builder, preferredLayersOffset)
+	ConsumeRequestAddIgnoreDtx(builder, t.IgnoreDtx)
+	return ConsumeRequestEnd(builder)
+}
+
+func (rcv *ConsumeRequest) UnPackTo(t *ConsumeRequestT) {
+	t.ConsumerId = string(rcv.ConsumerId())
+	t.ProducerId = string(rcv.ProducerId())
+	t.Kind = rcv.Kind()
+	t.RtpParameters = rcv.RtpParameters(nil).UnPack()
+	t.Type = rcv.Type()
+	consumableRtpEncodingsLength := rcv.ConsumableRtpEncodingsLength()
+	t.ConsumableRtpEncodings = make([]*FBS__RtpParameters.RtpEncodingParametersT, consumableRtpEncodingsLength)
+	for j := 0; j < consumableRtpEncodingsLength; j++ {
+		x := FBS__RtpParameters.RtpEncodingParameters{}
+		rcv.ConsumableRtpEncodings(&x, j)
+		t.ConsumableRtpEncodings[j] = x.UnPack()
+	}
+	t.Paused = rcv.Paused()
+	t.PreferredLayers = rcv.PreferredLayers(nil).UnPack()
+	t.IgnoreDtx = rcv.IgnoreDtx()
+}
+
+func (rcv *ConsumeRequest) UnPack() *ConsumeRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ConsumeRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ConsumeRequest struct {
 	_tab flatbuffers.Table
 }

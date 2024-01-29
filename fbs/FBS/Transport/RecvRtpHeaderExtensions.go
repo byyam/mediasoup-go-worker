@@ -6,6 +6,54 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RecvRtpHeaderExtensionsT struct {
+	Mid *byte `json:"mid"`
+	Rid *byte `json:"rid"`
+	Rrid *byte `json:"rrid"`
+	AbsSendTime *byte `json:"abs_send_time"`
+	TransportWideCc01 *byte `json:"transport_wide_cc01"`
+}
+
+func (t *RecvRtpHeaderExtensionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	RecvRtpHeaderExtensionsStart(builder)
+	if t.Mid != nil {
+		RecvRtpHeaderExtensionsAddMid(builder, *t.Mid)
+	}
+	if t.Rid != nil {
+		RecvRtpHeaderExtensionsAddRid(builder, *t.Rid)
+	}
+	if t.Rrid != nil {
+		RecvRtpHeaderExtensionsAddRrid(builder, *t.Rrid)
+	}
+	if t.AbsSendTime != nil {
+		RecvRtpHeaderExtensionsAddAbsSendTime(builder, *t.AbsSendTime)
+	}
+	if t.TransportWideCc01 != nil {
+		RecvRtpHeaderExtensionsAddTransportWideCc01(builder, *t.TransportWideCc01)
+	}
+	return RecvRtpHeaderExtensionsEnd(builder)
+}
+
+func (rcv *RecvRtpHeaderExtensions) UnPackTo(t *RecvRtpHeaderExtensionsT) {
+	t.Mid = rcv.Mid()
+	t.Rid = rcv.Rid()
+	t.Rrid = rcv.Rrid()
+	t.AbsSendTime = rcv.AbsSendTime()
+	t.TransportWideCc01 = rcv.TransportWideCc01()
+}
+
+func (rcv *RecvRtpHeaderExtensions) UnPack() *RecvRtpHeaderExtensionsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RecvRtpHeaderExtensionsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RecvRtpHeaderExtensions struct {
 	_tab flatbuffers.Table
 }

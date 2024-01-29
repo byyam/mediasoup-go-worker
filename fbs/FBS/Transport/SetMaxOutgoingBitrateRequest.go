@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SetMaxOutgoingBitrateRequestT struct {
+	MaxOutgoingBitrate uint32 `json:"max_outgoing_bitrate"`
+}
+
+func (t *SetMaxOutgoingBitrateRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	SetMaxOutgoingBitrateRequestStart(builder)
+	SetMaxOutgoingBitrateRequestAddMaxOutgoingBitrate(builder, t.MaxOutgoingBitrate)
+	return SetMaxOutgoingBitrateRequestEnd(builder)
+}
+
+func (rcv *SetMaxOutgoingBitrateRequest) UnPackTo(t *SetMaxOutgoingBitrateRequestT) {
+	t.MaxOutgoingBitrate = rcv.MaxOutgoingBitrate()
+}
+
+func (rcv *SetMaxOutgoingBitrateRequest) UnPack() *SetMaxOutgoingBitrateRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SetMaxOutgoingBitrateRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SetMaxOutgoingBitrateRequest struct {
 	_tab flatbuffers.Table
 }

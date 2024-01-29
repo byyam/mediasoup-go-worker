@@ -6,6 +6,39 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type MessageNotificationT struct {
+	Ppid uint32 `json:"ppid"`
+	Data []byte `json:"data"`
+}
+
+func (t *MessageNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	dataOffset := flatbuffers.UOffsetT(0)
+	if t.Data != nil {
+		dataOffset = builder.CreateByteString(t.Data)
+	}
+	MessageNotificationStart(builder)
+	MessageNotificationAddPpid(builder, t.Ppid)
+	MessageNotificationAddData(builder, dataOffset)
+	return MessageNotificationEnd(builder)
+}
+
+func (rcv *MessageNotification) UnPackTo(t *MessageNotificationT) {
+	t.Ppid = rcv.Ppid()
+	t.Data = rcv.DataBytes()
+}
+
+func (rcv *MessageNotification) UnPack() *MessageNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &MessageNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type MessageNotification struct {
 	_tab flatbuffers.Table
 }

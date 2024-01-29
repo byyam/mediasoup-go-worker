@@ -6,6 +6,39 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type VolumeT struct {
+	ProducerId string `json:"producer_id"`
+	Volume int8 `json:"volume"`
+}
+
+func (t *VolumeT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	producerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ProducerId != "" {
+		producerIdOffset = builder.CreateString(t.ProducerId)
+	}
+	VolumeStart(builder)
+	VolumeAddProducerId(builder, producerIdOffset)
+	VolumeAddVolume(builder, t.Volume)
+	return VolumeEnd(builder)
+}
+
+func (rcv *Volume) UnPackTo(t *VolumeT) {
+	t.ProducerId = string(rcv.ProducerId())
+	t.Volume = rcv.Volume()
+}
+
+func (rcv *Volume) UnPack() *VolumeT {
+	if rcv == nil {
+		return nil
+	}
+	t := &VolumeT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Volume struct {
 	_tab flatbuffers.Table
 }

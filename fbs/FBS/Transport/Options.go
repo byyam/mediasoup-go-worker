@@ -8,6 +8,58 @@ import (
 	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 )
 
+type OptionsT struct {
+	Direct bool `json:"direct"`
+	MaxMessageSize *uint32 `json:"max_message_size"`
+	InitialAvailableOutgoingBitrate *uint32 `json:"initial_available_outgoing_bitrate"`
+	EnableSctp bool `json:"enable_sctp"`
+	NumSctpStreams *FBS__SctpParameters.NumSctpStreamsT `json:"num_sctp_streams"`
+	MaxSctpMessageSize uint32 `json:"max_sctp_message_size"`
+	SctpSendBufferSize uint32 `json:"sctp_send_buffer_size"`
+	IsDataChannel bool `json:"is_data_channel"`
+}
+
+func (t *OptionsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	numSctpStreamsOffset := t.NumSctpStreams.Pack(builder)
+	OptionsStart(builder)
+	OptionsAddDirect(builder, t.Direct)
+	if t.MaxMessageSize != nil {
+		OptionsAddMaxMessageSize(builder, *t.MaxMessageSize)
+	}
+	if t.InitialAvailableOutgoingBitrate != nil {
+		OptionsAddInitialAvailableOutgoingBitrate(builder, *t.InitialAvailableOutgoingBitrate)
+	}
+	OptionsAddEnableSctp(builder, t.EnableSctp)
+	OptionsAddNumSctpStreams(builder, numSctpStreamsOffset)
+	OptionsAddMaxSctpMessageSize(builder, t.MaxSctpMessageSize)
+	OptionsAddSctpSendBufferSize(builder, t.SctpSendBufferSize)
+	OptionsAddIsDataChannel(builder, t.IsDataChannel)
+	return OptionsEnd(builder)
+}
+
+func (rcv *Options) UnPackTo(t *OptionsT) {
+	t.Direct = rcv.Direct()
+	t.MaxMessageSize = rcv.MaxMessageSize()
+	t.InitialAvailableOutgoingBitrate = rcv.InitialAvailableOutgoingBitrate()
+	t.EnableSctp = rcv.EnableSctp()
+	t.NumSctpStreams = rcv.NumSctpStreams(nil).UnPack()
+	t.MaxSctpMessageSize = rcv.MaxSctpMessageSize()
+	t.SctpSendBufferSize = rcv.SctpSendBufferSize()
+	t.IsDataChannel = rcv.IsDataChannel()
+}
+
+func (rcv *Options) UnPack() *OptionsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &OptionsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Options struct {
 	_tab flatbuffers.Table
 }

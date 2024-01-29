@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ConnectResponseT struct {
+	DtlsLocalRole DtlsRole `json:"dtls_local_role"`
+}
+
+func (t *ConnectResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	ConnectResponseStart(builder)
+	ConnectResponseAddDtlsLocalRole(builder, t.DtlsLocalRole)
+	return ConnectResponseEnd(builder)
+}
+
+func (rcv *ConnectResponse) UnPackTo(t *ConnectResponseT) {
+	t.DtlsLocalRole = rcv.DtlsLocalRole()
+}
+
+func (rcv *ConnectResponse) UnPack() *ConnectResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ConnectResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ConnectResponse struct {
 	_tab flatbuffers.Table
 }

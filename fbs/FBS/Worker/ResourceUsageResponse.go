@@ -6,6 +6,77 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ResourceUsageResponseT struct {
+	RuUtime uint64 `json:"ru_utime"`
+	RuStime uint64 `json:"ru_stime"`
+	RuMaxrss uint64 `json:"ru_maxrss"`
+	RuIxrss uint64 `json:"ru_ixrss"`
+	RuIdrss uint64 `json:"ru_idrss"`
+	RuIsrss uint64 `json:"ru_isrss"`
+	RuMinflt uint64 `json:"ru_minflt"`
+	RuMajflt uint64 `json:"ru_majflt"`
+	RuNswap uint64 `json:"ru_nswap"`
+	RuInblock uint64 `json:"ru_inblock"`
+	RuOublock uint64 `json:"ru_oublock"`
+	RuMsgsnd uint64 `json:"ru_msgsnd"`
+	RuMsgrcv uint64 `json:"ru_msgrcv"`
+	RuNsignals uint64 `json:"ru_nsignals"`
+	RuNvcsw uint64 `json:"ru_nvcsw"`
+	RuNivcsw uint64 `json:"ru_nivcsw"`
+}
+
+func (t *ResourceUsageResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	ResourceUsageResponseStart(builder)
+	ResourceUsageResponseAddRuUtime(builder, t.RuUtime)
+	ResourceUsageResponseAddRuStime(builder, t.RuStime)
+	ResourceUsageResponseAddRuMaxrss(builder, t.RuMaxrss)
+	ResourceUsageResponseAddRuIxrss(builder, t.RuIxrss)
+	ResourceUsageResponseAddRuIdrss(builder, t.RuIdrss)
+	ResourceUsageResponseAddRuIsrss(builder, t.RuIsrss)
+	ResourceUsageResponseAddRuMinflt(builder, t.RuMinflt)
+	ResourceUsageResponseAddRuMajflt(builder, t.RuMajflt)
+	ResourceUsageResponseAddRuNswap(builder, t.RuNswap)
+	ResourceUsageResponseAddRuInblock(builder, t.RuInblock)
+	ResourceUsageResponseAddRuOublock(builder, t.RuOublock)
+	ResourceUsageResponseAddRuMsgsnd(builder, t.RuMsgsnd)
+	ResourceUsageResponseAddRuMsgrcv(builder, t.RuMsgrcv)
+	ResourceUsageResponseAddRuNsignals(builder, t.RuNsignals)
+	ResourceUsageResponseAddRuNvcsw(builder, t.RuNvcsw)
+	ResourceUsageResponseAddRuNivcsw(builder, t.RuNivcsw)
+	return ResourceUsageResponseEnd(builder)
+}
+
+func (rcv *ResourceUsageResponse) UnPackTo(t *ResourceUsageResponseT) {
+	t.RuUtime = rcv.RuUtime()
+	t.RuStime = rcv.RuStime()
+	t.RuMaxrss = rcv.RuMaxrss()
+	t.RuIxrss = rcv.RuIxrss()
+	t.RuIdrss = rcv.RuIdrss()
+	t.RuIsrss = rcv.RuIsrss()
+	t.RuMinflt = rcv.RuMinflt()
+	t.RuMajflt = rcv.RuMajflt()
+	t.RuNswap = rcv.RuNswap()
+	t.RuInblock = rcv.RuInblock()
+	t.RuOublock = rcv.RuOublock()
+	t.RuMsgsnd = rcv.RuMsgsnd()
+	t.RuMsgrcv = rcv.RuMsgrcv()
+	t.RuNsignals = rcv.RuNsignals()
+	t.RuNvcsw = rcv.RuNvcsw()
+	t.RuNivcsw = rcv.RuNivcsw()
+}
+
+func (rcv *ResourceUsageResponse) UnPack() *ResourceUsageResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ResourceUsageResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ResourceUsageResponse struct {
 	_tab flatbuffers.Table
 }

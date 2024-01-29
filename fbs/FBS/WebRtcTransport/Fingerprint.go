@@ -6,6 +6,39 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type FingerprintT struct {
+	Algorithm FingerprintAlgorithm `json:"algorithm"`
+	Value string `json:"value"`
+}
+
+func (t *FingerprintT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	valueOffset := flatbuffers.UOffsetT(0)
+	if t.Value != "" {
+		valueOffset = builder.CreateString(t.Value)
+	}
+	FingerprintStart(builder)
+	FingerprintAddAlgorithm(builder, t.Algorithm)
+	FingerprintAddValue(builder, valueOffset)
+	return FingerprintEnd(builder)
+}
+
+func (rcv *Fingerprint) UnPackTo(t *FingerprintT) {
+	t.Algorithm = rcv.Algorithm()
+	t.Value = string(rcv.Value())
+}
+
+func (rcv *Fingerprint) UnPack() *FingerprintT {
+	if rcv == nil {
+		return nil
+	}
+	t := &FingerprintT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Fingerprint struct {
 	_tab flatbuffers.Table
 }

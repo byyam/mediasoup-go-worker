@@ -6,6 +6,93 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ParamsT struct {
+	EncodingIdx uint32 `json:"encoding_idx"`
+	Ssrc uint32 `json:"ssrc"`
+	PayloadType byte `json:"payload_type"`
+	MimeType string `json:"mime_type"`
+	ClockRate uint32 `json:"clock_rate"`
+	Rid string `json:"rid"`
+	Cname string `json:"cname"`
+	RtxSsrc *uint32 `json:"rtx_ssrc"`
+	RtxPayloadType *byte `json:"rtx_payload_type"`
+	UseNack bool `json:"use_nack"`
+	UsePli bool `json:"use_pli"`
+	UseFir bool `json:"use_fir"`
+	UseInBandFec bool `json:"use_in_band_fec"`
+	UseDtx bool `json:"use_dtx"`
+	SpatialLayers byte `json:"spatial_layers"`
+	TemporalLayers byte `json:"temporal_layers"`
+}
+
+func (t *ParamsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	mimeTypeOffset := flatbuffers.UOffsetT(0)
+	if t.MimeType != "" {
+		mimeTypeOffset = builder.CreateString(t.MimeType)
+	}
+	ridOffset := flatbuffers.UOffsetT(0)
+	if t.Rid != "" {
+		ridOffset = builder.CreateString(t.Rid)
+	}
+	cnameOffset := flatbuffers.UOffsetT(0)
+	if t.Cname != "" {
+		cnameOffset = builder.CreateString(t.Cname)
+	}
+	ParamsStart(builder)
+	ParamsAddEncodingIdx(builder, t.EncodingIdx)
+	ParamsAddSsrc(builder, t.Ssrc)
+	ParamsAddPayloadType(builder, t.PayloadType)
+	ParamsAddMimeType(builder, mimeTypeOffset)
+	ParamsAddClockRate(builder, t.ClockRate)
+	ParamsAddRid(builder, ridOffset)
+	ParamsAddCname(builder, cnameOffset)
+	if t.RtxSsrc != nil {
+		ParamsAddRtxSsrc(builder, *t.RtxSsrc)
+	}
+	if t.RtxPayloadType != nil {
+		ParamsAddRtxPayloadType(builder, *t.RtxPayloadType)
+	}
+	ParamsAddUseNack(builder, t.UseNack)
+	ParamsAddUsePli(builder, t.UsePli)
+	ParamsAddUseFir(builder, t.UseFir)
+	ParamsAddUseInBandFec(builder, t.UseInBandFec)
+	ParamsAddUseDtx(builder, t.UseDtx)
+	ParamsAddSpatialLayers(builder, t.SpatialLayers)
+	ParamsAddTemporalLayers(builder, t.TemporalLayers)
+	return ParamsEnd(builder)
+}
+
+func (rcv *Params) UnPackTo(t *ParamsT) {
+	t.EncodingIdx = rcv.EncodingIdx()
+	t.Ssrc = rcv.Ssrc()
+	t.PayloadType = rcv.PayloadType()
+	t.MimeType = string(rcv.MimeType())
+	t.ClockRate = rcv.ClockRate()
+	t.Rid = string(rcv.Rid())
+	t.Cname = string(rcv.Cname())
+	t.RtxSsrc = rcv.RtxSsrc()
+	t.RtxPayloadType = rcv.RtxPayloadType()
+	t.UseNack = rcv.UseNack()
+	t.UsePli = rcv.UsePli()
+	t.UseFir = rcv.UseFir()
+	t.UseInBandFec = rcv.UseInBandFec()
+	t.UseDtx = rcv.UseDtx()
+	t.SpatialLayers = rcv.SpatialLayers()
+	t.TemporalLayers = rcv.TemporalLayers()
+}
+
+func (rcv *Params) UnPack() *ParamsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ParamsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Params struct {
 	_tab flatbuffers.Table
 }

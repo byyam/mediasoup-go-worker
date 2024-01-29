@@ -8,6 +8,107 @@ import (
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
+type BaseConsumerDumpT struct {
+	Id string `json:"id"`
+	Type FBS__RtpParameters.Type `json:"type"`
+	ProducerId string `json:"producer_id"`
+	Kind FBS__RtpParameters.MediaKind `json:"kind"`
+	RtpParameters *FBS__RtpParameters.RtpParametersT `json:"rtp_parameters"`
+	ConsumableRtpEncodings []*FBS__RtpParameters.RtpEncodingParametersT `json:"consumable_rtp_encodings"`
+	SupportedCodecPayloadTypes []byte `json:"supported_codec_payload_types"`
+	TraceEventTypes []TraceEventType `json:"trace_event_types"`
+	Paused bool `json:"paused"`
+	ProducerPaused bool `json:"producer_paused"`
+	Priority byte `json:"priority"`
+}
+
+func (t *BaseConsumerDumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	idOffset := flatbuffers.UOffsetT(0)
+	if t.Id != "" {
+		idOffset = builder.CreateString(t.Id)
+	}
+	producerIdOffset := flatbuffers.UOffsetT(0)
+	if t.ProducerId != "" {
+		producerIdOffset = builder.CreateString(t.ProducerId)
+	}
+	rtpParametersOffset := t.RtpParameters.Pack(builder)
+	consumableRtpEncodingsOffset := flatbuffers.UOffsetT(0)
+	if t.ConsumableRtpEncodings != nil {
+		consumableRtpEncodingsLength := len(t.ConsumableRtpEncodings)
+		consumableRtpEncodingsOffsets := make([]flatbuffers.UOffsetT, consumableRtpEncodingsLength)
+		for j := 0; j < consumableRtpEncodingsLength; j++ {
+			consumableRtpEncodingsOffsets[j] = t.ConsumableRtpEncodings[j].Pack(builder)
+		}
+		BaseConsumerDumpStartConsumableRtpEncodingsVector(builder, consumableRtpEncodingsLength)
+		for j := consumableRtpEncodingsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(consumableRtpEncodingsOffsets[j])
+		}
+		consumableRtpEncodingsOffset = builder.EndVector(consumableRtpEncodingsLength)
+	}
+	supportedCodecPayloadTypesOffset := flatbuffers.UOffsetT(0)
+	if t.SupportedCodecPayloadTypes != nil {
+		supportedCodecPayloadTypesOffset = builder.CreateByteString(t.SupportedCodecPayloadTypes)
+	}
+	traceEventTypesOffset := flatbuffers.UOffsetT(0)
+	if t.TraceEventTypes != nil {
+		traceEventTypesLength := len(t.TraceEventTypes)
+		BaseConsumerDumpStartTraceEventTypesVector(builder, traceEventTypesLength)
+		for j := traceEventTypesLength - 1; j >= 0; j-- {
+			builder.PrependByte(byte(t.TraceEventTypes[j]))
+		}
+		traceEventTypesOffset = builder.EndVector(traceEventTypesLength)
+	}
+	BaseConsumerDumpStart(builder)
+	BaseConsumerDumpAddId(builder, idOffset)
+	BaseConsumerDumpAddType(builder, t.Type)
+	BaseConsumerDumpAddProducerId(builder, producerIdOffset)
+	BaseConsumerDumpAddKind(builder, t.Kind)
+	BaseConsumerDumpAddRtpParameters(builder, rtpParametersOffset)
+	BaseConsumerDumpAddConsumableRtpEncodings(builder, consumableRtpEncodingsOffset)
+	BaseConsumerDumpAddSupportedCodecPayloadTypes(builder, supportedCodecPayloadTypesOffset)
+	BaseConsumerDumpAddTraceEventTypes(builder, traceEventTypesOffset)
+	BaseConsumerDumpAddPaused(builder, t.Paused)
+	BaseConsumerDumpAddProducerPaused(builder, t.ProducerPaused)
+	BaseConsumerDumpAddPriority(builder, t.Priority)
+	return BaseConsumerDumpEnd(builder)
+}
+
+func (rcv *BaseConsumerDump) UnPackTo(t *BaseConsumerDumpT) {
+	t.Id = string(rcv.Id())
+	t.Type = rcv.Type()
+	t.ProducerId = string(rcv.ProducerId())
+	t.Kind = rcv.Kind()
+	t.RtpParameters = rcv.RtpParameters(nil).UnPack()
+	consumableRtpEncodingsLength := rcv.ConsumableRtpEncodingsLength()
+	t.ConsumableRtpEncodings = make([]*FBS__RtpParameters.RtpEncodingParametersT, consumableRtpEncodingsLength)
+	for j := 0; j < consumableRtpEncodingsLength; j++ {
+		x := FBS__RtpParameters.RtpEncodingParameters{}
+		rcv.ConsumableRtpEncodings(&x, j)
+		t.ConsumableRtpEncodings[j] = x.UnPack()
+	}
+	t.SupportedCodecPayloadTypes = rcv.SupportedCodecPayloadTypesBytes()
+	traceEventTypesLength := rcv.TraceEventTypesLength()
+	t.TraceEventTypes = make([]TraceEventType, traceEventTypesLength)
+	for j := 0; j < traceEventTypesLength; j++ {
+		t.TraceEventTypes[j] = rcv.TraceEventTypes(j)
+	}
+	t.Paused = rcv.Paused()
+	t.ProducerPaused = rcv.ProducerPaused()
+	t.Priority = rcv.Priority()
+}
+
+func (rcv *BaseConsumerDump) UnPack() *BaseConsumerDumpT {
+	if rcv == nil {
+		return nil
+	}
+	t := &BaseConsumerDumpT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type BaseConsumerDump struct {
 	_tab flatbuffers.Table
 }

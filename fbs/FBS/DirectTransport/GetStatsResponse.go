@@ -8,6 +8,33 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type GetStatsResponseT struct {
+	Base *FBS__Transport.StatsT `json:"base"`
+}
+
+func (t *GetStatsResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	baseOffset := t.Base.Pack(builder)
+	GetStatsResponseStart(builder)
+	GetStatsResponseAddBase(builder, baseOffset)
+	return GetStatsResponseEnd(builder)
+}
+
+func (rcv *GetStatsResponse) UnPackTo(t *GetStatsResponseT) {
+	t.Base = rcv.Base(nil).UnPack()
+}
+
+func (rcv *GetStatsResponse) UnPack() *GetStatsResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &GetStatsResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type GetStatsResponse struct {
 	_tab flatbuffers.Table
 }

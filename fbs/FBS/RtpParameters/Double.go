@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type DoubleT struct {
+	Value float64 `json:"value"`
+}
+
+func (t *DoubleT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	DoubleStart(builder)
+	DoubleAddValue(builder, t.Value)
+	return DoubleEnd(builder)
+}
+
+func (rcv *Double) UnPackTo(t *DoubleT) {
+	t.Value = rcv.Value()
+}
+
+func (rcv *Double) UnPack() *DoubleT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DoubleT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Double struct {
 	_tab flatbuffers.Table
 }

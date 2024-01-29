@@ -8,6 +8,51 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type ListenIndividualT struct {
+	ListenInfos []*FBS__Transport.ListenInfoT `json:"listen_infos"`
+}
+
+func (t *ListenIndividualT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	listenInfosOffset := flatbuffers.UOffsetT(0)
+	if t.ListenInfos != nil {
+		listenInfosLength := len(t.ListenInfos)
+		listenInfosOffsets := make([]flatbuffers.UOffsetT, listenInfosLength)
+		for j := 0; j < listenInfosLength; j++ {
+			listenInfosOffsets[j] = t.ListenInfos[j].Pack(builder)
+		}
+		ListenIndividualStartListenInfosVector(builder, listenInfosLength)
+		for j := listenInfosLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(listenInfosOffsets[j])
+		}
+		listenInfosOffset = builder.EndVector(listenInfosLength)
+	}
+	ListenIndividualStart(builder)
+	ListenIndividualAddListenInfos(builder, listenInfosOffset)
+	return ListenIndividualEnd(builder)
+}
+
+func (rcv *ListenIndividual) UnPackTo(t *ListenIndividualT) {
+	listenInfosLength := rcv.ListenInfosLength()
+	t.ListenInfos = make([]*FBS__Transport.ListenInfoT, listenInfosLength)
+	for j := 0; j < listenInfosLength; j++ {
+		x := FBS__Transport.ListenInfo{}
+		rcv.ListenInfos(&x, j)
+		t.ListenInfos[j] = x.UnPack()
+	}
+}
+
+func (rcv *ListenIndividual) UnPack() *ListenIndividualT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ListenIndividualT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ListenIndividual struct {
 	_tab flatbuffers.Table
 }

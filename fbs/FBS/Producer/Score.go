@@ -6,6 +6,45 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type ScoreT struct {
+	EncodingIdx uint32 `json:"encoding_idx"`
+	Ssrc uint32 `json:"ssrc"`
+	Rid string `json:"rid"`
+	Score byte `json:"score"`
+}
+
+func (t *ScoreT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	ridOffset := flatbuffers.UOffsetT(0)
+	if t.Rid != "" {
+		ridOffset = builder.CreateString(t.Rid)
+	}
+	ScoreStart(builder)
+	ScoreAddEncodingIdx(builder, t.EncodingIdx)
+	ScoreAddSsrc(builder, t.Ssrc)
+	ScoreAddRid(builder, ridOffset)
+	ScoreAddScore(builder, t.Score)
+	return ScoreEnd(builder)
+}
+
+func (rcv *Score) UnPackTo(t *ScoreT) {
+	t.EncodingIdx = rcv.EncodingIdx()
+	t.Ssrc = rcv.Ssrc()
+	t.Rid = string(rcv.Rid())
+	t.Score = rcv.Score()
+}
+
+func (rcv *Score) UnPack() *ScoreT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ScoreT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Score struct {
 	_tab flatbuffers.Table
 }

@@ -6,6 +6,47 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SctpStreamParametersT struct {
+	StreamId uint16 `json:"stream_id"`
+	Ordered *bool `json:"ordered"`
+	MaxPacketLifeTime *uint16 `json:"max_packet_life_time"`
+	MaxRetransmits *uint16 `json:"max_retransmits"`
+}
+
+func (t *SctpStreamParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	SctpStreamParametersStart(builder)
+	SctpStreamParametersAddStreamId(builder, t.StreamId)
+	if t.Ordered != nil {
+		SctpStreamParametersAddOrdered(builder, *t.Ordered)
+	}
+	if t.MaxPacketLifeTime != nil {
+		SctpStreamParametersAddMaxPacketLifeTime(builder, *t.MaxPacketLifeTime)
+	}
+	if t.MaxRetransmits != nil {
+		SctpStreamParametersAddMaxRetransmits(builder, *t.MaxRetransmits)
+	}
+	return SctpStreamParametersEnd(builder)
+}
+
+func (rcv *SctpStreamParameters) UnPackTo(t *SctpStreamParametersT) {
+	t.StreamId = rcv.StreamId()
+	t.Ordered = rcv.Ordered()
+	t.MaxPacketLifeTime = rcv.MaxPacketLifeTime()
+	t.MaxRetransmits = rcv.MaxRetransmits()
+}
+
+func (rcv *SctpStreamParameters) UnPack() *SctpStreamParametersT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SctpStreamParametersT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SctpStreamParameters struct {
 	_tab flatbuffers.Table
 }

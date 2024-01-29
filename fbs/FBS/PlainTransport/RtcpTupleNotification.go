@@ -8,6 +8,33 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type RtcpTupleNotificationT struct {
+	Tuple *FBS__Transport.TupleT `json:"tuple"`
+}
+
+func (t *RtcpTupleNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	tupleOffset := t.Tuple.Pack(builder)
+	RtcpTupleNotificationStart(builder)
+	RtcpTupleNotificationAddTuple(builder, tupleOffset)
+	return RtcpTupleNotificationEnd(builder)
+}
+
+func (rcv *RtcpTupleNotification) UnPackTo(t *RtcpTupleNotificationT) {
+	t.Tuple = rcv.Tuple(nil).UnPack()
+}
+
+func (rcv *RtcpTupleNotification) UnPack() *RtcpTupleNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtcpTupleNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtcpTupleNotification struct {
 	_tab flatbuffers.Table
 }

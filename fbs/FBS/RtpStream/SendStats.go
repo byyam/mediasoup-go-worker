@@ -6,6 +6,42 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SendStatsT struct {
+	Base *StatsT `json:"base"`
+	PacketCount uint64 `json:"packet_count"`
+	ByteCount uint64 `json:"byte_count"`
+	Bitrate uint32 `json:"bitrate"`
+}
+
+func (t *SendStatsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	baseOffset := t.Base.Pack(builder)
+	SendStatsStart(builder)
+	SendStatsAddBase(builder, baseOffset)
+	SendStatsAddPacketCount(builder, t.PacketCount)
+	SendStatsAddByteCount(builder, t.ByteCount)
+	SendStatsAddBitrate(builder, t.Bitrate)
+	return SendStatsEnd(builder)
+}
+
+func (rcv *SendStats) UnPackTo(t *SendStatsT) {
+	t.Base = rcv.Base(nil).UnPack()
+	t.PacketCount = rcv.PacketCount()
+	t.ByteCount = rcv.ByteCount()
+	t.Bitrate = rcv.Bitrate()
+}
+
+func (rcv *SendStats) UnPack() *SendStatsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SendStatsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SendStats struct {
 	_tab flatbuffers.Table
 }

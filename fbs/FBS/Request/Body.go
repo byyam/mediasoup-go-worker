@@ -2,7 +2,21 @@
 
 package Request
 
-import "strconv"
+import (
+	flatbuffers "github.com/google/flatbuffers/go"
+	"strconv"
+
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__DataConsumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataConsumer"
+	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
+	FBS__PlainTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PlainTransport"
+	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
+	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
+	FBS__RtpObserver "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpObserver"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
+	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
+)
 
 type Body byte
 
@@ -140,4 +154,258 @@ func (v Body) String() string {
 		return s
 	}
 	return "Body(" + strconv.FormatInt(int64(v), 10) + ")"
+}
+
+type BodyT struct {
+	Type Body
+	Value interface{}
+}
+
+func (t *BodyT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	switch t.Type {
+	case BodyWorker_UpdateSettingsRequest:
+		return t.Value.(*FBS__Worker.UpdateSettingsRequestT).Pack(builder)
+	case BodyWorker_CreateWebRtcServerRequest:
+		return t.Value.(*FBS__Worker.CreateWebRtcServerRequestT).Pack(builder)
+	case BodyWorker_CloseWebRtcServerRequest:
+		return t.Value.(*FBS__Worker.CloseWebRtcServerRequestT).Pack(builder)
+	case BodyWorker_CreateRouterRequest:
+		return t.Value.(*FBS__Worker.CreateRouterRequestT).Pack(builder)
+	case BodyWorker_CloseRouterRequest:
+		return t.Value.(*FBS__Worker.CloseRouterRequestT).Pack(builder)
+	case BodyRouter_CreateWebRtcTransportRequest:
+		return t.Value.(*FBS__Router.CreateWebRtcTransportRequestT).Pack(builder)
+	case BodyRouter_CreatePlainTransportRequest:
+		return t.Value.(*FBS__Router.CreatePlainTransportRequestT).Pack(builder)
+	case BodyRouter_CreatePipeTransportRequest:
+		return t.Value.(*FBS__Router.CreatePipeTransportRequestT).Pack(builder)
+	case BodyRouter_CreateDirectTransportRequest:
+		return t.Value.(*FBS__Router.CreateDirectTransportRequestT).Pack(builder)
+	case BodyRouter_CreateActiveSpeakerObserverRequest:
+		return t.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT).Pack(builder)
+	case BodyRouter_CreateAudioLevelObserverRequest:
+		return t.Value.(*FBS__Router.CreateAudioLevelObserverRequestT).Pack(builder)
+	case BodyRouter_CloseTransportRequest:
+		return t.Value.(*FBS__Router.CloseTransportRequestT).Pack(builder)
+	case BodyRouter_CloseRtpObserverRequest:
+		return t.Value.(*FBS__Router.CloseRtpObserverRequestT).Pack(builder)
+	case BodyTransport_SetMaxIncomingBitrateRequest:
+		return t.Value.(*FBS__Transport.SetMaxIncomingBitrateRequestT).Pack(builder)
+	case BodyTransport_SetMaxOutgoingBitrateRequest:
+		return t.Value.(*FBS__Transport.SetMaxOutgoingBitrateRequestT).Pack(builder)
+	case BodyTransport_SetMinOutgoingBitrateRequest:
+		return t.Value.(*FBS__Transport.SetMinOutgoingBitrateRequestT).Pack(builder)
+	case BodyTransport_ProduceRequest:
+		return t.Value.(*FBS__Transport.ProduceRequestT).Pack(builder)
+	case BodyTransport_ConsumeRequest:
+		return t.Value.(*FBS__Transport.ConsumeRequestT).Pack(builder)
+	case BodyTransport_ProduceDataRequest:
+		return t.Value.(*FBS__Transport.ProduceDataRequestT).Pack(builder)
+	case BodyTransport_ConsumeDataRequest:
+		return t.Value.(*FBS__Transport.ConsumeDataRequestT).Pack(builder)
+	case BodyTransport_EnableTraceEventRequest:
+		return t.Value.(*FBS__Transport.EnableTraceEventRequestT).Pack(builder)
+	case BodyTransport_CloseProducerRequest:
+		return t.Value.(*FBS__Transport.CloseProducerRequestT).Pack(builder)
+	case BodyTransport_CloseConsumerRequest:
+		return t.Value.(*FBS__Transport.CloseConsumerRequestT).Pack(builder)
+	case BodyTransport_CloseDataProducerRequest:
+		return t.Value.(*FBS__Transport.CloseDataProducerRequestT).Pack(builder)
+	case BodyTransport_CloseDataConsumerRequest:
+		return t.Value.(*FBS__Transport.CloseDataConsumerRequestT).Pack(builder)
+	case BodyPlainTransport_ConnectRequest:
+		return t.Value.(*FBS__PlainTransport.ConnectRequestT).Pack(builder)
+	case BodyPipeTransport_ConnectRequest:
+		return t.Value.(*FBS__PipeTransport.ConnectRequestT).Pack(builder)
+	case BodyWebRtcTransport_ConnectRequest:
+		return t.Value.(*FBS__WebRtcTransport.ConnectRequestT).Pack(builder)
+	case BodyProducer_EnableTraceEventRequest:
+		return t.Value.(*FBS__Producer.EnableTraceEventRequestT).Pack(builder)
+	case BodyConsumer_SetPreferredLayersRequest:
+		return t.Value.(*FBS__Consumer.SetPreferredLayersRequestT).Pack(builder)
+	case BodyConsumer_SetPriorityRequest:
+		return t.Value.(*FBS__Consumer.SetPriorityRequestT).Pack(builder)
+	case BodyConsumer_EnableTraceEventRequest:
+		return t.Value.(*FBS__Consumer.EnableTraceEventRequestT).Pack(builder)
+	case BodyDataConsumer_SetBufferedAmountLowThresholdRequest:
+		return t.Value.(*FBS__DataConsumer.SetBufferedAmountLowThresholdRequestT).Pack(builder)
+	case BodyDataConsumer_SendRequest:
+		return t.Value.(*FBS__DataConsumer.SendRequestT).Pack(builder)
+	case BodyDataConsumer_SetSubchannelsRequest:
+		return t.Value.(*FBS__DataConsumer.SetSubchannelsRequestT).Pack(builder)
+	case BodyDataConsumer_AddSubchannelRequest:
+		return t.Value.(*FBS__DataConsumer.AddSubchannelRequestT).Pack(builder)
+	case BodyDataConsumer_RemoveSubchannelRequest:
+		return t.Value.(*FBS__DataConsumer.RemoveSubchannelRequestT).Pack(builder)
+	case BodyRtpObserver_AddProducerRequest:
+		return t.Value.(*FBS__RtpObserver.AddProducerRequestT).Pack(builder)
+	case BodyRtpObserver_RemoveProducerRequest:
+		return t.Value.(*FBS__RtpObserver.RemoveProducerRequestT).Pack(builder)
+	}
+	return 0
+}
+
+func (rcv Body) UnPack(table flatbuffers.Table) *BodyT {
+	switch rcv {
+	case BodyWorker_UpdateSettingsRequest:
+		var x FBS__Worker.UpdateSettingsRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWorker_UpdateSettingsRequest, Value: x.UnPack()}
+	case BodyWorker_CreateWebRtcServerRequest:
+		var x FBS__Worker.CreateWebRtcServerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWorker_CreateWebRtcServerRequest, Value: x.UnPack()}
+	case BodyWorker_CloseWebRtcServerRequest:
+		var x FBS__Worker.CloseWebRtcServerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWorker_CloseWebRtcServerRequest, Value: x.UnPack()}
+	case BodyWorker_CreateRouterRequest:
+		var x FBS__Worker.CreateRouterRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWorker_CreateRouterRequest, Value: x.UnPack()}
+	case BodyWorker_CloseRouterRequest:
+		var x FBS__Worker.CloseRouterRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWorker_CloseRouterRequest, Value: x.UnPack()}
+	case BodyRouter_CreateWebRtcTransportRequest:
+		var x FBS__Router.CreateWebRtcTransportRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreateWebRtcTransportRequest, Value: x.UnPack()}
+	case BodyRouter_CreatePlainTransportRequest:
+		var x FBS__Router.CreatePlainTransportRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreatePlainTransportRequest, Value: x.UnPack()}
+	case BodyRouter_CreatePipeTransportRequest:
+		var x FBS__Router.CreatePipeTransportRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreatePipeTransportRequest, Value: x.UnPack()}
+	case BodyRouter_CreateDirectTransportRequest:
+		var x FBS__Router.CreateDirectTransportRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreateDirectTransportRequest, Value: x.UnPack()}
+	case BodyRouter_CreateActiveSpeakerObserverRequest:
+		var x FBS__Router.CreateActiveSpeakerObserverRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreateActiveSpeakerObserverRequest, Value: x.UnPack()}
+	case BodyRouter_CreateAudioLevelObserverRequest:
+		var x FBS__Router.CreateAudioLevelObserverRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CreateAudioLevelObserverRequest, Value: x.UnPack()}
+	case BodyRouter_CloseTransportRequest:
+		var x FBS__Router.CloseTransportRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CloseTransportRequest, Value: x.UnPack()}
+	case BodyRouter_CloseRtpObserverRequest:
+		var x FBS__Router.CloseRtpObserverRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRouter_CloseRtpObserverRequest, Value: x.UnPack()}
+	case BodyTransport_SetMaxIncomingBitrateRequest:
+		var x FBS__Transport.SetMaxIncomingBitrateRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_SetMaxIncomingBitrateRequest, Value: x.UnPack()}
+	case BodyTransport_SetMaxOutgoingBitrateRequest:
+		var x FBS__Transport.SetMaxOutgoingBitrateRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_SetMaxOutgoingBitrateRequest, Value: x.UnPack()}
+	case BodyTransport_SetMinOutgoingBitrateRequest:
+		var x FBS__Transport.SetMinOutgoingBitrateRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_SetMinOutgoingBitrateRequest, Value: x.UnPack()}
+	case BodyTransport_ProduceRequest:
+		var x FBS__Transport.ProduceRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_ProduceRequest, Value: x.UnPack()}
+	case BodyTransport_ConsumeRequest:
+		var x FBS__Transport.ConsumeRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_ConsumeRequest, Value: x.UnPack()}
+	case BodyTransport_ProduceDataRequest:
+		var x FBS__Transport.ProduceDataRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_ProduceDataRequest, Value: x.UnPack()}
+	case BodyTransport_ConsumeDataRequest:
+		var x FBS__Transport.ConsumeDataRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_ConsumeDataRequest, Value: x.UnPack()}
+	case BodyTransport_EnableTraceEventRequest:
+		var x FBS__Transport.EnableTraceEventRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_EnableTraceEventRequest, Value: x.UnPack()}
+	case BodyTransport_CloseProducerRequest:
+		var x FBS__Transport.CloseProducerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_CloseProducerRequest, Value: x.UnPack()}
+	case BodyTransport_CloseConsumerRequest:
+		var x FBS__Transport.CloseConsumerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_CloseConsumerRequest, Value: x.UnPack()}
+	case BodyTransport_CloseDataProducerRequest:
+		var x FBS__Transport.CloseDataProducerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_CloseDataProducerRequest, Value: x.UnPack()}
+	case BodyTransport_CloseDataConsumerRequest:
+		var x FBS__Transport.CloseDataConsumerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyTransport_CloseDataConsumerRequest, Value: x.UnPack()}
+	case BodyPlainTransport_ConnectRequest:
+		var x FBS__PlainTransport.ConnectRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyPlainTransport_ConnectRequest, Value: x.UnPack()}
+	case BodyPipeTransport_ConnectRequest:
+		var x FBS__PipeTransport.ConnectRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyPipeTransport_ConnectRequest, Value: x.UnPack()}
+	case BodyWebRtcTransport_ConnectRequest:
+		var x FBS__WebRtcTransport.ConnectRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyWebRtcTransport_ConnectRequest, Value: x.UnPack()}
+	case BodyProducer_EnableTraceEventRequest:
+		var x FBS__Producer.EnableTraceEventRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyProducer_EnableTraceEventRequest, Value: x.UnPack()}
+	case BodyConsumer_SetPreferredLayersRequest:
+		var x FBS__Consumer.SetPreferredLayersRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyConsumer_SetPreferredLayersRequest, Value: x.UnPack()}
+	case BodyConsumer_SetPriorityRequest:
+		var x FBS__Consumer.SetPriorityRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyConsumer_SetPriorityRequest, Value: x.UnPack()}
+	case BodyConsumer_EnableTraceEventRequest:
+		var x FBS__Consumer.EnableTraceEventRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyConsumer_EnableTraceEventRequest, Value: x.UnPack()}
+	case BodyDataConsumer_SetBufferedAmountLowThresholdRequest:
+		var x FBS__DataConsumer.SetBufferedAmountLowThresholdRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyDataConsumer_SetBufferedAmountLowThresholdRequest, Value: x.UnPack()}
+	case BodyDataConsumer_SendRequest:
+		var x FBS__DataConsumer.SendRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyDataConsumer_SendRequest, Value: x.UnPack()}
+	case BodyDataConsumer_SetSubchannelsRequest:
+		var x FBS__DataConsumer.SetSubchannelsRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyDataConsumer_SetSubchannelsRequest, Value: x.UnPack()}
+	case BodyDataConsumer_AddSubchannelRequest:
+		var x FBS__DataConsumer.AddSubchannelRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyDataConsumer_AddSubchannelRequest, Value: x.UnPack()}
+	case BodyDataConsumer_RemoveSubchannelRequest:
+		var x FBS__DataConsumer.RemoveSubchannelRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyDataConsumer_RemoveSubchannelRequest, Value: x.UnPack()}
+	case BodyRtpObserver_AddProducerRequest:
+		var x FBS__RtpObserver.AddProducerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRtpObserver_AddProducerRequest, Value: x.UnPack()}
+	case BodyRtpObserver_RemoveProducerRequest:
+		var x FBS__RtpObserver.RemoveProducerRequest
+		x.Init(table.Bytes, table.Pos)
+		return &BodyT{Type: BodyRtpObserver_RemoveProducerRequest, Value: x.UnPack()}
+	}
+	return nil
 }

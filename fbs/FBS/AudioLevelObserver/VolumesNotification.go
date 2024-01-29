@@ -6,6 +6,51 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type VolumesNotificationT struct {
+	Volumes []*VolumeT `json:"volumes"`
+}
+
+func (t *VolumesNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	volumesOffset := flatbuffers.UOffsetT(0)
+	if t.Volumes != nil {
+		volumesLength := len(t.Volumes)
+		volumesOffsets := make([]flatbuffers.UOffsetT, volumesLength)
+		for j := 0; j < volumesLength; j++ {
+			volumesOffsets[j] = t.Volumes[j].Pack(builder)
+		}
+		VolumesNotificationStartVolumesVector(builder, volumesLength)
+		for j := volumesLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(volumesOffsets[j])
+		}
+		volumesOffset = builder.EndVector(volumesLength)
+	}
+	VolumesNotificationStart(builder)
+	VolumesNotificationAddVolumes(builder, volumesOffset)
+	return VolumesNotificationEnd(builder)
+}
+
+func (rcv *VolumesNotification) UnPackTo(t *VolumesNotificationT) {
+	volumesLength := rcv.VolumesLength()
+	t.Volumes = make([]*VolumeT, volumesLength)
+	for j := 0; j < volumesLength; j++ {
+		x := Volume{}
+		rcv.Volumes(&x, j)
+		t.Volumes[j] = x.UnPack()
+	}
+}
+
+func (rcv *VolumesNotification) UnPack() *VolumesNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &VolumesNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type VolumesNotification struct {
 	_tab flatbuffers.Table
 }

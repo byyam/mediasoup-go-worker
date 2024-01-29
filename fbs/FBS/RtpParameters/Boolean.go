@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type BooleanT struct {
+	Value byte `json:"value"`
+}
+
+func (t *BooleanT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	BooleanStart(builder)
+	BooleanAddValue(builder, t.Value)
+	return BooleanEnd(builder)
+}
+
+func (rcv *Boolean) UnPackTo(t *BooleanT) {
+	t.Value = rcv.Value()
+}
+
+func (rcv *Boolean) UnPack() *BooleanT {
+	if rcv == nil {
+		return nil
+	}
+	t := &BooleanT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Boolean struct {
 	_tab flatbuffers.Table
 }

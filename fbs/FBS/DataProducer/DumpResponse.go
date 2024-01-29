@@ -8,6 +8,60 @@ import (
 	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 )
 
+type DumpResponseT struct {
+	Id string `json:"id"`
+	Type Type `json:"type"`
+	SctpStreamParameters *FBS__SctpParameters.SctpStreamParametersT `json:"sctp_stream_parameters"`
+	Label string `json:"label"`
+	Protocol string `json:"protocol"`
+	Paused bool `json:"paused"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	idOffset := flatbuffers.UOffsetT(0)
+	if t.Id != "" {
+		idOffset = builder.CreateString(t.Id)
+	}
+	sctpStreamParametersOffset := t.SctpStreamParameters.Pack(builder)
+	labelOffset := flatbuffers.UOffsetT(0)
+	if t.Label != "" {
+		labelOffset = builder.CreateString(t.Label)
+	}
+	protocolOffset := flatbuffers.UOffsetT(0)
+	if t.Protocol != "" {
+		protocolOffset = builder.CreateString(t.Protocol)
+	}
+	DumpResponseStart(builder)
+	DumpResponseAddId(builder, idOffset)
+	DumpResponseAddType(builder, t.Type)
+	DumpResponseAddSctpStreamParameters(builder, sctpStreamParametersOffset)
+	DumpResponseAddLabel(builder, labelOffset)
+	DumpResponseAddProtocol(builder, protocolOffset)
+	DumpResponseAddPaused(builder, t.Paused)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Id = string(rcv.Id())
+	t.Type = rcv.Type()
+	t.SctpStreamParameters = rcv.SctpStreamParameters(nil).UnPack()
+	t.Label = string(rcv.Label())
+	t.Protocol = string(rcv.Protocol())
+	t.Paused = rcv.Paused()
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

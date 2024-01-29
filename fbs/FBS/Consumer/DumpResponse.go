@@ -6,6 +6,33 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type DumpResponseT struct {
+	Data *ConsumerDumpT `json:"data"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	dataOffset := t.Data.Pack(builder)
+	DumpResponseStart(builder)
+	DumpResponseAddData(builder, dataOffset)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Data = rcv.Data(nil).UnPack()
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

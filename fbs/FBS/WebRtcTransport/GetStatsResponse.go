@@ -8,6 +8,46 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type GetStatsResponseT struct {
+	Base *FBS__Transport.StatsT `json:"base"`
+	IceRole IceRole `json:"ice_role"`
+	IceState IceState `json:"ice_state"`
+	IceSelectedTuple *FBS__Transport.TupleT `json:"ice_selected_tuple"`
+	DtlsState DtlsState `json:"dtls_state"`
+}
+
+func (t *GetStatsResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	baseOffset := t.Base.Pack(builder)
+	iceSelectedTupleOffset := t.IceSelectedTuple.Pack(builder)
+	GetStatsResponseStart(builder)
+	GetStatsResponseAddBase(builder, baseOffset)
+	GetStatsResponseAddIceRole(builder, t.IceRole)
+	GetStatsResponseAddIceState(builder, t.IceState)
+	GetStatsResponseAddIceSelectedTuple(builder, iceSelectedTupleOffset)
+	GetStatsResponseAddDtlsState(builder, t.DtlsState)
+	return GetStatsResponseEnd(builder)
+}
+
+func (rcv *GetStatsResponse) UnPackTo(t *GetStatsResponseT) {
+	t.Base = rcv.Base(nil).UnPack()
+	t.IceRole = rcv.IceRole()
+	t.IceState = rcv.IceState()
+	t.IceSelectedTuple = rcv.IceSelectedTuple(nil).UnPack()
+	t.DtlsState = rcv.DtlsState()
+}
+
+func (rcv *GetStatsResponse) UnPack() *GetStatsResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &GetStatsResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type GetStatsResponse struct {
 	_tab flatbuffers.Table
 }

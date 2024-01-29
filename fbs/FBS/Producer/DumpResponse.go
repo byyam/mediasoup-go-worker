@@ -9,6 +9,91 @@ import (
 	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 )
 
+type DumpResponseT struct {
+	Id string `json:"id"`
+	Kind FBS__RtpParameters.MediaKind `json:"kind"`
+	Type FBS__RtpParameters.Type `json:"type"`
+	RtpParameters *FBS__RtpParameters.RtpParametersT `json:"rtp_parameters"`
+	RtpMapping *FBS__RtpParameters.RtpMappingT `json:"rtp_mapping"`
+	RtpStreams []*FBS__RtpStream.DumpT `json:"rtp_streams"`
+	TraceEventTypes []TraceEventType `json:"trace_event_types"`
+	Paused bool `json:"paused"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	idOffset := flatbuffers.UOffsetT(0)
+	if t.Id != "" {
+		idOffset = builder.CreateString(t.Id)
+	}
+	rtpParametersOffset := t.RtpParameters.Pack(builder)
+	rtpMappingOffset := t.RtpMapping.Pack(builder)
+	rtpStreamsOffset := flatbuffers.UOffsetT(0)
+	if t.RtpStreams != nil {
+		rtpStreamsLength := len(t.RtpStreams)
+		rtpStreamsOffsets := make([]flatbuffers.UOffsetT, rtpStreamsLength)
+		for j := 0; j < rtpStreamsLength; j++ {
+			rtpStreamsOffsets[j] = t.RtpStreams[j].Pack(builder)
+		}
+		DumpResponseStartRtpStreamsVector(builder, rtpStreamsLength)
+		for j := rtpStreamsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(rtpStreamsOffsets[j])
+		}
+		rtpStreamsOffset = builder.EndVector(rtpStreamsLength)
+	}
+	traceEventTypesOffset := flatbuffers.UOffsetT(0)
+	if t.TraceEventTypes != nil {
+		traceEventTypesLength := len(t.TraceEventTypes)
+		DumpResponseStartTraceEventTypesVector(builder, traceEventTypesLength)
+		for j := traceEventTypesLength - 1; j >= 0; j-- {
+			builder.PrependByte(byte(t.TraceEventTypes[j]))
+		}
+		traceEventTypesOffset = builder.EndVector(traceEventTypesLength)
+	}
+	DumpResponseStart(builder)
+	DumpResponseAddId(builder, idOffset)
+	DumpResponseAddKind(builder, t.Kind)
+	DumpResponseAddType(builder, t.Type)
+	DumpResponseAddRtpParameters(builder, rtpParametersOffset)
+	DumpResponseAddRtpMapping(builder, rtpMappingOffset)
+	DumpResponseAddRtpStreams(builder, rtpStreamsOffset)
+	DumpResponseAddTraceEventTypes(builder, traceEventTypesOffset)
+	DumpResponseAddPaused(builder, t.Paused)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Id = string(rcv.Id())
+	t.Kind = rcv.Kind()
+	t.Type = rcv.Type()
+	t.RtpParameters = rcv.RtpParameters(nil).UnPack()
+	t.RtpMapping = rcv.RtpMapping(nil).UnPack()
+	rtpStreamsLength := rcv.RtpStreamsLength()
+	t.RtpStreams = make([]*FBS__RtpStream.DumpT, rtpStreamsLength)
+	for j := 0; j < rtpStreamsLength; j++ {
+		x := FBS__RtpStream.Dump{}
+		rcv.RtpStreams(&x, j)
+		t.RtpStreams[j] = x.UnPack()
+	}
+	traceEventTypesLength := rcv.TraceEventTypesLength()
+	t.TraceEventTypes = make([]TraceEventType, traceEventTypesLength)
+	for j := 0; j < traceEventTypesLength; j++ {
+		t.TraceEventTypes[j] = rcv.TraceEventTypes(j)
+	}
+	t.Paused = rcv.Paused()
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

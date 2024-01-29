@@ -6,6 +6,106 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RtpParametersT struct {
+	Mid string `json:"mid"`
+	Codecs []*RtpCodecParametersT `json:"codecs"`
+	HeaderExtensions []*RtpHeaderExtensionParametersT `json:"header_extensions"`
+	Encodings []*RtpEncodingParametersT `json:"encodings"`
+	Rtcp *RtcpParametersT `json:"rtcp"`
+}
+
+func (t *RtpParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	midOffset := flatbuffers.UOffsetT(0)
+	if t.Mid != "" {
+		midOffset = builder.CreateString(t.Mid)
+	}
+	codecsOffset := flatbuffers.UOffsetT(0)
+	if t.Codecs != nil {
+		codecsLength := len(t.Codecs)
+		codecsOffsets := make([]flatbuffers.UOffsetT, codecsLength)
+		for j := 0; j < codecsLength; j++ {
+			codecsOffsets[j] = t.Codecs[j].Pack(builder)
+		}
+		RtpParametersStartCodecsVector(builder, codecsLength)
+		for j := codecsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(codecsOffsets[j])
+		}
+		codecsOffset = builder.EndVector(codecsLength)
+	}
+	headerExtensionsOffset := flatbuffers.UOffsetT(0)
+	if t.HeaderExtensions != nil {
+		headerExtensionsLength := len(t.HeaderExtensions)
+		headerExtensionsOffsets := make([]flatbuffers.UOffsetT, headerExtensionsLength)
+		for j := 0; j < headerExtensionsLength; j++ {
+			headerExtensionsOffsets[j] = t.HeaderExtensions[j].Pack(builder)
+		}
+		RtpParametersStartHeaderExtensionsVector(builder, headerExtensionsLength)
+		for j := headerExtensionsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(headerExtensionsOffsets[j])
+		}
+		headerExtensionsOffset = builder.EndVector(headerExtensionsLength)
+	}
+	encodingsOffset := flatbuffers.UOffsetT(0)
+	if t.Encodings != nil {
+		encodingsLength := len(t.Encodings)
+		encodingsOffsets := make([]flatbuffers.UOffsetT, encodingsLength)
+		for j := 0; j < encodingsLength; j++ {
+			encodingsOffsets[j] = t.Encodings[j].Pack(builder)
+		}
+		RtpParametersStartEncodingsVector(builder, encodingsLength)
+		for j := encodingsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(encodingsOffsets[j])
+		}
+		encodingsOffset = builder.EndVector(encodingsLength)
+	}
+	rtcpOffset := t.Rtcp.Pack(builder)
+	RtpParametersStart(builder)
+	RtpParametersAddMid(builder, midOffset)
+	RtpParametersAddCodecs(builder, codecsOffset)
+	RtpParametersAddHeaderExtensions(builder, headerExtensionsOffset)
+	RtpParametersAddEncodings(builder, encodingsOffset)
+	RtpParametersAddRtcp(builder, rtcpOffset)
+	return RtpParametersEnd(builder)
+}
+
+func (rcv *RtpParameters) UnPackTo(t *RtpParametersT) {
+	t.Mid = string(rcv.Mid())
+	codecsLength := rcv.CodecsLength()
+	t.Codecs = make([]*RtpCodecParametersT, codecsLength)
+	for j := 0; j < codecsLength; j++ {
+		x := RtpCodecParameters{}
+		rcv.Codecs(&x, j)
+		t.Codecs[j] = x.UnPack()
+	}
+	headerExtensionsLength := rcv.HeaderExtensionsLength()
+	t.HeaderExtensions = make([]*RtpHeaderExtensionParametersT, headerExtensionsLength)
+	for j := 0; j < headerExtensionsLength; j++ {
+		x := RtpHeaderExtensionParameters{}
+		rcv.HeaderExtensions(&x, j)
+		t.HeaderExtensions[j] = x.UnPack()
+	}
+	encodingsLength := rcv.EncodingsLength()
+	t.Encodings = make([]*RtpEncodingParametersT, encodingsLength)
+	for j := 0; j < encodingsLength; j++ {
+		x := RtpEncodingParameters{}
+		rcv.Encodings(&x, j)
+		t.Encodings[j] = x.UnPack()
+	}
+	t.Rtcp = rcv.Rtcp(nil).UnPack()
+}
+
+func (rcv *RtpParameters) UnPack() *RtpParametersT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtpParametersT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtpParameters struct {
 	_tab flatbuffers.Table
 }

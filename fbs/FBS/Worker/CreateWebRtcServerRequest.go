@@ -8,6 +8,58 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type CreateWebRtcServerRequestT struct {
+	WebRtcServerId string `json:"web_rtc_server_id"`
+	ListenInfos []*FBS__Transport.ListenInfoT `json:"listen_infos"`
+}
+
+func (t *CreateWebRtcServerRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	webRtcServerIdOffset := flatbuffers.UOffsetT(0)
+	if t.WebRtcServerId != "" {
+		webRtcServerIdOffset = builder.CreateString(t.WebRtcServerId)
+	}
+	listenInfosOffset := flatbuffers.UOffsetT(0)
+	if t.ListenInfos != nil {
+		listenInfosLength := len(t.ListenInfos)
+		listenInfosOffsets := make([]flatbuffers.UOffsetT, listenInfosLength)
+		for j := 0; j < listenInfosLength; j++ {
+			listenInfosOffsets[j] = t.ListenInfos[j].Pack(builder)
+		}
+		CreateWebRtcServerRequestStartListenInfosVector(builder, listenInfosLength)
+		for j := listenInfosLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(listenInfosOffsets[j])
+		}
+		listenInfosOffset = builder.EndVector(listenInfosLength)
+	}
+	CreateWebRtcServerRequestStart(builder)
+	CreateWebRtcServerRequestAddWebRtcServerId(builder, webRtcServerIdOffset)
+	CreateWebRtcServerRequestAddListenInfos(builder, listenInfosOffset)
+	return CreateWebRtcServerRequestEnd(builder)
+}
+
+func (rcv *CreateWebRtcServerRequest) UnPackTo(t *CreateWebRtcServerRequestT) {
+	t.WebRtcServerId = string(rcv.WebRtcServerId())
+	listenInfosLength := rcv.ListenInfosLength()
+	t.ListenInfos = make([]*FBS__Transport.ListenInfoT, listenInfosLength)
+	for j := 0; j < listenInfosLength; j++ {
+		x := FBS__Transport.ListenInfo{}
+		rcv.ListenInfos(&x, j)
+		t.ListenInfos[j] = x.UnPack()
+	}
+}
+
+func (rcv *CreateWebRtcServerRequest) UnPack() *CreateWebRtcServerRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreateWebRtcServerRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreateWebRtcServerRequest struct {
 	_tab flatbuffers.Table
 }

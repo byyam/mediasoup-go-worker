@@ -8,6 +8,36 @@ import (
 	FBS__RtpPacket "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpPacket"
 )
 
+type RtpTraceInfoT struct {
+	RtpPacket *FBS__RtpPacket.DumpT `json:"rtp_packet"`
+	IsRtx bool `json:"is_rtx"`
+}
+
+func (t *RtpTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	rtpPacketOffset := t.RtpPacket.Pack(builder)
+	RtpTraceInfoStart(builder)
+	RtpTraceInfoAddRtpPacket(builder, rtpPacketOffset)
+	RtpTraceInfoAddIsRtx(builder, t.IsRtx)
+	return RtpTraceInfoEnd(builder)
+}
+
+func (rcv *RtpTraceInfo) UnPackTo(t *RtpTraceInfoT) {
+	t.RtpPacket = rcv.RtpPacket(nil).UnPack()
+	t.IsRtx = rcv.IsRtx()
+}
+
+func (rcv *RtpTraceInfo) UnPack() *RtpTraceInfoT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtpTraceInfoT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtpTraceInfo struct {
 	_tab flatbuffers.Table
 }

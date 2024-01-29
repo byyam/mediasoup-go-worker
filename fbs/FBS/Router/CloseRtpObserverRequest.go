@@ -6,6 +6,36 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type CloseRtpObserverRequestT struct {
+	RtpObserverId string `json:"rtp_observer_id"`
+}
+
+func (t *CloseRtpObserverRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	rtpObserverIdOffset := flatbuffers.UOffsetT(0)
+	if t.RtpObserverId != "" {
+		rtpObserverIdOffset = builder.CreateString(t.RtpObserverId)
+	}
+	CloseRtpObserverRequestStart(builder)
+	CloseRtpObserverRequestAddRtpObserverId(builder, rtpObserverIdOffset)
+	return CloseRtpObserverRequestEnd(builder)
+}
+
+func (rcv *CloseRtpObserverRequest) UnPackTo(t *CloseRtpObserverRequestT) {
+	t.RtpObserverId = string(rcv.RtpObserverId())
+}
+
+func (rcv *CloseRtpObserverRequest) UnPack() *CloseRtpObserverRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CloseRtpObserverRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CloseRtpObserverRequest struct {
 	_tab flatbuffers.Table
 }

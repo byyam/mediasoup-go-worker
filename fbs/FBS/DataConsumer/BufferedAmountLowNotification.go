@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type BufferedAmountLowNotificationT struct {
+	BufferedAmount uint32 `json:"buffered_amount"`
+}
+
+func (t *BufferedAmountLowNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	BufferedAmountLowNotificationStart(builder)
+	BufferedAmountLowNotificationAddBufferedAmount(builder, t.BufferedAmount)
+	return BufferedAmountLowNotificationEnd(builder)
+}
+
+func (rcv *BufferedAmountLowNotification) UnPackTo(t *BufferedAmountLowNotificationT) {
+	t.BufferedAmount = rcv.BufferedAmount()
+}
+
+func (rcv *BufferedAmountLowNotification) UnPack() *BufferedAmountLowNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &BufferedAmountLowNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type BufferedAmountLowNotification struct {
 	_tab flatbuffers.Table
 }

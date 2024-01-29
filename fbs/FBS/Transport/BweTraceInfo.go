@@ -6,6 +6,53 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type BweTraceInfoT struct {
+	BweType BweType `json:"bwe_type"`
+	DesiredBitrate uint32 `json:"desired_bitrate"`
+	EffectiveDesiredBitrate uint32 `json:"effective_desired_bitrate"`
+	MinBitrate uint32 `json:"min_bitrate"`
+	MaxBitrate uint32 `json:"max_bitrate"`
+	StartBitrate uint32 `json:"start_bitrate"`
+	MaxPaddingBitrate uint32 `json:"max_padding_bitrate"`
+	AvailableBitrate uint32 `json:"available_bitrate"`
+}
+
+func (t *BweTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	BweTraceInfoStart(builder)
+	BweTraceInfoAddBweType(builder, t.BweType)
+	BweTraceInfoAddDesiredBitrate(builder, t.DesiredBitrate)
+	BweTraceInfoAddEffectiveDesiredBitrate(builder, t.EffectiveDesiredBitrate)
+	BweTraceInfoAddMinBitrate(builder, t.MinBitrate)
+	BweTraceInfoAddMaxBitrate(builder, t.MaxBitrate)
+	BweTraceInfoAddStartBitrate(builder, t.StartBitrate)
+	BweTraceInfoAddMaxPaddingBitrate(builder, t.MaxPaddingBitrate)
+	BweTraceInfoAddAvailableBitrate(builder, t.AvailableBitrate)
+	return BweTraceInfoEnd(builder)
+}
+
+func (rcv *BweTraceInfo) UnPackTo(t *BweTraceInfoT) {
+	t.BweType = rcv.BweType()
+	t.DesiredBitrate = rcv.DesiredBitrate()
+	t.EffectiveDesiredBitrate = rcv.EffectiveDesiredBitrate()
+	t.MinBitrate = rcv.MinBitrate()
+	t.MaxBitrate = rcv.MaxBitrate()
+	t.StartBitrate = rcv.StartBitrate()
+	t.MaxPaddingBitrate = rcv.MaxPaddingBitrate()
+	t.AvailableBitrate = rcv.AvailableBitrate()
+}
+
+func (rcv *BweTraceInfo) UnPack() *BweTraceInfoT {
+	if rcv == nil {
+		return nil
+	}
+	t := &BweTraceInfoT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type BweTraceInfo struct {
 	_tab flatbuffers.Table
 }

@@ -6,6 +6,55 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type GetStatsResponseT struct {
+	Timestamp uint64 `json:"timestamp"`
+	Label string `json:"label"`
+	Protocol string `json:"protocol"`
+	MessagesSent uint64 `json:"messages_sent"`
+	BytesSent uint64 `json:"bytes_sent"`
+	BufferedAmount uint32 `json:"buffered_amount"`
+}
+
+func (t *GetStatsResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	labelOffset := flatbuffers.UOffsetT(0)
+	if t.Label != "" {
+		labelOffset = builder.CreateString(t.Label)
+	}
+	protocolOffset := flatbuffers.UOffsetT(0)
+	if t.Protocol != "" {
+		protocolOffset = builder.CreateString(t.Protocol)
+	}
+	GetStatsResponseStart(builder)
+	GetStatsResponseAddTimestamp(builder, t.Timestamp)
+	GetStatsResponseAddLabel(builder, labelOffset)
+	GetStatsResponseAddProtocol(builder, protocolOffset)
+	GetStatsResponseAddMessagesSent(builder, t.MessagesSent)
+	GetStatsResponseAddBytesSent(builder, t.BytesSent)
+	GetStatsResponseAddBufferedAmount(builder, t.BufferedAmount)
+	return GetStatsResponseEnd(builder)
+}
+
+func (rcv *GetStatsResponse) UnPackTo(t *GetStatsResponseT) {
+	t.Timestamp = rcv.Timestamp()
+	t.Label = string(rcv.Label())
+	t.Protocol = string(rcv.Protocol())
+	t.MessagesSent = rcv.MessagesSent()
+	t.BytesSent = rcv.BytesSent()
+	t.BufferedAmount = rcv.BufferedAmount()
+}
+
+func (rcv *GetStatsResponse) UnPack() *GetStatsResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &GetStatsResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type GetStatsResponse struct {
 	_tab flatbuffers.Table
 }

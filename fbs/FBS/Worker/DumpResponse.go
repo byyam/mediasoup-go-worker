@@ -8,6 +8,80 @@ import (
 	FBS__LibUring "github.com/byyam/mediasoup-go-worker/fbs/FBS/LibUring"
 )
 
+type DumpResponseT struct {
+	Pid uint32 `json:"pid"`
+	WebRtcServerIds []string `json:"web_rtc_server_ids"`
+	RouterIds []string `json:"router_ids"`
+	ChannelMessageHandlers *ChannelMessageHandlersT `json:"channel_message_handlers"`
+	Liburing *FBS__LibUring.DumpT `json:"liburing"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	webRtcServerIdsOffset := flatbuffers.UOffsetT(0)
+	if t.WebRtcServerIds != nil {
+		webRtcServerIdsLength := len(t.WebRtcServerIds)
+		webRtcServerIdsOffsets := make([]flatbuffers.UOffsetT, webRtcServerIdsLength)
+		for j := 0; j < webRtcServerIdsLength; j++ {
+			webRtcServerIdsOffsets[j] = builder.CreateString(t.WebRtcServerIds[j])
+		}
+		DumpResponseStartWebRtcServerIdsVector(builder, webRtcServerIdsLength)
+		for j := webRtcServerIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(webRtcServerIdsOffsets[j])
+		}
+		webRtcServerIdsOffset = builder.EndVector(webRtcServerIdsLength)
+	}
+	routerIdsOffset := flatbuffers.UOffsetT(0)
+	if t.RouterIds != nil {
+		routerIdsLength := len(t.RouterIds)
+		routerIdsOffsets := make([]flatbuffers.UOffsetT, routerIdsLength)
+		for j := 0; j < routerIdsLength; j++ {
+			routerIdsOffsets[j] = builder.CreateString(t.RouterIds[j])
+		}
+		DumpResponseStartRouterIdsVector(builder, routerIdsLength)
+		for j := routerIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(routerIdsOffsets[j])
+		}
+		routerIdsOffset = builder.EndVector(routerIdsLength)
+	}
+	channelMessageHandlersOffset := t.ChannelMessageHandlers.Pack(builder)
+	liburingOffset := t.Liburing.Pack(builder)
+	DumpResponseStart(builder)
+	DumpResponseAddPid(builder, t.Pid)
+	DumpResponseAddWebRtcServerIds(builder, webRtcServerIdsOffset)
+	DumpResponseAddRouterIds(builder, routerIdsOffset)
+	DumpResponseAddChannelMessageHandlers(builder, channelMessageHandlersOffset)
+	DumpResponseAddLiburing(builder, liburingOffset)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Pid = rcv.Pid()
+	webRtcServerIdsLength := rcv.WebRtcServerIdsLength()
+	t.WebRtcServerIds = make([]string, webRtcServerIdsLength)
+	for j := 0; j < webRtcServerIdsLength; j++ {
+		t.WebRtcServerIds[j] = string(rcv.WebRtcServerIds(j))
+	}
+	routerIdsLength := rcv.RouterIdsLength()
+	t.RouterIds = make([]string, routerIdsLength)
+	for j := 0; j < routerIdsLength; j++ {
+		t.RouterIds[j] = string(rcv.RouterIds(j))
+	}
+	t.ChannelMessageHandlers = rcv.ChannelMessageHandlers(nil).UnPack()
+	t.Liburing = rcv.Liburing(nil).UnPack()
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

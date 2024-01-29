@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type PliTraceInfoT struct {
+	Ssrc uint32 `json:"ssrc"`
+}
+
+func (t *PliTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	PliTraceInfoStart(builder)
+	PliTraceInfoAddSsrc(builder, t.Ssrc)
+	return PliTraceInfoEnd(builder)
+}
+
+func (rcv *PliTraceInfo) UnPackTo(t *PliTraceInfoT) {
+	t.Ssrc = rcv.Ssrc()
+}
+
+func (rcv *PliTraceInfo) UnPack() *PliTraceInfoT {
+	if rcv == nil {
+		return nil
+	}
+	t := &PliTraceInfoT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type PliTraceInfo struct {
 	_tab flatbuffers.Table
 }

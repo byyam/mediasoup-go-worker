@@ -8,6 +8,32 @@ import (
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
+type ProduceResponseT struct {
+	Type FBS__RtpParameters.Type `json:"type"`
+}
+
+func (t *ProduceResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	ProduceResponseStart(builder)
+	ProduceResponseAddType(builder, t.Type)
+	return ProduceResponseEnd(builder)
+}
+
+func (rcv *ProduceResponse) UnPackTo(t *ProduceResponseT) {
+	t.Type = rcv.Type()
+}
+
+func (rcv *ProduceResponse) UnPack() *ProduceResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ProduceResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ProduceResponse struct {
 	_tab flatbuffers.Table
 }

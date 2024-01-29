@@ -6,6 +6,56 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type StringStringArrayT struct {
+	Key string `json:"key"`
+	Values []string `json:"values"`
+}
+
+func (t *StringStringArrayT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	keyOffset := flatbuffers.UOffsetT(0)
+	if t.Key != "" {
+		keyOffset = builder.CreateString(t.Key)
+	}
+	valuesOffset := flatbuffers.UOffsetT(0)
+	if t.Values != nil {
+		valuesLength := len(t.Values)
+		valuesOffsets := make([]flatbuffers.UOffsetT, valuesLength)
+		for j := 0; j < valuesLength; j++ {
+			valuesOffsets[j] = builder.CreateString(t.Values[j])
+		}
+		StringStringArrayStartValuesVector(builder, valuesLength)
+		for j := valuesLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(valuesOffsets[j])
+		}
+		valuesOffset = builder.EndVector(valuesLength)
+	}
+	StringStringArrayStart(builder)
+	StringStringArrayAddKey(builder, keyOffset)
+	StringStringArrayAddValues(builder, valuesOffset)
+	return StringStringArrayEnd(builder)
+}
+
+func (rcv *StringStringArray) UnPackTo(t *StringStringArrayT) {
+	t.Key = string(rcv.Key())
+	valuesLength := rcv.ValuesLength()
+	t.Values = make([]string, valuesLength)
+	for j := 0; j < valuesLength; j++ {
+		t.Values[j] = string(rcv.Values(j))
+	}
+}
+
+func (rcv *StringStringArray) UnPack() *StringStringArrayT {
+	if rcv == nil {
+		return nil
+	}
+	t := &StringStringArrayT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type StringStringArray struct {
 	_tab flatbuffers.Table
 }

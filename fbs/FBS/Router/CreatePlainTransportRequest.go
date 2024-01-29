@@ -8,6 +8,40 @@ import (
 	FBS__PlainTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PlainTransport"
 )
 
+type CreatePlainTransportRequestT struct {
+	TransportId string `json:"transport_id"`
+	Options *FBS__PlainTransport.PlainTransportOptionsT `json:"options"`
+}
+
+func (t *CreatePlainTransportRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	transportIdOffset := flatbuffers.UOffsetT(0)
+	if t.TransportId != "" {
+		transportIdOffset = builder.CreateString(t.TransportId)
+	}
+	optionsOffset := t.Options.Pack(builder)
+	CreatePlainTransportRequestStart(builder)
+	CreatePlainTransportRequestAddTransportId(builder, transportIdOffset)
+	CreatePlainTransportRequestAddOptions(builder, optionsOffset)
+	return CreatePlainTransportRequestEnd(builder)
+}
+
+func (rcv *CreatePlainTransportRequest) UnPackTo(t *CreatePlainTransportRequestT) {
+	t.TransportId = string(rcv.TransportId())
+	t.Options = rcv.Options(nil).UnPack()
+}
+
+func (rcv *CreatePlainTransportRequest) UnPack() *CreatePlainTransportRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &CreatePlainTransportRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type CreatePlainTransportRequest struct {
 	_tab flatbuffers.Table
 }

@@ -6,6 +6,33 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SetPreferredLayersRequestT struct {
+	PreferredLayers *ConsumerLayersT `json:"preferred_layers"`
+}
+
+func (t *SetPreferredLayersRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	preferredLayersOffset := t.PreferredLayers.Pack(builder)
+	SetPreferredLayersRequestStart(builder)
+	SetPreferredLayersRequestAddPreferredLayers(builder, preferredLayersOffset)
+	return SetPreferredLayersRequestEnd(builder)
+}
+
+func (rcv *SetPreferredLayersRequest) UnPackTo(t *SetPreferredLayersRequestT) {
+	t.PreferredLayers = rcv.PreferredLayers(nil).UnPack()
+}
+
+func (rcv *SetPreferredLayersRequest) UnPack() *SetPreferredLayersRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SetPreferredLayersRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SetPreferredLayersRequest struct {
 	_tab flatbuffers.Table
 }

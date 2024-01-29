@@ -9,6 +9,51 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type DumpResponseT struct {
+	Base *FBS__Transport.DumpT `json:"base"`
+	RtcpMux bool `json:"rtcp_mux"`
+	Comedia bool `json:"comedia"`
+	Tuple *FBS__Transport.TupleT `json:"tuple"`
+	RtcpTuple *FBS__Transport.TupleT `json:"rtcp_tuple"`
+	SrtpParameters *FBS__SrtpParameters.SrtpParametersT `json:"srtp_parameters"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	baseOffset := t.Base.Pack(builder)
+	tupleOffset := t.Tuple.Pack(builder)
+	rtcpTupleOffset := t.RtcpTuple.Pack(builder)
+	srtpParametersOffset := t.SrtpParameters.Pack(builder)
+	DumpResponseStart(builder)
+	DumpResponseAddBase(builder, baseOffset)
+	DumpResponseAddRtcpMux(builder, t.RtcpMux)
+	DumpResponseAddComedia(builder, t.Comedia)
+	DumpResponseAddTuple(builder, tupleOffset)
+	DumpResponseAddRtcpTuple(builder, rtcpTupleOffset)
+	DumpResponseAddSrtpParameters(builder, srtpParametersOffset)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Base = rcv.Base(nil).UnPack()
+	t.RtcpMux = rcv.RtcpMux()
+	t.Comedia = rcv.Comedia()
+	t.Tuple = rcv.Tuple(nil).UnPack()
+	t.RtcpTuple = rcv.RtcpTuple(nil).UnPack()
+	t.SrtpParameters = rcv.SrtpParameters(nil).UnPack()
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

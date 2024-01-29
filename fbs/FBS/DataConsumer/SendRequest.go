@@ -6,6 +6,39 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SendRequestT struct {
+	Ppid uint32 `json:"ppid"`
+	Data []byte `json:"data"`
+}
+
+func (t *SendRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	dataOffset := flatbuffers.UOffsetT(0)
+	if t.Data != nil {
+		dataOffset = builder.CreateByteString(t.Data)
+	}
+	SendRequestStart(builder)
+	SendRequestAddPpid(builder, t.Ppid)
+	SendRequestAddData(builder, dataOffset)
+	return SendRequestEnd(builder)
+}
+
+func (rcv *SendRequest) UnPackTo(t *SendRequestT) {
+	t.Ppid = rcv.Ppid()
+	t.Data = rcv.DataBytes()
+}
+
+func (rcv *SendRequest) UnPack() *SendRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SendRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SendRequest struct {
 	_tab flatbuffers.Table
 }

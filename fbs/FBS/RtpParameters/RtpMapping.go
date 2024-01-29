@@ -6,6 +6,73 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RtpMappingT struct {
+	Codecs []*CodecMappingT `json:"codecs"`
+	Encodings []*EncodingMappingT `json:"encodings"`
+}
+
+func (t *RtpMappingT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	codecsOffset := flatbuffers.UOffsetT(0)
+	if t.Codecs != nil {
+		codecsLength := len(t.Codecs)
+		codecsOffsets := make([]flatbuffers.UOffsetT, codecsLength)
+		for j := 0; j < codecsLength; j++ {
+			codecsOffsets[j] = t.Codecs[j].Pack(builder)
+		}
+		RtpMappingStartCodecsVector(builder, codecsLength)
+		for j := codecsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(codecsOffsets[j])
+		}
+		codecsOffset = builder.EndVector(codecsLength)
+	}
+	encodingsOffset := flatbuffers.UOffsetT(0)
+	if t.Encodings != nil {
+		encodingsLength := len(t.Encodings)
+		encodingsOffsets := make([]flatbuffers.UOffsetT, encodingsLength)
+		for j := 0; j < encodingsLength; j++ {
+			encodingsOffsets[j] = t.Encodings[j].Pack(builder)
+		}
+		RtpMappingStartEncodingsVector(builder, encodingsLength)
+		for j := encodingsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(encodingsOffsets[j])
+		}
+		encodingsOffset = builder.EndVector(encodingsLength)
+	}
+	RtpMappingStart(builder)
+	RtpMappingAddCodecs(builder, codecsOffset)
+	RtpMappingAddEncodings(builder, encodingsOffset)
+	return RtpMappingEnd(builder)
+}
+
+func (rcv *RtpMapping) UnPackTo(t *RtpMappingT) {
+	codecsLength := rcv.CodecsLength()
+	t.Codecs = make([]*CodecMappingT, codecsLength)
+	for j := 0; j < codecsLength; j++ {
+		x := CodecMapping{}
+		rcv.Codecs(&x, j)
+		t.Codecs[j] = x.UnPack()
+	}
+	encodingsLength := rcv.EncodingsLength()
+	t.Encodings = make([]*EncodingMappingT, encodingsLength)
+	for j := 0; j < encodingsLength; j++ {
+		x := EncodingMapping{}
+		rcv.Encodings(&x, j)
+		t.Encodings[j] = x.UnPack()
+	}
+}
+
+func (rcv *RtpMapping) UnPack() *RtpMappingT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtpMappingT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtpMapping struct {
 	_tab flatbuffers.Table
 }

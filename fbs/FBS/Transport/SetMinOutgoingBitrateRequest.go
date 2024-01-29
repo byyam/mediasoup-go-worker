@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SetMinOutgoingBitrateRequestT struct {
+	MinOutgoingBitrate uint32 `json:"min_outgoing_bitrate"`
+}
+
+func (t *SetMinOutgoingBitrateRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	SetMinOutgoingBitrateRequestStart(builder)
+	SetMinOutgoingBitrateRequestAddMinOutgoingBitrate(builder, t.MinOutgoingBitrate)
+	return SetMinOutgoingBitrateRequestEnd(builder)
+}
+
+func (rcv *SetMinOutgoingBitrateRequest) UnPackTo(t *SetMinOutgoingBitrateRequestT) {
+	t.MinOutgoingBitrate = rcv.MinOutgoingBitrate()
+}
+
+func (rcv *SetMinOutgoingBitrateRequest) UnPack() *SetMinOutgoingBitrateRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SetMinOutgoingBitrateRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SetMinOutgoingBitrateRequest struct {
 	_tab flatbuffers.Table
 }

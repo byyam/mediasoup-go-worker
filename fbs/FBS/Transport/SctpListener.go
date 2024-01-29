@@ -8,6 +8,51 @@ import (
 	FBS__Common "github.com/byyam/mediasoup-go-worker/fbs/FBS/Common"
 )
 
+type SctpListenerT struct {
+	StreamIdTable []*FBS__Common.Uint16StringT `json:"stream_id_table"`
+}
+
+func (t *SctpListenerT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	streamIdTableOffset := flatbuffers.UOffsetT(0)
+	if t.StreamIdTable != nil {
+		streamIdTableLength := len(t.StreamIdTable)
+		streamIdTableOffsets := make([]flatbuffers.UOffsetT, streamIdTableLength)
+		for j := 0; j < streamIdTableLength; j++ {
+			streamIdTableOffsets[j] = t.StreamIdTable[j].Pack(builder)
+		}
+		SctpListenerStartStreamIdTableVector(builder, streamIdTableLength)
+		for j := streamIdTableLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(streamIdTableOffsets[j])
+		}
+		streamIdTableOffset = builder.EndVector(streamIdTableLength)
+	}
+	SctpListenerStart(builder)
+	SctpListenerAddStreamIdTable(builder, streamIdTableOffset)
+	return SctpListenerEnd(builder)
+}
+
+func (rcv *SctpListener) UnPackTo(t *SctpListenerT) {
+	streamIdTableLength := rcv.StreamIdTableLength()
+	t.StreamIdTable = make([]*FBS__Common.Uint16StringT, streamIdTableLength)
+	for j := 0; j < streamIdTableLength; j++ {
+		x := FBS__Common.Uint16String{}
+		rcv.StreamIdTable(&x, j)
+		t.StreamIdTable[j] = x.UnPack()
+	}
+}
+
+func (rcv *SctpListener) UnPack() *SctpListenerT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SctpListenerT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SctpListener struct {
 	_tab flatbuffers.Table
 }

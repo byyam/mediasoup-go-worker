@@ -6,6 +6,33 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type LayersChangeNotificationT struct {
+	Layers *ConsumerLayersT `json:"layers"`
+}
+
+func (t *LayersChangeNotificationT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	layersOffset := t.Layers.Pack(builder)
+	LayersChangeNotificationStart(builder)
+	LayersChangeNotificationAddLayers(builder, layersOffset)
+	return LayersChangeNotificationEnd(builder)
+}
+
+func (rcv *LayersChangeNotification) UnPackTo(t *LayersChangeNotificationT) {
+	t.Layers = rcv.Layers(nil).UnPack()
+}
+
+func (rcv *LayersChangeNotification) UnPack() *LayersChangeNotificationT {
+	if rcv == nil {
+		return nil
+	}
+	t := &LayersChangeNotificationT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type LayersChangeNotification struct {
 	_tab flatbuffers.Table
 }

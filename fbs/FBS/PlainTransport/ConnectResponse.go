@@ -9,6 +9,41 @@ import (
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
+type ConnectResponseT struct {
+	Tuple *FBS__Transport.TupleT `json:"tuple"`
+	RtcpTuple *FBS__Transport.TupleT `json:"rtcp_tuple"`
+	SrtpParameters *FBS__SrtpParameters.SrtpParametersT `json:"srtp_parameters"`
+}
+
+func (t *ConnectResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	tupleOffset := t.Tuple.Pack(builder)
+	rtcpTupleOffset := t.RtcpTuple.Pack(builder)
+	srtpParametersOffset := t.SrtpParameters.Pack(builder)
+	ConnectResponseStart(builder)
+	ConnectResponseAddTuple(builder, tupleOffset)
+	ConnectResponseAddRtcpTuple(builder, rtcpTupleOffset)
+	ConnectResponseAddSrtpParameters(builder, srtpParametersOffset)
+	return ConnectResponseEnd(builder)
+}
+
+func (rcv *ConnectResponse) UnPackTo(t *ConnectResponseT) {
+	t.Tuple = rcv.Tuple(nil).UnPack()
+	t.RtcpTuple = rcv.RtcpTuple(nil).UnPack()
+	t.SrtpParameters = rcv.SrtpParameters(nil).UnPack()
+}
+
+func (rcv *ConnectResponse) UnPack() *ConnectResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &ConnectResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type ConnectResponse struct {
 	_tab flatbuffers.Table
 }

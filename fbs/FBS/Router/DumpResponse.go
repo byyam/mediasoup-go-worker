@@ -8,6 +8,186 @@ import (
 	FBS__Common "github.com/byyam/mediasoup-go-worker/fbs/FBS/Common"
 )
 
+type DumpResponseT struct {
+	Id string `json:"id"`
+	TransportIds []string `json:"transport_ids"`
+	RtpObserverIds []string `json:"rtp_observer_ids"`
+	MapProducerIdConsumerIds []*FBS__Common.StringStringArrayT `json:"map_producer_id_consumer_ids"`
+	MapConsumerIdProducerId []*FBS__Common.StringStringT `json:"map_consumer_id_producer_id"`
+	MapProducerIdObserverIds []*FBS__Common.StringStringArrayT `json:"map_producer_id_observer_ids"`
+	MapDataProducerIdDataConsumerIds []*FBS__Common.StringStringArrayT `json:"map_data_producer_id_data_consumer_ids"`
+	MapDataConsumerIdDataProducerId []*FBS__Common.StringStringT `json:"map_data_consumer_id_data_producer_id"`
+}
+
+func (t *DumpResponseT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	idOffset := flatbuffers.UOffsetT(0)
+	if t.Id != "" {
+		idOffset = builder.CreateString(t.Id)
+	}
+	transportIdsOffset := flatbuffers.UOffsetT(0)
+	if t.TransportIds != nil {
+		transportIdsLength := len(t.TransportIds)
+		transportIdsOffsets := make([]flatbuffers.UOffsetT, transportIdsLength)
+		for j := 0; j < transportIdsLength; j++ {
+			transportIdsOffsets[j] = builder.CreateString(t.TransportIds[j])
+		}
+		DumpResponseStartTransportIdsVector(builder, transportIdsLength)
+		for j := transportIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(transportIdsOffsets[j])
+		}
+		transportIdsOffset = builder.EndVector(transportIdsLength)
+	}
+	rtpObserverIdsOffset := flatbuffers.UOffsetT(0)
+	if t.RtpObserverIds != nil {
+		rtpObserverIdsLength := len(t.RtpObserverIds)
+		rtpObserverIdsOffsets := make([]flatbuffers.UOffsetT, rtpObserverIdsLength)
+		for j := 0; j < rtpObserverIdsLength; j++ {
+			rtpObserverIdsOffsets[j] = builder.CreateString(t.RtpObserverIds[j])
+		}
+		DumpResponseStartRtpObserverIdsVector(builder, rtpObserverIdsLength)
+		for j := rtpObserverIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(rtpObserverIdsOffsets[j])
+		}
+		rtpObserverIdsOffset = builder.EndVector(rtpObserverIdsLength)
+	}
+	mapProducerIdConsumerIdsOffset := flatbuffers.UOffsetT(0)
+	if t.MapProducerIdConsumerIds != nil {
+		mapProducerIdConsumerIdsLength := len(t.MapProducerIdConsumerIds)
+		mapProducerIdConsumerIdsOffsets := make([]flatbuffers.UOffsetT, mapProducerIdConsumerIdsLength)
+		for j := 0; j < mapProducerIdConsumerIdsLength; j++ {
+			mapProducerIdConsumerIdsOffsets[j] = t.MapProducerIdConsumerIds[j].Pack(builder)
+		}
+		DumpResponseStartMapProducerIdConsumerIdsVector(builder, mapProducerIdConsumerIdsLength)
+		for j := mapProducerIdConsumerIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(mapProducerIdConsumerIdsOffsets[j])
+		}
+		mapProducerIdConsumerIdsOffset = builder.EndVector(mapProducerIdConsumerIdsLength)
+	}
+	mapConsumerIdProducerIdOffset := flatbuffers.UOffsetT(0)
+	if t.MapConsumerIdProducerId != nil {
+		mapConsumerIdProducerIdLength := len(t.MapConsumerIdProducerId)
+		mapConsumerIdProducerIdOffsets := make([]flatbuffers.UOffsetT, mapConsumerIdProducerIdLength)
+		for j := 0; j < mapConsumerIdProducerIdLength; j++ {
+			mapConsumerIdProducerIdOffsets[j] = t.MapConsumerIdProducerId[j].Pack(builder)
+		}
+		DumpResponseStartMapConsumerIdProducerIdVector(builder, mapConsumerIdProducerIdLength)
+		for j := mapConsumerIdProducerIdLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(mapConsumerIdProducerIdOffsets[j])
+		}
+		mapConsumerIdProducerIdOffset = builder.EndVector(mapConsumerIdProducerIdLength)
+	}
+	mapProducerIdObserverIdsOffset := flatbuffers.UOffsetT(0)
+	if t.MapProducerIdObserverIds != nil {
+		mapProducerIdObserverIdsLength := len(t.MapProducerIdObserverIds)
+		mapProducerIdObserverIdsOffsets := make([]flatbuffers.UOffsetT, mapProducerIdObserverIdsLength)
+		for j := 0; j < mapProducerIdObserverIdsLength; j++ {
+			mapProducerIdObserverIdsOffsets[j] = t.MapProducerIdObserverIds[j].Pack(builder)
+		}
+		DumpResponseStartMapProducerIdObserverIdsVector(builder, mapProducerIdObserverIdsLength)
+		for j := mapProducerIdObserverIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(mapProducerIdObserverIdsOffsets[j])
+		}
+		mapProducerIdObserverIdsOffset = builder.EndVector(mapProducerIdObserverIdsLength)
+	}
+	mapDataProducerIdDataConsumerIdsOffset := flatbuffers.UOffsetT(0)
+	if t.MapDataProducerIdDataConsumerIds != nil {
+		mapDataProducerIdDataConsumerIdsLength := len(t.MapDataProducerIdDataConsumerIds)
+		mapDataProducerIdDataConsumerIdsOffsets := make([]flatbuffers.UOffsetT, mapDataProducerIdDataConsumerIdsLength)
+		for j := 0; j < mapDataProducerIdDataConsumerIdsLength; j++ {
+			mapDataProducerIdDataConsumerIdsOffsets[j] = t.MapDataProducerIdDataConsumerIds[j].Pack(builder)
+		}
+		DumpResponseStartMapDataProducerIdDataConsumerIdsVector(builder, mapDataProducerIdDataConsumerIdsLength)
+		for j := mapDataProducerIdDataConsumerIdsLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(mapDataProducerIdDataConsumerIdsOffsets[j])
+		}
+		mapDataProducerIdDataConsumerIdsOffset = builder.EndVector(mapDataProducerIdDataConsumerIdsLength)
+	}
+	mapDataConsumerIdDataProducerIdOffset := flatbuffers.UOffsetT(0)
+	if t.MapDataConsumerIdDataProducerId != nil {
+		mapDataConsumerIdDataProducerIdLength := len(t.MapDataConsumerIdDataProducerId)
+		mapDataConsumerIdDataProducerIdOffsets := make([]flatbuffers.UOffsetT, mapDataConsumerIdDataProducerIdLength)
+		for j := 0; j < mapDataConsumerIdDataProducerIdLength; j++ {
+			mapDataConsumerIdDataProducerIdOffsets[j] = t.MapDataConsumerIdDataProducerId[j].Pack(builder)
+		}
+		DumpResponseStartMapDataConsumerIdDataProducerIdVector(builder, mapDataConsumerIdDataProducerIdLength)
+		for j := mapDataConsumerIdDataProducerIdLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(mapDataConsumerIdDataProducerIdOffsets[j])
+		}
+		mapDataConsumerIdDataProducerIdOffset = builder.EndVector(mapDataConsumerIdDataProducerIdLength)
+	}
+	DumpResponseStart(builder)
+	DumpResponseAddId(builder, idOffset)
+	DumpResponseAddTransportIds(builder, transportIdsOffset)
+	DumpResponseAddRtpObserverIds(builder, rtpObserverIdsOffset)
+	DumpResponseAddMapProducerIdConsumerIds(builder, mapProducerIdConsumerIdsOffset)
+	DumpResponseAddMapConsumerIdProducerId(builder, mapConsumerIdProducerIdOffset)
+	DumpResponseAddMapProducerIdObserverIds(builder, mapProducerIdObserverIdsOffset)
+	DumpResponseAddMapDataProducerIdDataConsumerIds(builder, mapDataProducerIdDataConsumerIdsOffset)
+	DumpResponseAddMapDataConsumerIdDataProducerId(builder, mapDataConsumerIdDataProducerIdOffset)
+	return DumpResponseEnd(builder)
+}
+
+func (rcv *DumpResponse) UnPackTo(t *DumpResponseT) {
+	t.Id = string(rcv.Id())
+	transportIdsLength := rcv.TransportIdsLength()
+	t.TransportIds = make([]string, transportIdsLength)
+	for j := 0; j < transportIdsLength; j++ {
+		t.TransportIds[j] = string(rcv.TransportIds(j))
+	}
+	rtpObserverIdsLength := rcv.RtpObserverIdsLength()
+	t.RtpObserverIds = make([]string, rtpObserverIdsLength)
+	for j := 0; j < rtpObserverIdsLength; j++ {
+		t.RtpObserverIds[j] = string(rcv.RtpObserverIds(j))
+	}
+	mapProducerIdConsumerIdsLength := rcv.MapProducerIdConsumerIdsLength()
+	t.MapProducerIdConsumerIds = make([]*FBS__Common.StringStringArrayT, mapProducerIdConsumerIdsLength)
+	for j := 0; j < mapProducerIdConsumerIdsLength; j++ {
+		x := FBS__Common.StringStringArray{}
+		rcv.MapProducerIdConsumerIds(&x, j)
+		t.MapProducerIdConsumerIds[j] = x.UnPack()
+	}
+	mapConsumerIdProducerIdLength := rcv.MapConsumerIdProducerIdLength()
+	t.MapConsumerIdProducerId = make([]*FBS__Common.StringStringT, mapConsumerIdProducerIdLength)
+	for j := 0; j < mapConsumerIdProducerIdLength; j++ {
+		x := FBS__Common.StringString{}
+		rcv.MapConsumerIdProducerId(&x, j)
+		t.MapConsumerIdProducerId[j] = x.UnPack()
+	}
+	mapProducerIdObserverIdsLength := rcv.MapProducerIdObserverIdsLength()
+	t.MapProducerIdObserverIds = make([]*FBS__Common.StringStringArrayT, mapProducerIdObserverIdsLength)
+	for j := 0; j < mapProducerIdObserverIdsLength; j++ {
+		x := FBS__Common.StringStringArray{}
+		rcv.MapProducerIdObserverIds(&x, j)
+		t.MapProducerIdObserverIds[j] = x.UnPack()
+	}
+	mapDataProducerIdDataConsumerIdsLength := rcv.MapDataProducerIdDataConsumerIdsLength()
+	t.MapDataProducerIdDataConsumerIds = make([]*FBS__Common.StringStringArrayT, mapDataProducerIdDataConsumerIdsLength)
+	for j := 0; j < mapDataProducerIdDataConsumerIdsLength; j++ {
+		x := FBS__Common.StringStringArray{}
+		rcv.MapDataProducerIdDataConsumerIds(&x, j)
+		t.MapDataProducerIdDataConsumerIds[j] = x.UnPack()
+	}
+	mapDataConsumerIdDataProducerIdLength := rcv.MapDataConsumerIdDataProducerIdLength()
+	t.MapDataConsumerIdDataProducerId = make([]*FBS__Common.StringStringT, mapDataConsumerIdDataProducerIdLength)
+	for j := 0; j < mapDataConsumerIdDataProducerIdLength; j++ {
+		x := FBS__Common.StringString{}
+		rcv.MapDataConsumerIdDataProducerId(&x, j)
+		t.MapDataConsumerIdDataProducerId[j] = x.UnPack()
+	}
+}
+
+func (rcv *DumpResponse) UnPack() *DumpResponseT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpResponseT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type DumpResponse struct {
 	_tab flatbuffers.Table
 }

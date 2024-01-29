@@ -6,6 +6,67 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RecvStatsT struct {
+	Base *StatsT `json:"base"`
+	Jitter uint32 `json:"jitter"`
+	PacketCount uint64 `json:"packet_count"`
+	ByteCount uint64 `json:"byte_count"`
+	Bitrate uint32 `json:"bitrate"`
+	BitrateByLayer []*BitrateByLayerT `json:"bitrate_by_layer"`
+}
+
+func (t *RecvStatsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	baseOffset := t.Base.Pack(builder)
+	bitrateByLayerOffset := flatbuffers.UOffsetT(0)
+	if t.BitrateByLayer != nil {
+		bitrateByLayerLength := len(t.BitrateByLayer)
+		bitrateByLayerOffsets := make([]flatbuffers.UOffsetT, bitrateByLayerLength)
+		for j := 0; j < bitrateByLayerLength; j++ {
+			bitrateByLayerOffsets[j] = t.BitrateByLayer[j].Pack(builder)
+		}
+		RecvStatsStartBitrateByLayerVector(builder, bitrateByLayerLength)
+		for j := bitrateByLayerLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(bitrateByLayerOffsets[j])
+		}
+		bitrateByLayerOffset = builder.EndVector(bitrateByLayerLength)
+	}
+	RecvStatsStart(builder)
+	RecvStatsAddBase(builder, baseOffset)
+	RecvStatsAddJitter(builder, t.Jitter)
+	RecvStatsAddPacketCount(builder, t.PacketCount)
+	RecvStatsAddByteCount(builder, t.ByteCount)
+	RecvStatsAddBitrate(builder, t.Bitrate)
+	RecvStatsAddBitrateByLayer(builder, bitrateByLayerOffset)
+	return RecvStatsEnd(builder)
+}
+
+func (rcv *RecvStats) UnPackTo(t *RecvStatsT) {
+	t.Base = rcv.Base(nil).UnPack()
+	t.Jitter = rcv.Jitter()
+	t.PacketCount = rcv.PacketCount()
+	t.ByteCount = rcv.ByteCount()
+	t.Bitrate = rcv.Bitrate()
+	bitrateByLayerLength := rcv.BitrateByLayerLength()
+	t.BitrateByLayer = make([]*BitrateByLayerT, bitrateByLayerLength)
+	for j := 0; j < bitrateByLayerLength; j++ {
+		x := BitrateByLayer{}
+		rcv.BitrateByLayer(&x, j)
+		t.BitrateByLayer[j] = x.UnPack()
+	}
+}
+
+func (rcv *RecvStats) UnPack() *RecvStatsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RecvStatsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RecvStats struct {
 	_tab flatbuffers.Table
 }

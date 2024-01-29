@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type SetBufferedAmountLowThresholdRequestT struct {
+	Threshold uint32 `json:"threshold"`
+}
+
+func (t *SetBufferedAmountLowThresholdRequestT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	SetBufferedAmountLowThresholdRequestStart(builder)
+	SetBufferedAmountLowThresholdRequestAddThreshold(builder, t.Threshold)
+	return SetBufferedAmountLowThresholdRequestEnd(builder)
+}
+
+func (rcv *SetBufferedAmountLowThresholdRequest) UnPackTo(t *SetBufferedAmountLowThresholdRequestT) {
+	t.Threshold = rcv.Threshold()
+}
+
+func (rcv *SetBufferedAmountLowThresholdRequest) UnPack() *SetBufferedAmountLowThresholdRequestT {
+	if rcv == nil {
+		return nil
+	}
+	t := &SetBufferedAmountLowThresholdRequestT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type SetBufferedAmountLowThresholdRequest struct {
 	_tab flatbuffers.Table
 }

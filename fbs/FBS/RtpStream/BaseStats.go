@@ -8,6 +8,93 @@ import (
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
 
+type BaseStatsT struct {
+	Timestamp uint64 `json:"timestamp"`
+	Ssrc uint32 `json:"ssrc"`
+	Kind FBS__RtpParameters.MediaKind `json:"kind"`
+	MimeType string `json:"mime_type"`
+	PacketsLost uint64 `json:"packets_lost"`
+	FractionLost byte `json:"fraction_lost"`
+	PacketsDiscarded uint64 `json:"packets_discarded"`
+	PacketsRetransmitted uint64 `json:"packets_retransmitted"`
+	PacketsRepaired uint64 `json:"packets_repaired"`
+	NackCount uint64 `json:"nack_count"`
+	NackPacketCount uint64 `json:"nack_packet_count"`
+	PliCount uint64 `json:"pli_count"`
+	FirCount uint64 `json:"fir_count"`
+	Score byte `json:"score"`
+	Rid string `json:"rid"`
+	RtxSsrc *uint32 `json:"rtx_ssrc"`
+	RtxPacketsDiscarded uint64 `json:"rtx_packets_discarded"`
+	RoundTripTime float32 `json:"round_trip_time"`
+}
+
+func (t *BaseStatsT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	mimeTypeOffset := flatbuffers.UOffsetT(0)
+	if t.MimeType != "" {
+		mimeTypeOffset = builder.CreateString(t.MimeType)
+	}
+	ridOffset := flatbuffers.UOffsetT(0)
+	if t.Rid != "" {
+		ridOffset = builder.CreateString(t.Rid)
+	}
+	BaseStatsStart(builder)
+	BaseStatsAddTimestamp(builder, t.Timestamp)
+	BaseStatsAddSsrc(builder, t.Ssrc)
+	BaseStatsAddKind(builder, t.Kind)
+	BaseStatsAddMimeType(builder, mimeTypeOffset)
+	BaseStatsAddPacketsLost(builder, t.PacketsLost)
+	BaseStatsAddFractionLost(builder, t.FractionLost)
+	BaseStatsAddPacketsDiscarded(builder, t.PacketsDiscarded)
+	BaseStatsAddPacketsRetransmitted(builder, t.PacketsRetransmitted)
+	BaseStatsAddPacketsRepaired(builder, t.PacketsRepaired)
+	BaseStatsAddNackCount(builder, t.NackCount)
+	BaseStatsAddNackPacketCount(builder, t.NackPacketCount)
+	BaseStatsAddPliCount(builder, t.PliCount)
+	BaseStatsAddFirCount(builder, t.FirCount)
+	BaseStatsAddScore(builder, t.Score)
+	BaseStatsAddRid(builder, ridOffset)
+	if t.RtxSsrc != nil {
+		BaseStatsAddRtxSsrc(builder, *t.RtxSsrc)
+	}
+	BaseStatsAddRtxPacketsDiscarded(builder, t.RtxPacketsDiscarded)
+	BaseStatsAddRoundTripTime(builder, t.RoundTripTime)
+	return BaseStatsEnd(builder)
+}
+
+func (rcv *BaseStats) UnPackTo(t *BaseStatsT) {
+	t.Timestamp = rcv.Timestamp()
+	t.Ssrc = rcv.Ssrc()
+	t.Kind = rcv.Kind()
+	t.MimeType = string(rcv.MimeType())
+	t.PacketsLost = rcv.PacketsLost()
+	t.FractionLost = rcv.FractionLost()
+	t.PacketsDiscarded = rcv.PacketsDiscarded()
+	t.PacketsRetransmitted = rcv.PacketsRetransmitted()
+	t.PacketsRepaired = rcv.PacketsRepaired()
+	t.NackCount = rcv.NackCount()
+	t.NackPacketCount = rcv.NackPacketCount()
+	t.PliCount = rcv.PliCount()
+	t.FirCount = rcv.FirCount()
+	t.Score = rcv.Score()
+	t.Rid = string(rcv.Rid())
+	t.RtxSsrc = rcv.RtxSsrc()
+	t.RtxPacketsDiscarded = rcv.RtxPacketsDiscarded()
+	t.RoundTripTime = rcv.RoundTripTime()
+}
+
+func (rcv *BaseStats) UnPack() *BaseStatsT {
+	if rcv == nil {
+		return nil
+	}
+	t := &BaseStatsT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type BaseStats struct {
 	_tab flatbuffers.Table
 }

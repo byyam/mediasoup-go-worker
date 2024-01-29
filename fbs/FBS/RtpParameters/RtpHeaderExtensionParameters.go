@@ -6,6 +6,60 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type RtpHeaderExtensionParametersT struct {
+	Uri RtpHeaderExtensionUri `json:"uri"`
+	Id byte `json:"id"`
+	Encrypt bool `json:"encrypt"`
+	Parameters []*ParameterT `json:"parameters"`
+}
+
+func (t *RtpHeaderExtensionParametersT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	parametersOffset := flatbuffers.UOffsetT(0)
+	if t.Parameters != nil {
+		parametersLength := len(t.Parameters)
+		parametersOffsets := make([]flatbuffers.UOffsetT, parametersLength)
+		for j := 0; j < parametersLength; j++ {
+			parametersOffsets[j] = t.Parameters[j].Pack(builder)
+		}
+		RtpHeaderExtensionParametersStartParametersVector(builder, parametersLength)
+		for j := parametersLength - 1; j >= 0; j-- {
+			builder.PrependUOffsetT(parametersOffsets[j])
+		}
+		parametersOffset = builder.EndVector(parametersLength)
+	}
+	RtpHeaderExtensionParametersStart(builder)
+	RtpHeaderExtensionParametersAddUri(builder, t.Uri)
+	RtpHeaderExtensionParametersAddId(builder, t.Id)
+	RtpHeaderExtensionParametersAddEncrypt(builder, t.Encrypt)
+	RtpHeaderExtensionParametersAddParameters(builder, parametersOffset)
+	return RtpHeaderExtensionParametersEnd(builder)
+}
+
+func (rcv *RtpHeaderExtensionParameters) UnPackTo(t *RtpHeaderExtensionParametersT) {
+	t.Uri = rcv.Uri()
+	t.Id = rcv.Id()
+	t.Encrypt = rcv.Encrypt()
+	parametersLength := rcv.ParametersLength()
+	t.Parameters = make([]*ParameterT, parametersLength)
+	for j := 0; j < parametersLength; j++ {
+		x := Parameter{}
+		rcv.Parameters(&x, j)
+		t.Parameters[j] = x.UnPack()
+	}
+}
+
+func (rcv *RtpHeaderExtensionParameters) UnPack() *RtpHeaderExtensionParametersT {
+	if rcv == nil {
+		return nil
+	}
+	t := &RtpHeaderExtensionParametersT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type RtpHeaderExtensionParameters struct {
 	_tab flatbuffers.Table
 }

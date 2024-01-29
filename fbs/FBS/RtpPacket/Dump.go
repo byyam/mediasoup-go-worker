@@ -6,6 +6,85 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type DumpT struct {
+	PayloadType byte `json:"payload_type"`
+	SequenceNumber uint16 `json:"sequence_number"`
+	Timestamp uint32 `json:"timestamp"`
+	Marker bool `json:"marker"`
+	Ssrc uint32 `json:"ssrc"`
+	IsKeyFrame bool `json:"is_key_frame"`
+	Size uint64 `json:"size"`
+	PayloadSize uint64 `json:"payload_size"`
+	SpatialLayer byte `json:"spatial_layer"`
+	TemporalLayer byte `json:"temporal_layer"`
+	Mid string `json:"mid"`
+	Rid string `json:"rid"`
+	Rrid string `json:"rrid"`
+	WideSequenceNumber *uint16 `json:"wide_sequence_number"`
+}
+
+func (t *DumpT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	midOffset := flatbuffers.UOffsetT(0)
+	if t.Mid != "" {
+		midOffset = builder.CreateString(t.Mid)
+	}
+	ridOffset := flatbuffers.UOffsetT(0)
+	if t.Rid != "" {
+		ridOffset = builder.CreateString(t.Rid)
+	}
+	rridOffset := flatbuffers.UOffsetT(0)
+	if t.Rrid != "" {
+		rridOffset = builder.CreateString(t.Rrid)
+	}
+	DumpStart(builder)
+	DumpAddPayloadType(builder, t.PayloadType)
+	DumpAddSequenceNumber(builder, t.SequenceNumber)
+	DumpAddTimestamp(builder, t.Timestamp)
+	DumpAddMarker(builder, t.Marker)
+	DumpAddSsrc(builder, t.Ssrc)
+	DumpAddIsKeyFrame(builder, t.IsKeyFrame)
+	DumpAddSize(builder, t.Size)
+	DumpAddPayloadSize(builder, t.PayloadSize)
+	DumpAddSpatialLayer(builder, t.SpatialLayer)
+	DumpAddTemporalLayer(builder, t.TemporalLayer)
+	DumpAddMid(builder, midOffset)
+	DumpAddRid(builder, ridOffset)
+	DumpAddRrid(builder, rridOffset)
+	if t.WideSequenceNumber != nil {
+		DumpAddWideSequenceNumber(builder, *t.WideSequenceNumber)
+	}
+	return DumpEnd(builder)
+}
+
+func (rcv *Dump) UnPackTo(t *DumpT) {
+	t.PayloadType = rcv.PayloadType()
+	t.SequenceNumber = rcv.SequenceNumber()
+	t.Timestamp = rcv.Timestamp()
+	t.Marker = rcv.Marker()
+	t.Ssrc = rcv.Ssrc()
+	t.IsKeyFrame = rcv.IsKeyFrame()
+	t.Size = rcv.Size()
+	t.PayloadSize = rcv.PayloadSize()
+	t.SpatialLayer = rcv.SpatialLayer()
+	t.TemporalLayer = rcv.TemporalLayer()
+	t.Mid = string(rcv.Mid())
+	t.Rid = string(rcv.Rid())
+	t.Rrid = string(rcv.Rrid())
+	t.WideSequenceNumber = rcv.WideSequenceNumber()
+}
+
+func (rcv *Dump) UnPack() *DumpT {
+	if rcv == nil {
+		return nil
+	}
+	t := &DumpT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type Dump struct {
 	_tab flatbuffers.Table
 }

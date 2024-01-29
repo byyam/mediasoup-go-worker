@@ -6,6 +6,32 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
+type FirTraceInfoT struct {
+	Ssrc uint32 `json:"ssrc"`
+}
+
+func (t *FirTraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	if t == nil {
+		return 0
+	}
+	FirTraceInfoStart(builder)
+	FirTraceInfoAddSsrc(builder, t.Ssrc)
+	return FirTraceInfoEnd(builder)
+}
+
+func (rcv *FirTraceInfo) UnPackTo(t *FirTraceInfoT) {
+	t.Ssrc = rcv.Ssrc()
+}
+
+func (rcv *FirTraceInfo) UnPack() *FirTraceInfoT {
+	if rcv == nil {
+		return nil
+	}
+	t := &FirTraceInfoT{}
+	rcv.UnPackTo(t)
+	return t
+}
+
 type FirTraceInfo struct {
 	_tab flatbuffers.Table
 }
