@@ -136,25 +136,9 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		}
 		return nil
 	}
-	// get prefix of method
-	methodFields := strings.SplitN(method, ".", 2)
-	if len(methodFields) != 2 {
-		return errors.New("method is not formatted")
-	}
-	// set handlerId
-	switch methodFields[0] {
-	case mediasoupdata.MethodPrefixWorker, mediasoupdata.MethodPrefixRouter:
-		internal.RouterId = handlerId
-	case mediasoupdata.MethodPrefixTransport:
-		internal.TransportId = handlerId
-	case mediasoupdata.MethodPrefixProducer:
-		internal.ProducerId = handlerId
-	case mediasoupdata.MethodPrefixConsumer:
-		internal.ConsumerId = handlerId
-	case mediasoupdata.MethodPrefixRtpObserver:
-		internal.RtpObserverId = handlerId
-	default:
-		return errors.New("unknown method prefix")
+	methodFields, err := c.setInternalId(method, handlerId, internal)
+	if err != nil {
+		return err
 	}
 	// set objectId
 	switch methodFields[0] {
@@ -179,29 +163,36 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	return nil
 }
 
-func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
-	handlerId := ""
-	switch requestT.Method {
-	case FBS__Request.MethodWORKER_CREATE_ROUTER:
-		createRouterRequestT := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request method:%+v", createRouterRequestT)
-		handlerId = createRouterRequestT.RouterId
+func (c *Channel) setInternalId(method, handlerId string, internal *InternalData) ([]string, error) {
+	// get prefix of method
+	methodFields := strings.SplitN(method, ".", 2)
+	if len(methodFields) != 2 {
+		return methodFields, errors.New("method is not formatted")
 	}
+	// set handlerId
+	switch methodFields[0] {
+	case mediasoupdata.MethodPrefixWorker, mediasoupdata.MethodPrefixRouter:
+		internal.RouterId = handlerId
+	case mediasoupdata.MethodPrefixTransport:
+		internal.TransportId = handlerId
+	case mediasoupdata.MethodPrefixProducer:
+		internal.ProducerId = handlerId
+	case mediasoupdata.MethodPrefixConsumer:
+		internal.ConsumerId = handlerId
+	case mediasoupdata.MethodPrefixRtpObserver:
+		internal.RtpObserverId = handlerId
+	default:
+		return methodFields, errors.New("unknown method prefix")
+	}
+	return methodFields, nil
+}
 
-	reqData := &channelData{
-		Id:       int64(requestT.Id),
-		Method:   FBSRequestMethod[requestT.Method],
-		Internal: nil,
-		Data:     nil,
-	}
-	internal := &InternalData{
-		RouterId:       handlerId,
-		TransportId:    "",
-		ProducerId:     "",
-		ConsumerId:     "",
-		DataProducerId: "",
-		DataConsumerId: "",
-		RtpObserverId:  "",
+func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
+	reqData := &channelData{}
+	internal := &InternalData{}
+	if err := c.setFBRequestData(requestT, reqData, internal); err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]set request data failed")
+		return err
 	}
 	// handle
 	rspData, _ := c.handleMessage(reqData, internal)
@@ -355,4 +346,30 @@ func (c *Channel) eventFB(targetId string, event Notification.Event) {
 
 func (c *Channel) Close() {
 	c.logger.Info().Msg("closed")
+}
+
+func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *channelData, internalData *InternalData) error {
+	handlerId := ""
+	switch requestT.Method {
+	case FBS__Request.MethodWORKER_CREATE_ROUTER:
+		createRouterRequestT := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request method:%+v", createRouterRequestT)
+		handlerId = createRouterRequestT.RouterId
+	default:
+		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
+	}
+	method := FBSRequestMethod[requestT.Method]
+	data, err := json.Marshal(requestT.Body.Value)
+
+	// set req
+	reqData.Id = int64(requestT.Id)
+	reqData.Method = method
+	reqData.Data = data
+
+	// set internal
+	_, err = c.setInternalId(method, handlerId, internalData)
+	if err != nil {
+		return err
+	}
+	return nil
 }
