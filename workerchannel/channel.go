@@ -11,9 +11,10 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
-	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
-	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
+	FBS__Message "github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
+	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -91,7 +92,7 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 	case 'X':
 		c.logger.Debug().Str("payload", string(nsPayload[1:])).Send()
 	default:
-		c.logger.Error().Str("payload", string(nsPayload)).Msg("unexpected data")
+		c.logger.Error().Str("payload", string(nsPayload)).Msg("[processPayloadJsonFormat]unexpected data")
 	}
 }
 
@@ -110,11 +111,11 @@ func (c *Channel) processPayloadNative(nsPayload []byte) {
 }
 
 func (c *Channel) processPayloadFB(nsPayload []byte) {
-	message := Message.GetRootAsMessage(nsPayload, 0)
+	message := FBS__Message.GetRootAsMessage(nsPayload, 0)
 	messageOffset := message.UnPack()
 	c.logger.Info().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
 	switch messageOffset.Data.Type {
-	case Message.BodyRequest:
+	case FBS__Message.BodyRequest:
 		requestOffset := messageOffset.Data.Value.(*FBS__Request.RequestT)
 		c.logger.Info().Msgf("[processPayloadFB]request method:%+v", requestOffset)
 		if err := c.processFBMessage(requestOffset); err != nil {
@@ -196,8 +197,13 @@ func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
 	}
 	// handle
 	rspData, _ := c.handleMessage(reqData, internal)
-	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Msg("rspData")
+	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Str("data", string(rspData.Data)).Msg("rspData")
 
+	// encode
+	if err := c.returnFBMessage(rspData); err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]return message failed")
+		return err
+	}
 	return nil
 }
 
@@ -271,6 +277,35 @@ func (c *Channel) returnMessage(rspData *channelData) error {
 	return nil
 }
 
+func (c *Channel) returnFBMessage(rspData *channelData) error {
+	accepted := true
+	if rspData.Error != "" {
+		accepted = false
+	}
+	// set response
+	b := flatbuffers.NewBuilder(0)
+	r := FBS__Message.MessageT{Data: &FBS__Message.BodyT{
+		Type: FBS__Message.BodyResponse,
+		Value: &FBS__Response.ResponseT{
+			Id:       uint32(rspData.Id),
+			Accepted: accepted,
+			Error:    rspData.Error,
+		},
+	}}
+	b.Finish(r.Pack(b))
+	sendBuf := b.FinishedBytes()
+
+	if len(sendBuf) > NS_MESSAGE_MAX_LEN {
+		return errors.New("[returnFBMessage]channel response too big")
+	}
+	if err := c.netParser.WriteBuffer(sendBuf); err != nil {
+		return err
+	}
+	c.logger.Info().Int("len", len(sendBuf)).Str("error", rspData.Error).Int64("id", rspData.Id).
+		Str("method", rspData.Method).Msg("[returnFBMessage]response")
+	return nil
+}
+
 func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*channelData, error) {
 	var ret ResponseData
 	rspData := new(channelData)
@@ -298,7 +333,7 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	return rspData, nil
 }
 
-func (c *Channel) Event(targetId string, event Notification.Event) {
+func (c *Channel) Event(targetId string, event FBS__Notification.Event) {
 	switch c.bufferFormat {
 	case NativeJsonFormat, NativeFormat:
 		c.eventJson(targetId, event)
@@ -309,7 +344,7 @@ func (c *Channel) Event(targetId string, event Notification.Event) {
 	}
 }
 
-func (c *Channel) eventJson(targetId string, event Notification.Event) {
+func (c *Channel) eventJson(targetId string, event FBS__Notification.Event) {
 	msg := channelData{
 		TargetId: targetId,
 		Event:    EventMap[event],
@@ -319,7 +354,7 @@ func (c *Channel) eventJson(targetId string, event Notification.Event) {
 	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Int("event", int(event)).Msg("[eventJson]send Event msg")
 }
 
-func (c *Channel) eventFB(targetId string, event Notification.Event) {
+func (c *Channel) eventFB(targetId string, event FBS__Notification.Event) {
 	b := flatbuffers.NewBuilder(0)
 	// targetIdOffset
 	targetIdOffset := flatbuffers.UOffsetT(0)
@@ -327,17 +362,17 @@ func (c *Channel) eventFB(targetId string, event Notification.Event) {
 		targetIdOffset = b.CreateString(targetId)
 	}
 	// notification offset
-	Notification.NotificationStart(b)
-	Notification.NotificationAddHandlerId(b, targetIdOffset)
-	Notification.NotificationAddEvent(b, Notification.EventWORKER_RUNNING)
-	Notification.NotificationAddBodyType(b, Notification.BodyNONE)
-	Notification.NotificationAddBody(b, flatbuffers.UOffsetT(0))
-	notificationOffset := Notification.NotificationEnd(b)
+	FBS__Notification.NotificationStart(b)
+	FBS__Notification.NotificationAddHandlerId(b, targetIdOffset)
+	FBS__Notification.NotificationAddEvent(b, FBS__Notification.EventWORKER_RUNNING)
+	FBS__Notification.NotificationAddBodyType(b, FBS__Notification.BodyNONE)
+	FBS__Notification.NotificationAddBody(b, flatbuffers.UOffsetT(0))
+	notificationOffset := FBS__Notification.NotificationEnd(b)
 	// msg offset
-	Message.MessageStart(b)
-	Message.MessageAddDataType(b, Message.BodyNotification)
-	Message.MessageAddData(b, notificationOffset)
-	messageOffset := Message.MessageEnd(b)
+	FBS__Message.MessageStart(b)
+	FBS__Message.MessageAddDataType(b, FBS__Message.BodyNotification)
+	FBS__Message.MessageAddData(b, notificationOffset)
+	messageOffset := FBS__Message.MessageEnd(b)
 	// send msg
 	b.Finish(messageOffset)
 	err := c.netParser.WriteBuffer(b.FinishedBytes())
