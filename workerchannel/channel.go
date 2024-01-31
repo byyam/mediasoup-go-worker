@@ -15,6 +15,7 @@ import (
 	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -387,11 +388,28 @@ func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *cha
 	handlerId := ""
 	switch requestT.Method {
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:
-		createRouterRequestT := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request method:%+v", createRouterRequestT)
-		handlerId = createRouterRequestT.RouterId
+		requestT0 := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+	case FBS__Request.MethodROUTER_CREATE_AUDIOLEVELOBSERVER:
+		requestT0 := requestT.Body.Value.(*FBS__Router.CreateAudioLevelObserverRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		handlerId = requestT.HandlerId
+	case FBS__Request.MethodROUTER_CREATE_ACTIVESPEAKEROBSERVER:
+		requestT0 := requestT.Body.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		handlerId = requestT.HandlerId
+	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:
+		requestT0 := requestT.Body.Value.(*FBS__Router.CreateDirectTransportRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		handlerId = requestT0.TransportId
 	default:
 		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
+	}
+	// set handlerId
+	switch requestT.Method {
+	case FBS__Request.MethodWORKER_CREATE_ROUTER:
+	default:
+		handlerId = requestT.HandlerId
 	}
 	method := FBSRequestMethod[requestT.Method]
 	data, err := json.Marshal(requestT.Body.Value)
