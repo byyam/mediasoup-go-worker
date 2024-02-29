@@ -19,6 +19,7 @@ Motivation is to provide a mediasoup APIs implementation of [Pion](https://githu
 |  < 3.9.0   |                 netstring                 | :ballot_box_with_check: |
 | \>= 3.9.0  |                  native                   | :ballot_box_with_check: |
 | \>= 3.10.5 | native <br/> message wrapper without JSON | :ballot_box_with_check: |
+| \>= 3.13.0 |                flatbuffers                | :ballot_box_with_check: |
 
 
 ~~~shell
