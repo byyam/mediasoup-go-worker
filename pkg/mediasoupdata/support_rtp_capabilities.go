@@ -380,7 +380,7 @@ func init() {
 }
 
 func GetSupportedRtpCapabilities() (rtpCapabilities RtpCapabilities) {
-	clone(supportedRtpCapabilities, &rtpCapabilities)
+	Clone(supportedRtpCapabilities, &rtpCapabilities)
 
 	return
 }

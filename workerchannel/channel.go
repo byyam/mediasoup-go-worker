@@ -11,11 +11,13 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
+	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
 	FBS__Message "github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -198,7 +200,7 @@ func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
 	}
 	// handle
 	rspData, _ := c.handleMessage(reqData, internal)
-	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Str("data", string(rspData.Data)).Msg("rspData")
+	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Str("data", string(rspData.Data)).Msg("[processFBMessage]rspData")
 
 	// encode
 	if err := c.returnFBMessage(rspData); err != nil {
@@ -291,6 +293,7 @@ func (c *Channel) returnFBMessage(rspData *channelData) error {
 			Id:       uint32(rspData.Id),
 			Accepted: accepted,
 			Error:    rspData.Error,
+			Body:     c.setFBResponseBody(rspData),
 		},
 	}}
 	b.Finish(r.Pack(b))
@@ -305,6 +308,22 @@ func (c *Channel) returnFBMessage(rspData *channelData) error {
 	c.logger.Info().Int("len", len(sendBuf)).Str("error", rspData.Error).Int64("id", rspData.Id).
 		Str("method", rspData.Method).Msg("[returnFBMessage]response")
 	return nil
+}
+
+func (c *Channel) setFBResponseBody(rspData *channelData) *FBS__Response.BodyT {
+	switch rspData.Method {
+	case mediasoupdata.MethodRouterCreateDirectTransport:
+		transportDump := &FBS__Transport.DumpT{}
+		_ = mediasoupdata.Clone(&rspData.Data, transportDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDirectTransport_DumpResponse,
+			Value: &FBS__DirectTransport.DumpResponseT{Base: transportDump},
+		}
+		c.logger.Info().Msgf("setFBResponseBody:%+v", transportDump)
+		return rspBody
+	default:
+		return nil
+	}
 }
 
 func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*channelData, error) {

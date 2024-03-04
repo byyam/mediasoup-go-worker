@@ -314,7 +314,7 @@ func GenerateRouterRtpCapabilities(mediaCodecs []*RtpCodecCapability) (caps RtpC
 		}
 		codec := &RtpCodecCapability{}
 
-		if err = clone(matchedSupportedCodec, codec); err != nil {
+		if err = Clone(matchedSupportedCodec, codec); err != nil {
 			return
 		}
 
@@ -615,7 +615,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 	consumableCodecs := []*RtpCodecParameters{}
 	rtxSupported := false
 
-	clone(consumableParams.Codecs, &consumableCodecs)
+	Clone(consumableParams.Codecs, &consumableCodecs)
 
 	for _, codec := range consumableCodecs {
 		matchedCapCodec, matched := findMatchedCodec(codec, caps.Codecs, matchOptions{strict: true})
@@ -699,7 +699,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 	if pipe {
 		var consumableEncodings []RtpEncodingParameters
 
-		clone(consumableParams.Encodings, &consumableEncodings)
+		Clone(consumableParams.Encodings, &consumableEncodings)
 
 		baseSsrc := generateRandomNumber()
 		baseRtxSsrc := generateRandomNumber()
@@ -781,7 +781,7 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 	consumerParams.Rtcp = consumableParams.Rtcp
 
 	consumableCodecs := []*RtpCodecParameters{}
-	clone(consumableParams.Codecs, &consumableCodecs)
+	Clone(consumableParams.Codecs, &consumableCodecs)
 
 	for _, codec := range consumableCodecs {
 		if !enableRtx && codec.isRtxCodec() {
@@ -806,7 +806,7 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 	}
 
 	consumableEncodings := []RtpEncodingParameters{}
-	clone(consumableParams.Encodings, &consumableEncodings)
+	Clone(consumableParams.Encodings, &consumableEncodings)
 
 	baseSsrc := generateRandomNumber()
 	baseRtxSsrc := generateRandomNumber()

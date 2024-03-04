@@ -45,8 +45,13 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 }
 
 func (t *DirectTransport) FillJson() json.RawMessage {
-	// todo
-	return nil
+	dataDump := &mediasoupdata.TransportDump{}
+
+	t.ITransport.GetJson(dataDump)
+	data, _ := json.Marshal(dataDump)
+
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
+	return data
 }
 
 func (t *DirectTransport) SendRtpPacket(packet *rtpparser.Packet) {
