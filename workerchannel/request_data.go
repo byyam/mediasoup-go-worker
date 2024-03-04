@@ -27,7 +27,7 @@ type RequestData struct {
 }
 
 func (d RequestData) String() string {
-	return fmt.Sprintf("Method:%s,Internal:%+v,Data:%s", d.Method, d.Internal, string(d.Data))
+	return fmt.Sprintf("HandlerId:%s,Method:%s,Internal:%+v,Data:%s", d.HandlerId, d.Method, d.Internal, string(d.Data))
 }
 
 type ResponseData struct {

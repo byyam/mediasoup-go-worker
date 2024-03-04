@@ -27,12 +27,16 @@ type Router struct {
 }
 
 func NewRouter(id string) *Router {
+	if id == "" {
+		return nil
+	}
 	r := &Router{
 		id:                   id,
 		logger:               zerowrapper.NewScope("router", id),
 		mapProducerConsumers: hashmap.NewHashMap(),
 	}
 	workerchannel.RegisterHandler(id, r.HandleRequest)
+	r.logger.Info().Str("id", id).Msg("new router start")
 	return r
 }
 
@@ -119,7 +123,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			r.logger.Error().Err(err).Msg("createDirectTransport")
+			r.logger.Error().Err(err).Msgf("createDirectTransport options:%+v", options)
 			response.Err = mserror.ErrCreateDirectTransport
 			return
 		}

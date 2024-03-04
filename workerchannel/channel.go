@@ -390,18 +390,22 @@ func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *cha
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:
 		requestT0 := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
 		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		handlerId = requestT0.RouterId // routerID in data
 	case FBS__Request.MethodROUTER_CREATE_AUDIOLEVELOBSERVER:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateAudioLevelObserverRequestT)
 		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
 		handlerId = requestT.HandlerId
+		internalData.RtpObserverId = requestT0.RtpObserverId
 	case FBS__Request.MethodROUTER_CREATE_ACTIVESPEAKEROBSERVER:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT)
 		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
 		handlerId = requestT.HandlerId
+		internalData.RtpObserverId = requestT0.RtpObserverId
 	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateDirectTransportRequestT)
 		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
 		handlerId = requestT0.TransportId
+		internalData.TransportId = requestT0.TransportId
 	default:
 		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
 	}

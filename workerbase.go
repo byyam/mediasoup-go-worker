@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/rtc"
@@ -36,18 +37,21 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
-
 	// support new message format: handlerId
 	if err := workerchannel.ConvertRequestData(&request); err != nil {
 		w.logger.Error().Err(err).Msg("convert request data failed")
 		response.Err = err
 		return
 	}
+	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
 
 	switch request.Method {
 	case mediasoupdata.MethodWorkerCreateRouter:
 		router := rtc.NewRouter(request.Internal.RouterId)
+		if router == nil {
+			response.Err = mserror.ErrInvalidParam
+			return
+		}
 		w.routerMap.Store(request.Internal.RouterId, router)
 	case mediasoupdata.MethodWorkerClose:
 		w.Stop()
