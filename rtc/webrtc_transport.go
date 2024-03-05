@@ -6,6 +6,8 @@ import (
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
@@ -65,7 +67,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}
 	if t.dtlsTransport, err = newDtlsTransport(dtlsTransportParam{
 		transportId: param.Id,
-		role:        mediasoupdata.DtlsRole_Auto,
+		role:        FBS__WebRtcTransport.DtlsRoleAUTO,
 	}); err != nil {
 		return nil, err
 	}
@@ -82,7 +84,10 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 }
 
 func (t *WebrtcTransport) FillJson() json.RawMessage {
-	webrtcTransportData := &mediasoupdata.WebRtcTransportDump{
+	dataDump := &FBS__Transport.DumpT{}
+	t.ITransport.GetJson(dataDump)
+	webrtcTransportDump := &FBS__WebRtcTransport.DumpResponseT{
+		Base:             dataDump,
 		IceRole:          t.iceServer.GetRole(),
 		IceParameters:    t.iceServer.GetIceParameters(),
 		IceCandidates:    t.iceServer.GetLocalCandidates(),
@@ -90,14 +95,8 @@ func (t *WebrtcTransport) FillJson() json.RawMessage {
 		IceSelectedTuple: t.iceServer.GetSelectedTuple(),
 		DtlsParameters:   t.dtlsTransport.GetDtlsParameters(),
 		DtlsState:        t.dtlsTransport.GetState(),
-		DtlsRemoteCert:   "",
 	}
-	dataDump := &mediasoupdata.TransportDump{
-		WebRtcTransportDump: webrtcTransportData,
-	}
-
-	t.ITransport.GetJson(dataDump)
-	data, _ := json.Marshal(dataDump)
+	data, _ := json.Marshal(webrtcTransportDump)
 
 	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
 	return data

@@ -1,5 +1,9 @@
 package mediasoupdata
 
+import (
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
+)
+
 type TransportListenIp struct {
 	/**
 	 * Listening IPv4 or IPv6.
@@ -69,7 +73,7 @@ type TransportConnectOptions struct {
 
 type TransportConnectData struct {
 	// webrtc transport
-	DtlsLocalRole DtlsRole `json:"dtlsLocalRole,omitempty"`
+	DtlsLocalRole FBS__WebRtcTransport.DtlsRole `json:"dtlsLocalRole,omitempty"`
 	// pipe transport
 	Tuple TransportTuple `json:"tuple,omitempty"`
 }

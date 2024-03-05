@@ -7,6 +7,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -45,7 +46,7 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 }
 
 func (t *DirectTransport) FillJson() json.RawMessage {
-	dataDump := &mediasoupdata.TransportDump{}
+	dataDump := &FBS__Transport.DumpT{}
 
 	t.ITransport.GetJson(dataDump)
 	data, _ := json.Marshal(dataDump)

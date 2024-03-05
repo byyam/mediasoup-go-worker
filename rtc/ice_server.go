@@ -9,6 +9,8 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/iceutil"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
@@ -33,7 +35,7 @@ const (
 
 type iceServer struct {
 	iceLite    bool
-	state      mediasoupdata.IceState
+	state      FBS__WebRtcTransport.IceState
 	localUfrag string
 	localPwd   string
 	logger     zerolog.Logger
@@ -69,7 +71,7 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	pwd, _ := iceutil.GeneratePwd()
 	d := &iceServer{
 		iceLite:          param.iceLite, // todo: support full ICE
-		state:            mediasoupdata.IceState_New,
+		state:            FBS__WebRtcTransport.IceStateNEW,
 		logger:           zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
@@ -249,35 +251,35 @@ func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
 	return nil
 }
 
-func (d *iceServer) GetIceParameters() mediasoupdata.IceParameters {
-	return mediasoupdata.IceParameters{
+func (d *iceServer) GetIceParameters() *FBS__WebRtcTransport.IceParametersT {
+	return &FBS__WebRtcTransport.IceParametersT{
 		UsernameFragment: d.localUfrag,
 		Password:         d.localPwd,
 		IceLite:          d.iceLite,
 	}
 }
 
-func (d *iceServer) GetSelectedTuple() mediasoupdata.TransportTuple {
-	return mediasoupdata.TransportTuple{}
+func (d *iceServer) GetSelectedTuple() *FBS__Transport.TupleT {
+	return &FBS__Transport.TupleT{}
 }
 
-func (d *iceServer) GetState() mediasoupdata.IceState {
+func (d *iceServer) GetState() FBS__WebRtcTransport.IceState {
 	return d.state
 }
 
-func (d *iceServer) GetRole() string {
-	return "controlled"
+func (d *iceServer) GetRole() FBS__WebRtcTransport.IceRole {
+	return FBS__WebRtcTransport.IceRoleCONTROLLED
 }
 
-func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandidate) {
-	candidate := mediasoupdata.IceCandidate{
+func (d *iceServer) GetLocalCandidates() (iceCandidates []*FBS__WebRtcTransport.IceCandidateT) {
+	candidate := &FBS__WebRtcTransport.IceCandidateT{
 		Foundation: "udpcandidate",
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,
-		Protocol:   "udp",
-		Port:       uint32(global.ICEMuxPort),
-		Type:       "host",
-		TcpType:    "",
+		Protocol:   FBS__Transport.ProtocolUDP,
+		Port:       global.ICEMuxPort,
+		Type:       FBS__WebRtcTransport.IceCandidateTypeHOST,
+		TcpType:    nil,
 	}
 	iceCandidates = append(iceCandidates, candidate)
 

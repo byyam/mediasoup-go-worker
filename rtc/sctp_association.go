@@ -3,6 +3,7 @@ package rtc
 import (
 	"github.com/rs/zerolog"
 
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
@@ -20,14 +21,14 @@ func newSctpAssociation(options mediasoupdata.SctpOptions) (*SctpAssociation, er
 	return t, nil
 }
 
-func (t *SctpAssociation) GetSctpAssociationParam() mediasoupdata.SctpParameters {
-	return mediasoupdata.SctpParameters{
+func (t *SctpAssociation) GetSctpAssociationParam() *FBS__SctpParameters.SctpParametersT {
+	return &FBS__SctpParameters.SctpParametersT{
 		Port:               5000,
-		OS:                 t.options.NumSctpStreams.OS,
-		MIS:                t.options.NumSctpStreams.MIS,
+		Os:                 t.options.NumSctpStreams.OS,
+		Mis:                t.options.NumSctpStreams.MIS,
 		MaxMessageSize:     t.options.MaxSctpMessageSize,
 		IsDataChannel:      t.options.IsDataChannel,
-		SctpBufferedAmount: t.options.SctpSendBufferSize,
-		SendBufferSize:     t.options.SctpSendBufferSize,
+		SctpBufferedAmount: uint32(t.options.SctpSendBufferSize),
+		SendBufferSize:     uint32(t.options.SctpSendBufferSize),
 	}
 }

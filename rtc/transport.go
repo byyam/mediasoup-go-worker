@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
@@ -23,7 +24,7 @@ import (
 type ITransport interface {
 	Connected()
 	Close()
-	GetJson(data *mediasoupdata.TransportDump)
+	GetJson(data *FBS__Transport.DumpT)
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
@@ -69,7 +70,7 @@ func (t *Transport) Close() {
 	})
 }
 
-func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
+func (t *Transport) GetJson(data *FBS__Transport.DumpT) {
 	var producerIds []string
 	t.mapProducers.Range(func(key, value interface{}) bool {
 		producerIds = append(producerIds, key.(string))
@@ -82,6 +83,8 @@ func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
 	if t.sctpAssociation != nil {
 		data.SctpParameters = t.sctpAssociation.GetSctpAssociationParam()
 	}
+	data.RecvRtpHeaderExtensions = &FBS__Transport.RecvRtpHeaderExtensionsT{}
+	data.RtpListener = &FBS__Transport.RtpListenerT{}
 }
 
 func (t *Transport) FillJson() json.RawMessage {
