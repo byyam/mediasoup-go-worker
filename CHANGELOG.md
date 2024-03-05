@@ -9,6 +9,8 @@
 * add SCTP protocol.
 * implement data-channel interface.
 
+### 1.0.7
+* Implement SFU server demo.
 
 ### 1.0.6 
 * Support [mediasoup-demo](https://github.com/versatica/mediasoup-demo) client which is using v3 mediasoup basic libs.
