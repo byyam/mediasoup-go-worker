@@ -37,12 +37,6 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	// support new message format: handlerId
-	if err := workerchannel.ConvertRequestData(&request); err != nil {
-		w.logger.Error().Err(err).Msg("convert request data failed")
-		response.Err = err
-		return
-	}
 	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
 
 	switch request.Method {

@@ -201,7 +201,7 @@ func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
 		return err
 	}
 	// handle
-	rspData, _ := c.handleMessage(reqData, internal)
+	rspData, _ := c.handleMessage(reqData, internal, requestT.HandlerId)
 	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Str("data", string(rspData.Data)).Msg("[processFBMessage]rspData")
 
 	// encode
@@ -236,8 +236,10 @@ func (c *Channel) processNativeMessage(messages []string) error {
 		Data:     json.RawMessage(data),
 	}
 
+	_ = ConvertRequestData(reqData.Method, &internal, &handlerId)
+
 	// handle
-	rspData, _ := c.handleMessage(&reqData, &internal)
+	rspData, _ := c.handleMessage(&reqData, &internal, handlerId)
 	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Msg("rspData")
 
 	// encode
@@ -258,8 +260,11 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	_ = internal.Unmarshal(reqData.Internal)
 	c.logger.Info().Int64("id", reqData.Id).Str("method", reqData.Method).Msg("reqData")
 
+	var handlerId string
+	_ = ConvertRequestData(reqData.Method, &internal, &handlerId)
+
 	// handle
-	rspData, _ := c.handleMessage(&reqData, &internal)
+	rspData, _ := c.handleMessage(&reqData, &internal, handlerId)
 
 	// encode
 	if err := c.returnMessage(rspData); err != nil {
@@ -346,16 +351,17 @@ func (c *Channel) setFBResponseBody(rspData *channelData) *FBS__Response.BodyT {
 	}
 }
 
-func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*channelData, error) {
+func (c *Channel) handleMessage(reqData *channelData, internal *InternalData, handlerId string) (*channelData, error) {
 	var ret ResponseData
 	rspData := new(channelData)
 	rspData.Id = reqData.Id
 	rspData.Method = reqData.Method
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		ret = handler(RequestData{
-			Method:   reqData.Method,
-			Internal: *internal,
-			Data:     reqData.Data,
+			HandlerId: handlerId,
+			Method:    reqData.Method,
+			Internal:  *internal,
+			Data:      reqData.Data,
 		})
 	} else {
 		rspData.Error = "OnRequestHandler not register"
@@ -424,45 +430,37 @@ func (c *Channel) Close() {
 }
 
 func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *channelData, internalData *InternalData) error {
-	handlerId := ""
 	var err error
+	// set internalId
 	switch requestT.Method {
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:
 		requestT0 := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
-		handlerId = requestT0.RouterId // routerID in data
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
+		internalData.RouterId = requestT0.RouterId
 	case FBS__Request.MethodROUTER_CREATE_AUDIOLEVELOBSERVER:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateAudioLevelObserverRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
-		handlerId = requestT.HandlerId
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
 		internalData.RtpObserverId = requestT0.RtpObserverId
 	case FBS__Request.MethodROUTER_CREATE_ACTIVESPEAKEROBSERVER:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
-		handlerId = requestT.HandlerId
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
 		internalData.RtpObserverId = requestT0.RtpObserverId
 	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateDirectTransportRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
-		handlerId = requestT0.TransportId
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
 		internalData.TransportId = requestT0.TransportId
 	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
 		requestT0 := requestT.Body.Value.(*FBS__Transport.ProduceDataRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
 		internalData.DataProducerId = requestT0.DataProducerId
 	case FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT:
 		requestT0 := requestT.Body.Value.(*FBS__Router.CreateWebRtcTransportRequestT)
-		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
 		internalData.TransportId = requestT0.TransportId
 	default:
 		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
 	}
-	// set handlerId
-	switch requestT.Method {
-	case FBS__Request.MethodWORKER_CREATE_ROUTER:
-	default:
-		handlerId = requestT.HandlerId
-	}
+
 	method := FBSRequestMethod[requestT.Method]
 	var data json.RawMessage
 	if requestT.Body != nil {
@@ -477,10 +475,5 @@ func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *cha
 	reqData.Method = method
 	reqData.Data = data
 
-	// set internal
-	_, err = c.setInternalId(method, handlerId, internalData)
-	if err != nil {
-		return err
-	}
 	return nil
 }

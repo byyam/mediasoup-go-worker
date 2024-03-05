@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-func ConvertRequestData(request *RequestData) error {
-	methods := strings.Split(request.Method, ".")
+func ConvertRequestData(method string, internal *InternalData, handlerId *string) error {
+	methods := strings.Split(method, ".")
 	if len(methods) != 2 {
 		return errors.New("method invalid")
 	}
@@ -14,19 +14,19 @@ func ConvertRequestData(request *RequestData) error {
 	case "worker":
 		return nil
 	case "router":
-		request.HandlerId = request.Internal.RouterId
+		*handlerId = internal.RouterId
 	case "transport":
-		request.HandlerId = request.Internal.TransportId
+		*handlerId = internal.TransportId
 	case "producer":
-		request.HandlerId = request.Internal.ProducerId
+		*handlerId = internal.ProducerId
 	case "consumer":
-		request.HandlerId = request.Internal.ConsumerId
+		*handlerId = internal.ConsumerId
 	case "dataProducer":
-		request.HandlerId = request.Internal.DataProducerId
+		*handlerId = internal.DataProducerId
 	case "dataConsumer":
-		request.HandlerId = request.Internal.DataConsumerId
+		*handlerId = internal.DataConsumerId
 	case "rtpObserver":
-		request.HandlerId = request.Internal.RtpObserverId
+		*handlerId = internal.RtpObserverId
 	default:
 		return errors.New("unknown method prefix")
 	}
