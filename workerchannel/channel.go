@@ -11,6 +11,7 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
+	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
 	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
 	FBS__Message "github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
@@ -18,6 +19,7 @@ import (
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -313,13 +315,31 @@ func (c *Channel) returnFBMessage(rspData *channelData) error {
 func (c *Channel) setFBResponseBody(rspData *channelData) *FBS__Response.BodyT {
 	switch rspData.Method {
 	case mediasoupdata.MethodRouterCreateDirectTransport:
-		transportDump := &FBS__Transport.DumpT{}
-		_ = mediasoupdata.Clone(&rspData.Data, transportDump)
+		dataDump := &FBS__Transport.DumpT{}
+		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
 		rspBody := &FBS__Response.BodyT{
 			Type:  FBS__Response.BodyDirectTransport_DumpResponse,
-			Value: &FBS__DirectTransport.DumpResponseT{Base: transportDump},
+			Value: &FBS__DirectTransport.DumpResponseT{Base: dataDump},
 		}
-		c.logger.Info().Msgf("setFBResponseBody:%+v", transportDump)
+		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
+		return rspBody
+	case mediasoupdata.MethodTransportProduceData:
+		dataDump := &FBS__DataProducer.DumpResponseT{}
+		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataProducer_DumpResponse,
+			Value: dataDump,
+		}
+		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
+		return rspBody
+	case mediasoupdata.MethodRouterCreateWebRtcTransport:
+		dataDump := &FBS__WebRtcTransport.DumpResponseT{}
+		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWebRtcTransport_DumpResponse,
+			Value: dataDump,
+		}
+		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
 		return rspBody
 	default:
 		return nil
@@ -405,6 +425,7 @@ func (c *Channel) Close() {
 
 func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *channelData, internalData *InternalData) error {
 	handlerId := ""
+	var err error
 	switch requestT.Method {
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:
 		requestT0 := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
@@ -425,6 +446,14 @@ func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *cha
 		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
 		handlerId = requestT0.TransportId
 		internalData.TransportId = requestT0.TransportId
+	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
+		requestT0 := requestT.Body.Value.(*FBS__Transport.ProduceDataRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		internalData.DataProducerId = requestT0.DataProducerId
+	case FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT:
+		requestT0 := requestT.Body.Value.(*FBS__Router.CreateWebRtcTransportRequestT)
+		c.logger.Info().Msgf("[processFBMessage]request:%+v", requestT0)
+		internalData.TransportId = requestT0.TransportId
 	default:
 		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
 	}
@@ -435,7 +464,13 @@ func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *cha
 		handlerId = requestT.HandlerId
 	}
 	method := FBSRequestMethod[requestT.Method]
-	data, err := json.Marshal(requestT.Body.Value)
+	var data json.RawMessage
+	if requestT.Body != nil {
+		data, err = json.Marshal(requestT.Body.Value)
+	}
+	if err != nil {
+		return err
+	}
 
 	// set req
 	reqData.Id = int64(requestT.Id)
