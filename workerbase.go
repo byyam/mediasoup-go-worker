@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -41,7 +42,8 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 
 	switch request.Method {
 	case mediasoupdata.MethodWorkerCreateRouter:
-		router := rtc.NewRouter(request.Internal.RouterId)
+		requestT := request.Request.Body.Value.(*FBS__Worker.CreateRouterRequestT)
+		router := rtc.NewRouter(requestT.RouterId)
 		if router == nil {
 			response.Err = mserror.ErrInvalidParam
 			return

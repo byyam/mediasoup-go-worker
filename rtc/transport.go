@@ -11,6 +11,8 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
@@ -222,14 +224,23 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.Err = err
 
 	case mediasoupdata.MethodTransportProduceData:
+		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceDataRequestT)
 		var options mediasoupdata.DataProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
-		dataProducer, err := t.DataProduce(request.Internal.DataProducerId, options)
+		dataProducer, err := t.DataProduce(requestT.DataProducerId, options)
 		if err != nil {
 			response.Err = err
 			return
 		}
 		response.Data = dataProducer.FillJson()
+		// set rsp
+		dataDump := &FBS__DataProducer.DumpResponseT{}
+		_ = mediasoupdata.Clone(&response.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataProducer_DumpResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 
 	case mediasoupdata.MethodTransportConsumeData:
 

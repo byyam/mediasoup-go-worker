@@ -11,16 +11,10 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
-	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
-	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
 	FBS__Message "github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
 	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
-	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
-	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
-	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
-	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -194,19 +188,15 @@ func (c *Channel) setInternalId(method, handlerId string, internal *InternalData
 }
 
 func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
-	reqData := &channelData{}
-	internal := &InternalData{}
-	if err := c.setFBRequestData(requestT, reqData, internal); err != nil {
-		c.logger.Error().Err(err).Msg("[processFBMessage]set request data failed")
+	// process
+	responseData, err := c.handleMessageFBS(requestT)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]handleMessageFBS failed")
 		return err
 	}
-	// handle
-	rspData, _ := c.handleMessage(reqData, internal, requestT.HandlerId)
-	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Str("data", string(rspData.Data)).Msg("[processFBMessage]rspData")
-
 	// encode
-	if err := c.returnFBMessage(rspData); err != nil {
-		c.logger.Error().Err(err).Msg("[processFBMessage]return message failed")
+	if err := c.returnFBMessage(responseData); err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]returnFBMessage failed")
 		return err
 	}
 	return nil
@@ -287,20 +277,22 @@ func (c *Channel) returnMessage(rspData *channelData) error {
 	return nil
 }
 
-func (c *Channel) returnFBMessage(rspData *channelData) error {
+func (c *Channel) returnFBMessage(responseData *ResponseData) error {
 	accepted := true
-	if rspData.Error != "" {
+	var errMsg string
+	if responseData.Err != nil {
 		accepted = false
+		errMsg = responseData.Err.Error()
 	}
 	// set response
 	b := flatbuffers.NewBuilder(0)
 	r := FBS__Message.MessageT{Data: &FBS__Message.BodyT{
 		Type: FBS__Message.BodyResponse,
 		Value: &FBS__Response.ResponseT{
-			Id:       uint32(rspData.Id),
+			Id:       responseData.Id,
 			Accepted: accepted,
-			Error:    rspData.Error,
-			Body:     c.setFBResponseBody(rspData),
+			Error:    errMsg,
+			Body:     responseData.RspBody,
 		},
 	}}
 	b.Finish(r.Pack(b))
@@ -312,43 +304,41 @@ func (c *Channel) returnFBMessage(rspData *channelData) error {
 	if err := c.netParser.WriteBuffer(sendBuf); err != nil {
 		return err
 	}
-	c.logger.Info().Int("len", len(sendBuf)).Str("error", rspData.Error).Int64("id", rspData.Id).
-		Str("method", rspData.Method).Msg("[returnFBMessage]response")
+	c.logger.Info().Int("len", len(sendBuf)).Err(responseData.Err).Uint32("id", responseData.Id).
+		Str("method", FBS__Request.EnumNamesMethod[responseData.MethodType]).Msg("[returnFBMessage]response")
 	return nil
 }
 
-func (c *Channel) setFBResponseBody(rspData *channelData) *FBS__Response.BodyT {
-	switch rspData.Method {
-	case mediasoupdata.MethodRouterCreateDirectTransport:
-		dataDump := &FBS__Transport.DumpT{}
-		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
-		rspBody := &FBS__Response.BodyT{
-			Type:  FBS__Response.BodyDirectTransport_DumpResponse,
-			Value: &FBS__DirectTransport.DumpResponseT{Base: dataDump},
-		}
-		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
-		return rspBody
-	case mediasoupdata.MethodTransportProduceData:
-		dataDump := &FBS__DataProducer.DumpResponseT{}
-		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
-		rspBody := &FBS__Response.BodyT{
-			Type:  FBS__Response.BodyDataProducer_DumpResponse,
-			Value: dataDump,
-		}
-		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
-		return rspBody
-	case mediasoupdata.MethodRouterCreateWebRtcTransport:
-		dataDump := &FBS__WebRtcTransport.DumpResponseT{}
-		_ = mediasoupdata.Clone(&rspData.Data, dataDump)
-		rspBody := &FBS__Response.BodyT{
-			Type:  FBS__Response.BodyWebRtcTransport_DumpResponse,
-			Value: dataDump,
-		}
-		c.logger.Info().Str("method", rspData.Method).Msgf("setFBResponseBody:%+v", dataDump)
-		return rspBody
-	default:
-		return nil
+func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseData, error) {
+	// print data json and now handlers get options from data
+	var err error
+	var data json.RawMessage
+	if requestT.Body != nil {
+		data, err = json.Marshal(requestT.Body.Value)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData ResponseData
+	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
+		responseData = handler(RequestData{
+			HandlerId: requestT.HandlerId,
+			Method:    FBSRequestMethod[requestT.Method],
+			Request:   requestT,
+			Data:      data,
+		})
+	} else {
+		responseData.Err = errors.New("[handleMessageFBS]OnRequestHandler not register")
+	}
+	// set from request
+	responseData.Id = requestT.Id
+	responseData.MethodType = requestT.Method
+
+	c.logger.Info().Uint32("id", responseData.Id).Str("method", FBS__Request.EnumNamesMethod[responseData.MethodType]).
+		Str("data", string(responseData.Data)).Msg("[handleMessageFBS]responseData")
+
+	return &responseData, nil
 }
 
 func (c *Channel) handleMessage(reqData *channelData, internal *InternalData, handlerId string) (*channelData, error) {
@@ -427,53 +417,4 @@ func (c *Channel) eventFB(targetId string, event FBS__Notification.Event) {
 
 func (c *Channel) Close() {
 	c.logger.Info().Msg("closed")
-}
-
-func (c *Channel) setFBRequestData(requestT *FBS__Request.RequestT, reqData *channelData, internalData *InternalData) error {
-	var err error
-	// set internalId
-	switch requestT.Method {
-	case FBS__Request.MethodWORKER_CREATE_ROUTER:
-		requestT0 := requestT.Body.Value.(*FBS__Worker.CreateRouterRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.RouterId = requestT0.RouterId
-	case FBS__Request.MethodROUTER_CREATE_AUDIOLEVELOBSERVER:
-		requestT0 := requestT.Body.Value.(*FBS__Router.CreateAudioLevelObserverRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.RtpObserverId = requestT0.RtpObserverId
-	case FBS__Request.MethodROUTER_CREATE_ACTIVESPEAKEROBSERVER:
-		requestT0 := requestT.Body.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.RtpObserverId = requestT0.RtpObserverId
-	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:
-		requestT0 := requestT.Body.Value.(*FBS__Router.CreateDirectTransportRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.TransportId = requestT0.TransportId
-	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
-		requestT0 := requestT.Body.Value.(*FBS__Transport.ProduceDataRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.DataProducerId = requestT0.DataProducerId
-	case FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT:
-		requestT0 := requestT.Body.Value.(*FBS__Router.CreateWebRtcTransportRequestT)
-		c.logger.Info().Str("method", FBS__Request.EnumNamesMethod[requestT.Method]).Msgf("[processFBMessage]request:%+v", requestT0)
-		internalData.TransportId = requestT0.TransportId
-	default:
-		c.logger.Error().Msgf("[processFBMessage]request method:%s[%d] not supported", FBS__Request.EnumNamesMethod[requestT.Method], requestT.Method)
-	}
-
-	method := FBSRequestMethod[requestT.Method]
-	var data json.RawMessage
-	if requestT.Body != nil {
-		data, err = json.Marshal(requestT.Body.Value)
-	}
-	if err != nil {
-		return err
-	}
-
-	// set req
-	reqData.Id = int64(requestT.Id)
-	reqData.Method = method
-	reqData.Data = data
-
-	return nil
 }
