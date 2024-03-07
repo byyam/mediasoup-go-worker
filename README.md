@@ -166,6 +166,20 @@ $ make
 
 Replace the worker Binary in [mediasoup](https://github.com/versatica/mediasoup) project.
 
+*Logging Level Setting*
+
+| level   | value |
+|:--------|:------|
+| Info    | i     |
+| Debug   | d     |
+| Error   | e     |
+| Trace   | t     |
+| Warn    | w     |
+| Disable | off   |
+
+```shell
+export WORKER_LOG="d"
+```
 
 ### References
 
