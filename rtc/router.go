@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 
 	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
@@ -47,21 +48,16 @@ func NewRouter(id string) *Router {
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
-		r.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
+		r.logger.Info().Str("request", request.String()).Err(response.Err).Msg("handle channel request done")
 	}()
 
-	switch request.Method {
-	case mediasoupdata.MethodRouterCreateWebRtcTransport:
+	switch request.MethodType {
+	case FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT:
 		requestT := request.Request.Body.Value.(*FBS__Router.CreateWebRtcTransportRequestT)
-		var options mediasoupdata.WebRtcTransportOptions
-		_ = json.Unmarshal(request.Data, &options)
 		webrtcTransport, err := newWebrtcTransport(webrtcTransportParam{
-			options: options,
+			optionsFBS: requestT.Options,
 			transportParam: transportParam{
-				Options: mediasoupdata.TransportOptions{
-					SctpOptions:                     options.SctpOptions,
-					InitialAvailableOutgoingBitrate: options.InitialAvailableOutgoingBitrate,
-				},
+				OptionsFBS:                             requestT.Options.Base,
 				Id:                                     requestT.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,
@@ -88,9 +84,9 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		}
 		response.RspBody = rspBody
 
-	case mediasoupdata.MethodRouterCreatePlainTransport:
+	case FBS__Request.MethodROUTER_CREATE_PLAINTRANSPORT:
 
-	case mediasoupdata.MethodRouterCreatePipeTransport:
+	case FBS__Request.MethodROUTER_CREATE_PIPETRANSPORT:
 		var options mediasoupdata.PipeTransportOptions
 		_ = json.Unmarshal(request.Data, &options)
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
@@ -117,16 +113,12 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
 		response.Data = pipeTransport.FillJson()
 
-	case mediasoupdata.MethodRouterCreateDirectTransport:
+	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:
 		requestT := request.Request.Body.Value.(*FBS__Router.CreateDirectTransportRequestT)
-		var options mediasoupdata.DirectTransportOptions
-		_ = json.Unmarshal(request.Data, &options)
 		directTransport, err := newDirectTransport(directTransportParam{
-			options: options,
+			optionsFBS: requestT.Options,
 			transportParam: transportParam{
-				Options: mediasoupdata.TransportOptions{
-					DirectTransportOptions: options,
-				},
+				OptionsFBS:                             requestT.Options.Base,
 				Id:                                     requestT.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,
@@ -138,7 +130,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			},
 		})
 		if err != nil {
-			r.logger.Error().Err(err).Msgf("createDirectTransport options:%+v", options)
+			r.logger.Error().Err(err).Msgf("createDirectTransport options:%+v", requestT.Options)
 			response.Err = mserror.ErrCreateDirectTransport
 			return
 		}
@@ -153,7 +145,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		}
 		response.RspBody = rspBody
 
-	case mediasoupdata.MethodRouterCreateActiveSpeakerObserver:
+	case FBS__Request.MethodROUTER_CREATE_ACTIVESPEAKEROBSERVER:
 		requestT := request.Request.Body.Value.(*FBS__Router.CreateActiveSpeakerObserverRequestT)
 		var options mediasoupdata.ActiveSpeakerObserverOptions
 		_ = json.Unmarshal(request.Data, &options)
@@ -168,7 +160,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		}
 		r.mapRtpObservers.Store(requestT.RtpObserverId, audioLevelObserver)
 
-	case mediasoupdata.MethodRouterCreateAudioLevelObserver:
+	case FBS__Request.MethodROUTER_CREATE_AUDIOLEVELOBSERVER:
 		requestT := request.Request.Body.Value.(*FBS__Router.CreateAudioLevelObserverRequestT)
 		var options mediasoupdata.AudioLevelObserverOptions
 		_ = json.Unmarshal(request.Data, &options)
@@ -183,11 +175,19 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 		}
 		r.mapRtpObservers.Store(requestT.RtpObserverId, audioLevelObserver)
 
-	case mediasoupdata.MethodRouterDump:
+	case FBS__Request.MethodROUTER_DUMP:
 		response.Data = r.FillJson()
 
-	case mediasoupdata.MethodRouterClose:
-		r.Close()
+	case FBS__Request.MethodROUTER_CLOSE_TRANSPORT:
+		requestT := request.Request.Body.Value.(*FBS__Router.CloseTransportRequestT)
+		v, ok := r.mapTransports.Load(requestT.TransportId)
+		if !ok {
+			response.Err = mserror.ErrTransportNotFound
+			return
+		}
+		transport := v.(*Transport)
+		transport.NotifyCloseFunc() // call son close, tiger this close
+
 	default:
 		//t, ok := r.mapTransports.Load(request.Internal.TransportId)
 		//if !ok {

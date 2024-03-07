@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
@@ -177,8 +178,8 @@ func (t *PipeTransport) hasSrtp() bool {
 func (t *PipeTransport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	t.logger.Debug().Str("request", request.String()).Msg("handle")
 
-	switch request.Method {
-	case mediasoupdata2.MethodTransportConnect:
+	switch request.MethodType {
+	case FBS__Request.MethodPIPETRANSPORT_CONNECT:
 		var options mediasoupdata2.TransportConnectOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.connect(options)

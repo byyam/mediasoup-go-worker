@@ -9,6 +9,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -229,12 +230,12 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 		c.logger.Debug().Msgf("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
 	}()
 
-	switch request.Method {
+	switch request.MethodType {
 
-	case mediasoupdata.MethodConsumerDump:
+	case FBS__Request.MethodCONSUMER_DUMP:
 		response.Data = c.FillJson()
 
-	case mediasoupdata.MethodConsumerGetStats:
+	case FBS__Request.MethodCONSUMER_GET_STATS:
 		response.Data = c.FillJsonStats()
 	}
 }

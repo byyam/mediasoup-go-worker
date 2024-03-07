@@ -136,17 +136,17 @@ func (d *dtlsTransport) prepareConfig(timeout time.Duration) {
 	}
 }
 
-func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*mediasoupdata.TransportConnectData, error) {
+func (d *dtlsTransport) SetRole(remoteParam *FBS__WebRtcTransport.DtlsParametersT) (*FBS__WebRtcTransport.ConnectResponseT, error) {
 
 	switch remoteParam.Role {
-	case mediasoupdata.DtlsRole_Client, mediasoupdata.DtlsRole_Auto:
+	case FBS__WebRtcTransport.DtlsRoleCLIENT, FBS__WebRtcTransport.DtlsRoleAUTO:
 		d.role = FBS__WebRtcTransport.DtlsRoleSERVER
-	case mediasoupdata.DtlsRole_Server:
+	case FBS__WebRtcTransport.DtlsRoleSERVER:
 		d.role = FBS__WebRtcTransport.DtlsRoleCLIENT
 	default:
 		return nil, mserror.ErrInvalidParam
 	}
-	return &mediasoupdata.TransportConnectData{DtlsLocalRole: d.role}, nil
+	return &FBS__WebRtcTransport.ConnectResponseT{DtlsLocalRole: d.role}, nil
 }
 
 func (d *dtlsTransport) Connect(iceConn net.Conn) error {

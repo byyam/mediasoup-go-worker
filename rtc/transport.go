@@ -12,8 +12,10 @@ import (
 	"github.com/rs/zerolog"
 
 	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
@@ -34,9 +36,9 @@ type ITransport interface {
 }
 
 type Transport struct {
-	id      string
-	options mediasoupdata.TransportOptions
-	logger  zerolog.Logger
+	id         string
+	optionsFBS *FBS__Transport.OptionsT
+	logger     zerolog.Logger
 
 	mapProducers              sync.Map //map[string]*Producer
 	mapConsumers              sync.Map
@@ -59,7 +61,7 @@ type Transport struct {
 	sendRtpPacketFunc          func(packet *rtpparser.Packet)
 	sendRtcpPacketFunc         func(packet rtcp.Packet)
 	sendRtcpCompoundPacketFunc func(packets []rtcp.Packet)
-	notifyCloseFunc            func()
+	NotifyCloseFunc            func()
 
 	// close
 	closeOnce sync.Once
@@ -80,7 +82,7 @@ func (t *Transport) GetJson(data *FBS__Transport.DumpT) {
 	})
 
 	data.Id = t.id
-	data.Direct = t.options.Direct
+	data.Direct = t.optionsFBS.Direct
 	data.ProducerIds = producerIds
 	if t.sctpAssociation != nil {
 		data.SctpParameters = t.sctpAssociation.GetSctpAssociationParam()
@@ -132,6 +134,7 @@ func (t *Transport) FillJsonStats() json.RawMessage {
 type transportParam struct {
 	Id                                     string
 	Options                                mediasoupdata.TransportOptions
+	OptionsFBS                             *FBS__Transport.OptionsT
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)
 	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
@@ -160,13 +163,12 @@ func (t transportParam) valid() bool {
 }
 
 func newTransport(param transportParam) (ITransport, error) {
-	var err error
 	if !param.valid() {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
 		id:          param.Id,
-		options:     param.Options,
+		optionsFBS:  param.OptionsFBS,
 		logger:      zerowrapper.NewScope("transport", param.Id),
 		rtpListener: newRtpListener(),
 	}
@@ -180,13 +182,14 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
-	transport.notifyCloseFunc = param.NotifyCloseFunc
+	transport.NotifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
 
-	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.options))
+	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.optionsFBS))
 
-	if transport.options.EnableSctp {
-		transport.sctpAssociation, err = newSctpAssociation(transport.options.SctpOptions)
+	var err error
+	if transport.optionsFBS.EnableSctp {
+		transport.sctpAssociation, err = newSctpAssociation(transport.optionsFBS)
 		if err != nil {
 			transport.logger.Err(err).Msg("newSctpAssociation failed")
 			return nil, err
@@ -198,32 +201,29 @@ func newTransport(param transportParam) (ITransport, error) {
 
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
 	defer func() {
-		t.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
+		t.logger.Info().Str("request", request.String()).Msg("handle channel request done")
 	}()
 
-	switch request.Method {
+	switch request.MethodType {
 
-	case mediasoupdata.MethodTransportDump:
+	case FBS__Request.MethodTRANSPORT_DUMP:
 		response.Data = t.FillJson()
 
-	case mediasoupdata.MethodTransportClose:
-		t.notifyCloseFunc() // call son close, tiger this close
-
-	case mediasoupdata.MethodTransportProduce:
+	case FBS__Request.MethodTRANSPORT_PRODUCE:
 		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Produce(request.Internal.ProducerId, options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata.MethodTransportConsume:
+	case FBS__Request.MethodTRANSPORT_CONSUME:
 		var options mediasoupdata.ConsumerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Consume(request.Internal.ProducerId, request.Internal.ConsumerId, options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata.MethodTransportProduceData:
+	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
 		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceDataRequestT)
 		var options mediasoupdata.DataProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
@@ -242,20 +242,29 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		}
 		response.RspBody = rspBody
 
-	case mediasoupdata.MethodTransportConsumeData:
+	case FBS__Request.MethodTRANSPORT_CONSUME_DATA:
 
-	case mediasoupdata.MethodTransportSetMaxIncomingBitrate:
+	case FBS__Request.MethodTRANSPORT_SET_MAX_INCOMING_BITRATE:
 
-	case mediasoupdata.MethodTransportSetMaxOutgoingBitrate:
+	case FBS__Request.MethodTRANSPORT_SET_MAX_OUTGOING_BITRATE:
 
-	case mediasoupdata.MethodTransportEnableTraceEvent:
+	case FBS__Request.MethodTRANSPORT_ENABLE_TRACE_EVENT:
 
-	case mediasoupdata.MethodTransportGetStats:
+	case FBS__Request.MethodTRANSPORT_GET_STATS:
+		// todo: why use webrtc stats
 		response.Data = t.FillJsonStats()
+		// set rsp
+		dataDump := &FBS__Transport.StatsT{}
+		_ = mediasoupdata.Clone(&response.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWebRtcTransport_GetStatsResponse,
+			Value: &FBS__WebRtcTransport.GetStatsResponseT{Base: dataDump},
+		}
+		response.RspBody = rspBody
 
 	// producer
-	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
-		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
+	case FBS__Request.MethodPRODUCER_DUMP, FBS__Request.MethodPRODUCER_GET_STATS, FBS__Request.MethodPRODUCER_PAUSE,
+		FBS__Request.MethodPRODUCER_RESUME, FBS__Request.MethodPRODUCER_ENABLE_TRACE_EVENT:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
 			response.Err = mserror.ErrProducerNotFound
@@ -264,7 +273,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		producer := value.(*Producer)
 		producer.HandleRequest(request, response)
 
-	case mediasoupdata.MethodProducerClose:
+	case FBS__Request.MethodTRANSPORT_CLOSE_PRODUCER:
 		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
 		if !ok {
 			response.Err = mserror.ErrProducerNotFound
@@ -276,9 +285,9 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		t.onTransportProducerClosedHandler(producer.id)
 
 	// consumer
-	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodConsumerGetStats, mediasoupdata.MethodConsumerPause,
-		mediasoupdata.MethodConsumerResume, mediasoupdata.MethodConsumerSetPreferredLayers, mediasoupdata.MethodConsumerSetPriority,
-		mediasoupdata.MethodConsumerRequestKeyFrame, mediasoupdata.MethodConsumerEnableTraceEvent:
+	case FBS__Request.MethodCONSUMER_DUMP, FBS__Request.MethodCONSUMER_GET_STATS, FBS__Request.MethodCONSUMER_PAUSE,
+		FBS__Request.MethodCONSUMER_RESUME, FBS__Request.MethodCONSUMER_SET_PREFERRED_LAYERS, FBS__Request.MethodCONSUMER_SET_PRIORITY,
+		FBS__Request.MethodCONSUMER_REQUEST_KEY_FRAME, FBS__Request.MethodCONSUMER_ENABLE_TRACE_EVENT:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
 		if !ok {
 			response.Err = mserror.ErrConsumerNotFound
@@ -287,7 +296,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		consumer := value.(IConsumer)
 		consumer.HandleRequest(request, response)
 
-	case mediasoupdata.MethodConsumerClose:
+	case FBS__Request.MethodTRANSPORT_CLOSE_CONSUMER:
 		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
 		if !ok {
 			response.Err = mserror.ErrConsumerNotFound
@@ -414,7 +423,7 @@ func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOpt
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
-	dataProducer, err := newDataProducer(id, t.options.MaxMessageSize, options)
+	dataProducer, err := newDataProducer(id, *t.optionsFBS.MaxMessageSize, options)
 	if err != nil {
 		t.logger.Err(err).Msg("data produce failed")
 		return nil, err

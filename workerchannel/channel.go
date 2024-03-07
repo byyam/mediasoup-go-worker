@@ -323,10 +323,11 @@ func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseDa
 	var responseData ResponseData
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		responseData = handler(RequestData{
-			HandlerId: requestT.HandlerId,
-			Method:    FBSRequestMethod[requestT.Method],
-			Request:   requestT,
-			Data:      data,
+			MethodType: requestT.Method,
+			HandlerId:  requestT.HandlerId,
+			Method:     FBSRequestMethod[requestT.Method],
+			Request:    requestT,
+			Data:       data,
 		})
 	} else {
 		responseData.Err = errors.New("[handleMessageFBS]OnRequestHandler not register")
@@ -335,8 +336,7 @@ func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseDa
 	responseData.Id = requestT.Id
 	responseData.MethodType = requestT.Method
 
-	c.logger.Info().Uint32("id", responseData.Id).Str("method", FBS__Request.EnumNamesMethod[responseData.MethodType]).
-		Str("data", string(responseData.Data)).Msg("[handleMessageFBS]responseData")
+	c.logger.Info().Str("response", responseData.String()).Msg("[handleMessageFBS]responseData")
 
 	return &responseData, nil
 }
