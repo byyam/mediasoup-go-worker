@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -108,16 +109,32 @@ func (d *dtlsTransport) selfSignCerts() error {
 	d.logger.Debug().Msgf("x509 length:%d", len(x509cert.Raw))
 	// set fingerprint
 	for i, algo := range d.fingerprintAlgorithms {
-		name, err := fingerprint.StringFromHash(algo)
-		if err != nil {
-			return err
-		}
+		// name not match ms algoType.
+		//name, err := fingerprint.StringFromHash(algo)
+		//if err != nil {
+		//	return err
+		//}
 		value, err := fingerprint.Fingerprint(x509cert, algo)
 		if err != nil {
 			return err
 		}
+		var algoType FBS__WebRtcTransport.FingerprintAlgorithm
+		switch algo {
+		case crypto.SHA1:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA1
+		case crypto.SHA224:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA224
+		case crypto.SHA256:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA256
+		case crypto.SHA384:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA384
+		case crypto.SHA512:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA512
+		default:
+			return errors.New("unhandled default case")
+		}
 		d.fingerPrints[i] = &FBS__WebRtcTransport.FingerprintT{
-			Algorithm: FBS__WebRtcTransport.EnumValuesFingerprintAlgorithm[name],
+			Algorithm: algoType,
 			Value:     value,
 		}
 	}

@@ -146,7 +146,7 @@ func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 		if err != nil {
 			return err
 		}
-		// d.logger.Debug("read mux n=%d, addr=%s, err=%v", n, srcAddr.String(), err)
+		d.logger.Debug().Msgf("read mux n=%d, addr=%s, err=%v", n, srcAddr.String(), err)
 		if err := d.handleInboundMsg(buf[:n], n, srcAddr); err != nil {
 			return err
 		}

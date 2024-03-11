@@ -68,7 +68,7 @@ func (c *Channel) runReadLoop() {
 			c.logger.Error().Err(err).Msg("[runReadLoop]Channel read buffer error")
 			break
 		}
-		c.logger.Debug().Str("payload", string(payload[:n])).Send()
+		c.logger.Debug().Bytes("payload", payload[:n]).Send()
 		switch c.bufferFormat {
 		case NativeJsonFormat:
 			c.processPayloadJsonFormat(payload[:n])
@@ -89,9 +89,9 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 			c.logger.Error().Err(err).Msg("[processPayloadJsonFormat] processJsonMessage failed")
 		}
 	case 'X':
-		c.logger.Debug().Str("payload", string(nsPayload[1:])).Send()
+		c.logger.Debug().Bytes("payload", nsPayload[1:]).Send()
 	default:
-		c.logger.Error().Str("payload", string(nsPayload)).Msg("[processPayloadJsonFormat]unexpected data")
+		c.logger.Error().Bytes("payload", nsPayload).Msg("[processPayloadJsonFormat]unexpected data")
 	}
 }
 

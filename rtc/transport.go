@@ -11,6 +11,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__DataConsumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataConsumer"
 	FBS__DataProducer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataProducer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
@@ -210,9 +211,10 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.Data = t.FillJson()
 
 	case FBS__Request.MethodTRANSPORT_PRODUCE:
+		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceRequestT)
 		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Produce(request.Internal.ProducerId, options)
+		data, err := t.Produce(requestT.ProducerId, requestT)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
@@ -225,9 +227,7 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 
 	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
 		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceDataRequestT)
-		var options mediasoupdata.DataProducerOptions
-		_ = json.Unmarshal(request.Data, &options)
-		dataProducer, err := t.DataProduce(requestT.DataProducerId, options)
+		dataProducer, err := t.DataProduce(requestT)
 		if err != nil {
 			response.Err = err
 			return
@@ -243,6 +243,15 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.RspBody = rspBody
 
 	case FBS__Request.MethodTRANSPORT_CONSUME_DATA:
+		// todo
+		// set rsp
+		dataDump := &FBS__DataConsumer.DumpResponseT{}
+		_ = mediasoupdata.Clone(&response.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataConsumer_DumpResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 
 	case FBS__Request.MethodTRANSPORT_SET_MAX_INCOMING_BITRATE:
 
@@ -379,7 +388,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	}, nil
 }
 
-func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
+func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) (*mediasoupdata.ProducerData, error) {
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -388,7 +397,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	}
 	producer, err := newProducer(producerParam{
 		id:                                    id,
-		options:                               options,
+		optionsFBS:                            request,
 		OnProducerRtpPacketReceived:           t.OnProducerRtpPacketReceived,
 		OnProducerSendRtcpPacket:              t.OnProducerSendRtcpPacket,
 		OnProducerNeedWorstRemoteFractionLost: t.onTransportNeedWorstRemoteFractionLostHandler,
@@ -411,25 +420,31 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	// add them to the Transport.
 	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
 	// header extension ids of the Producer (and not their mapped values).
-	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
+	//t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
 	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
 
 	// todo
 
-	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
+	return &mediasoupdata.ProducerData{
+		//Type: producer.Type,
+	}, nil
 }
 
-func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOptions) (*DataProducer, error) {
-	if id == "" {
+func (t *Transport) DataProduce(request *FBS__Transport.ProduceDataRequestT) (*DataProducer, error) {
+	if request.DataProducerId == "" {
 		return nil, mserror.ErrInvalidParam
 	}
-	dataProducer, err := newDataProducer(id, *t.optionsFBS.MaxMessageSize, options)
+	maxMessageSize := uint32(0)
+	if t.sctpAssociation != nil {
+		maxMessageSize = t.sctpAssociation.GetSctpAssociationParam().MaxMessageSize
+	}
+	dataProducer, err := newDataProducer(request.DataProducerId, maxMessageSize, request)
 	if err != nil {
 		t.logger.Err(err).Msg("data produce failed")
 		return nil, err
 	}
 	// todo: store in map
-	t.logger.Debug().Msgf("DataProducer created [producerId:%s],type:%s", id, dataProducer.options.Type)
+	t.logger.Debug().Msgf("DataProducer created [producerId:%s],type:%s,optionsFBS:%+v", request.DataProducerId, request.Type, t.optionsFBS)
 	return dataProducer, nil
 }
 

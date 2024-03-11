@@ -72,7 +72,7 @@ func initICEMuxPort() {
 			}
 		}
 	}
-	logger.Info().Msgf("banding mux ICE UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, ICEMuxPort)
+	logger.Info().Msgf("binding mux ICE UDP addr:[%s:%d] success", conf.Settings.RtcListenIp, ICEMuxPort)
 }
 
 func bindingICEMux(addr string) (err error) {
