@@ -75,10 +75,10 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           encoding.Ssrc,
+		Ssrc:           *encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
-		ClockRate:      mediaCodec.ClockRate,
+		ClockRate:      int(mediaCodec.ClockRate),
 		Rid:            "",
 		Cname:          rtpParameters.Rtcp.Cname,
 		RtxSsrc:        0,

@@ -1,6 +1,7 @@
 package mediasoupdata
 
 import (
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
 
@@ -11,7 +12,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			MimeType:  "audio/opus",
 			ClockRate: 48000,
 			Channels:  2,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -25,7 +26,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 				NumStreams:     2,
 				CoupledStreams: 2,
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -39,7 +40,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 				NumStreams:     4,
 				CoupledStreams: 2,
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -53,7 +54,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 				NumStreams:     5,
 				CoupledStreams: 3,
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -62,7 +63,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			MimeType:             "audio/PCMU",
 			PreferredPayloadType: 0,
 			ClockRate:            8000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -71,7 +72,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			MimeType:             "audio/PCMA",
 			PreferredPayloadType: 8,
 			ClockRate:            8000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -79,7 +80,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/ISAC",
 			ClockRate: 32000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -87,7 +88,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/ISAC",
 			ClockRate: 16000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -96,7 +97,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			MimeType:             "audio/G722",
 			PreferredPayloadType: 9,
 			ClockRate:            8000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -104,7 +105,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/iLBC",
 			ClockRate: 8000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -112,7 +113,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/SILK",
 			ClockRate: 24000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -120,7 +121,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/SILK",
 			ClockRate: 16000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -128,7 +129,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/SILK",
 			ClockRate: 12000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -136,7 +137,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "audio",
 			MimeType:  "audio/SILK",
 			ClockRate: 8000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "transport-cc"},
 			},
 		},
@@ -183,7 +184,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "video",
 			MimeType:  "video/VP8",
 			ClockRate: 90000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},
@@ -195,7 +196,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 			Kind:      "video",
 			MimeType:  "video/VP9",
 			ClockRate: 90000,
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},
@@ -213,7 +214,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 					LevelAsymmetryAllowed: 1,
 				},
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},
@@ -231,7 +232,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 					LevelAsymmetryAllowed: 1,
 				},
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},
@@ -249,7 +250,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 					LevelAsymmetryAllowed: 1,
 				},
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},
@@ -267,7 +268,7 @@ var supportedRtpCapabilities = RtpCapabilities{
 					LevelAsymmetryAllowed: 1,
 				},
 			},
-			RtcpFeedback: []RtcpFeedback{
+			RtcpFeedback: []*FBS__RtpParameters.RtcpFeedbackT{
 				{Type: "nack"},
 				{Type: "nack", Parameter: "pli"},
 				{Type: "ccm", Parameter: "fir"},

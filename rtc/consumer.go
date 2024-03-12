@@ -209,7 +209,7 @@ func (c *Consumer) init(param consumerParam) error {
 	}
 	// Fill media SSRCs vector.
 	for _, encoding := range c.rtpParameters.Encodings {
-		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
+		c.mediaSsrcs = append(c.mediaSsrcs, *encoding.Ssrc)
 	}
 	// todo: Fill RTX SSRCs vector.
 	//for _, encoding := range c.rtpParameters.Encodings {

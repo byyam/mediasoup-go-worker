@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
 
@@ -80,7 +81,7 @@ func validateRtpCodecCapability(code *RtpCodecCapability) (err error) {
  * Validates RtcpFeedback. It may modify given data by adding missing
  * fields with default values.
  */
-func validateRtcpFeedback(fb RtcpFeedback) error {
+func validateRtcpFeedback(fb *FBS__RtpParameters.RtcpFeedbackT) error {
 	if len(fb.Type) == 0 {
 		return NewTypeError("missing fb.type")
 	}
@@ -131,7 +132,7 @@ func validateRtpParameters(params *RtpParameters) (err error) {
 		}
 	}
 
-	return validateRtcpParameters(&params.Rtcp)
+	return nil
 }
 
 /**
@@ -154,8 +155,9 @@ func validateRtpCodecParameters(code *RtpCodecParameters) (err error) {
 	kind := MediaKind(strings.Split(mimeType, "/")[0])
 
 	// channels is optional. If unset, set it to 1 (just if audio).
-	if kind == MediaKind_Audio && code.Channels == 0 {
-		code.Channels = 1
+	if kind == MediaKind_Audio && *code.Channels == 0 {
+		defaultChannels := byte(1)
+		code.Channels = &defaultChannels
 	}
 
 	for _, fb := range code.RtcpFeedback {
@@ -171,9 +173,9 @@ func validateRtpCodecParameters(code *RtpCodecParameters) (err error) {
  * Validates RtpHeaderExtension. It may modify given data by adding missing
  * fields with default values.
  */
-func validateRtpHeaderExtensionParameters(ext RtpHeaderExtensionParameters) (err error) {
+func validateRtpHeaderExtensionParameters(ext *RtpHeaderExtensionParameters) (err error) {
 	// uri is mandatory.
-	if len(ext.Uri) == 0 {
+	if len(FBS__RtpParameters.EnumNamesRtpHeaderExtensionUri[ext.Uri]) == 0 {
 		return NewTypeError("missing ext.uri")
 	}
 
@@ -189,14 +191,14 @@ func validateRtpHeaderExtensionParameters(ext RtpHeaderExtensionParameters) (err
  * Validates RtcpParameters. It may modify given data by adding missing
  * fields with default values.
  */
-func validateRtcpParameters(rtcp *RtcpParameters) (err error) {
-	// reducedSize is optional. If unset set it to true.
-	if rtcp.ReducedSize == nil {
-		rtcp.ReducedSize = Bool(true)
-	}
-
-	return
-}
+//func validateRtcpParameters(rtcp *FBS__RtpParameters.RtcpParametersT) (err error) {
+//	// reducedSize is optional. If unset set it to true.
+//	if rtcp.ReducedSize == nil {
+//		rtcp.ReducedSize = Bool(true)
+//	}
+//
+//	return
+//}
 
 /**
  * Validates SctpCapabilities. It may modify given data by adding missing
@@ -365,7 +367,7 @@ func GenerateRouterRtpCapabilities(mediaCodecs []*RtpCodecCapability) (caps RtpC
 				Parameters: RtpCodecSpecificParameters{
 					Apt: codec.PreferredPayloadType,
 				},
-				RtcpFeedback: []RtcpFeedback{},
+				RtcpFeedback: make([]*FBS__RtpParameters.RtcpFeedbackT, 0),
 			}
 
 			// Append to the codec list.
@@ -407,7 +409,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 
 		// Search for the associated media codec.
 		for _, mediaCodec := range params.Codecs {
-			if mediaCodec.PayloadType == codec.Parameters.Apt {
+			if mediaCodec.PayloadType == codec.SpecificParameters.Apt {
 				associatedMediaCodec = mediaCodec
 				break
 			}
@@ -454,7 +456,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 	for _, encoding := range params.Encodings {
 		mappedEncoding := RtpMappingEncoding{
 			Rid:             encoding.Rid,
-			Ssrc:            encoding.Ssrc,
+			Ssrc:            *encoding.Ssrc,
 			MappedSsrc:      mappedSsrc,
 			ScalabilityMode: encoding.ScalabilityMode,
 		}
@@ -489,21 +491,21 @@ func GetConsumableRtpParameters(
 				break
 			}
 		}
-		var matchedCapCodec *RtpCodecCapability
+		//var matchedCapCodec *RtpCodecCapability
 
 		for _, capCodec := range caps.Codecs {
 			if capCodec.PreferredPayloadType == consumableCodecPt {
-				matchedCapCodec = capCodec
+				//matchedCapCodec = capCodec
 				break
 			}
 		}
 		consumableCodec := &RtpCodecParameters{
-			MimeType:     matchedCapCodec.MimeType,
-			ClockRate:    matchedCapCodec.ClockRate,
-			Channels:     matchedCapCodec.Channels,
-			RtcpFeedback: matchedCapCodec.RtcpFeedback,
-			Parameters:   codec.Parameters, // Keep the Producer parameters.
-			PayloadType:  matchedCapCodec.PreferredPayloadType,
+			//MimeType:     matchedCapCodec.MimeType,
+			//ClockRate:    matchedCapCodec.ClockRate,
+			//Channels:     matchedCapCodec.Channels,
+			//RtcpFeedback: matchedCapCodec.RtcpFeedback,
+			//Parameters:   codec.Parameters, // Keep the Producer parameters.
+			//PayloadType:  matchedCapCodec.PreferredPayloadType,
 		}
 		consumableCodec.Parameters = codec.Parameters // Keep the Producer parameters.
 
@@ -521,12 +523,12 @@ func GetConsumableRtpParameters(
 
 		if consumableCapRtxCodec != nil {
 			consumableRtxCodec := &RtpCodecParameters{
-				MimeType:     consumableCapRtxCodec.MimeType,
-				ClockRate:    consumableCapRtxCodec.ClockRate,
-				Channels:     consumableCapRtxCodec.Channels,
-				RtcpFeedback: consumableCapRtxCodec.RtcpFeedback,
-				Parameters:   consumableCapRtxCodec.Parameters,
-				PayloadType:  consumableCapRtxCodec.PreferredPayloadType,
+				//MimeType:     consumableCapRtxCodec.MimeType,
+				//ClockRate:    consumableCapRtxCodec.ClockRate,
+				//Channels:     consumableCapRtxCodec.Channels,
+				//RtcpFeedback: consumableCapRtxCodec.RtcpFeedback,
+				//Parameters:   consumableCapRtxCodec.Parameters,
+				//PayloadType:  consumableCapRtxCodec.PreferredPayloadType,
 			}
 
 			consumableParams.Codecs = append(consumableParams.Codecs, consumableRtxCodec)
@@ -538,10 +540,14 @@ func GetConsumableRtpParameters(
 			(capExt.Direction != Direction_Sendrecv && capExt.Direction != Direction_Sendonly) {
 			continue
 		}
-		consumableExt := RtpHeaderExtensionParameters{
-			Uri:     capExt.Uri,
-			Id:      capExt.PreferredId,
-			Encrypt: capExt.PreferredEncrypt,
+		consumableExt := &RtpHeaderExtensionParameters{
+			RtpHeaderExtensionParametersT: FBS__RtpParameters.RtpHeaderExtensionParametersT{
+				Uri:        FBS__RtpParameters.EnumValuesRtpHeaderExtensionUri[capExt.Uri],
+				Id:         byte(capExt.PreferredId),
+				Encrypt:    capExt.PreferredEncrypt,
+				Parameters: nil,
+			},
+			SpecificParameters: nil,
 		}
 
 		consumableParams.HeaderExtensions = append(consumableParams.HeaderExtensions, consumableExt)
@@ -551,18 +557,17 @@ func GetConsumableRtpParameters(
 		// Remove useless fields.
 		encoding.Rid = ""
 		encoding.Rtx = nil
-		encoding.CodecPayloadType = 0
+		encoding.CodecPayloadType = nil
 
 		// Set the mapped ssrc.
-		encoding.Ssrc = rtpMapping.Encodings[i].MappedSsrc
+		encoding.Ssrc = &rtpMapping.Encodings[i].MappedSsrc
 
 		consumableParams.Encodings = append(consumableParams.Encodings, encoding)
 	}
 
-	consumableParams.Rtcp = RtcpParameters{
+	consumableParams.Rtcp = &FBS__RtpParameters.RtcpParametersT{
 		Cname:       params.Rtcp.Cname,
-		ReducedSize: Bool(true),
-		Mux:         Bool(true),
+		ReducedSize: true,
 	}
 
 	return
@@ -636,7 +641,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		if codec.isRtxCodec() {
 			// Search for the associated media codec.
 			for _, mediaCodec := range consumerParams.Codecs {
-				if mediaCodec.PayloadType == codec.Parameters.Apt {
+				if mediaCodec.PayloadType == codec.SpecificParameters.Apt {
 					rtxSupported = true
 					codecs = append(codecs, codec)
 					break
@@ -657,7 +662,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 
 	for _, ext := range consumableParams.HeaderExtensions {
 		for _, capExt := range caps.HeaderExtensions {
-			if capExt.PreferredId == ext.Id && capExt.Uri == ext.Uri {
+			if capExt.PreferredId == int(ext.Id) && capExt.Uri == FBS__RtpParameters.EnumNamesRtpHeaderExtensionUri[ext.Uri] {
 				consumerParams.HeaderExtensions = append(consumerParams.HeaderExtensions, ext)
 				break
 			}
@@ -666,21 +671,21 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 
 	// Reduce codecs' RTCP feedback. Use Transport-CC if available, REMB otherwise.
 	if matchHeaderExtensionUri(consumerParams.HeaderExtensions,
-		"http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01") {
+		FBS__RtpParameters.RtpHeaderExtensionUriTransportWideCcDraft01) {
 		for i := range consumerParams.Codecs {
 			consumerParams.Codecs[i].RtcpFeedback = filterRtcpFeedback(
 				consumerParams.Codecs[i].RtcpFeedback,
-				func(fb RtcpFeedback) bool {
+				func(fb *FBS__RtpParameters.RtcpFeedbackT) bool {
 					return fb.Type != "goog-remb"
 				},
 			)
 		}
 	} else if matchHeaderExtensionUri(consumerParams.HeaderExtensions,
-		"http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time") {
+		FBS__RtpParameters.RtpHeaderExtensionUriAbsSendTime) {
 		for i := range consumerParams.Codecs {
 			consumerParams.Codecs[i].RtcpFeedback = filterRtcpFeedback(
 				consumerParams.Codecs[i].RtcpFeedback,
-				func(fb RtcpFeedback) bool {
+				func(fb *FBS__RtpParameters.RtcpFeedbackT) bool {
 					return fb.Type != "transport-cc"
 				},
 			)
@@ -689,7 +694,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		for i := range consumerParams.Codecs {
 			consumerParams.Codecs[i].RtcpFeedback = filterRtcpFeedback(
 				consumerParams.Codecs[i].RtcpFeedback,
-				func(fb RtcpFeedback) bool {
+				func(fb *FBS__RtpParameters.RtcpFeedbackT) bool {
 					return fb.Type != "transport-cc" && fb.Type != "goog-remb"
 				},
 			)
@@ -707,9 +712,10 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		for i := 0; i < len(consumableEncodings); i++ {
 			encoding := consumableEncodings[i]
 
-			encoding.Ssrc = baseSsrc + uint32(i)
+			ssrc := baseSsrc + uint32(i)
+			encoding.Ssrc = &ssrc
 			if rtxSupported {
-				encoding.Rtx = &RtpEncodingRtx{Ssrc: baseRtxSsrc + uint32(i)}
+				encoding.Rtx = &FBS__RtpParameters.RtxT{Ssrc: baseRtxSsrc + uint32(i)}
 			} else {
 				encoding.Rtx = nil
 			}
@@ -720,12 +726,17 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		return
 	}
 
+	ssrc := generateRandomNumber()
 	consumerEncoding := RtpEncodingParameters{
-		Ssrc: generateRandomNumber(),
+		RtpEncodingParametersT: FBS__RtpParameters.RtpEncodingParametersT{
+			Ssrc: &ssrc,
+		},
+		SpatialLayers:  0,
+		TemporalLayers: 0,
 	}
 
 	if rtxSupported {
-		consumerEncoding.Rtx = &RtpEncodingRtx{
+		consumerEncoding.Rtx = &FBS__RtpParameters.RtxT{
 			Ssrc: generateRandomNumber(),
 		}
 	}
@@ -749,17 +760,17 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 
 	consumerEncoding.ScalabilityMode = scalabilityMode
 
-	maxEncodingMaxBitrate := 0
+	maxEncodingMaxBitrate := uint32(0)
 
 	// Use the maximum maxBitrate in any encoding and honor it in the Consumer's encoding.
 	for _, encoding := range consumableParams.Encodings {
-		if encoding.MaxBitrate > maxEncodingMaxBitrate {
-			maxEncodingMaxBitrate = encoding.MaxBitrate
+		if *encoding.MaxBitrate > maxEncodingMaxBitrate {
+			maxEncodingMaxBitrate = *encoding.MaxBitrate
 		}
 	}
 
 	if maxEncodingMaxBitrate > 0 {
-		consumerEncoding.MaxBitrate = maxEncodingMaxBitrate
+		consumerEncoding.MaxBitrate = &maxEncodingMaxBitrate
 	}
 
 	// Set a single encoding for the Consumer.
@@ -788,7 +799,7 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 			continue
 		}
 
-		codec.RtcpFeedback = filterRtcpFeedback(codec.RtcpFeedback, func(fb RtcpFeedback) bool {
+		codec.RtcpFeedback = filterRtcpFeedback(codec.RtcpFeedback, func(fb *FBS__RtpParameters.RtcpFeedbackT) bool {
 			return (fb.Type == "nack" && fb.Parameter == "pli") ||
 				(fb.Type == "ccm" && fb.Parameter == "fir") ||
 				(enableRtx && fb.Type == "nack" && len(fb.Parameter) == 0)
@@ -798,9 +809,9 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 
 	// Reduce RTP extensions by disabling transport MID and BWE related ones.
 	for _, ext := range consumableParams.HeaderExtensions {
-		if ext.Uri != "urn:ietf:params:rtp-hdrext:sdes:mid" &&
-			ext.Uri != "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time" &&
-			ext.Uri != "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01" {
+		if ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriMid &&
+			ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriAbsSendTime &&
+			ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriTransportWideCcDraft01 {
 			consumerParams.HeaderExtensions = append(consumerParams.HeaderExtensions, ext)
 		}
 	}
@@ -812,10 +823,11 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 	baseRtxSsrc := generateRandomNumber()
 
 	for i, encoding := range consumableEncodings {
-		encoding.Ssrc = baseSsrc + uint32(i)
+		ssrc := baseSsrc + uint32(i)
+		encoding.Ssrc = &ssrc
 
 		if enableRtx {
-			encoding.Rtx = &RtpEncodingRtx{Ssrc: baseRtxSsrc + uint32(i)}
+			encoding.Rtx = &FBS__RtpParameters.RtxT{Ssrc: baseRtxSsrc + uint32(i)}
 		} else {
 			encoding.Rtx = nil
 		}
@@ -832,10 +844,16 @@ func findMatchedCodec(aCodec interface{}, bCodecs []*RtpCodecCapability, options
 	switch aCodec := aCodec.(type) {
 	case *RtpCodecCapability:
 		rtpCodecParameters = &RtpCodecParameters{
-			MimeType:   aCodec.MimeType,
-			ClockRate:  aCodec.ClockRate,
-			Channels:   aCodec.Channels,
-			Parameters: aCodec.Parameters,
+			RtpCodecParametersT: FBS__RtpParameters.RtpCodecParametersT{
+				MimeType:    aCodec.MimeType,
+				PayloadType: 0,
+				ClockRate:   uint32(aCodec.ClockRate),
+				Channels:    &aCodec.Channels,
+				//Parameters:   aCodec.Parameters,
+				RtcpFeedback: nil,
+			},
+			SpecificParameters: RtpCodecSpecificParameters{},
+			RtpCodecMimeType:   RtpCodecMimeType{},
 		}
 	case *RtpCodecParameters:
 		rtpCodecParameters = aCodec
@@ -857,27 +875,27 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 		return
 	}
 
-	if aCodec.ClockRate != bCodec.ClockRate {
+	if aCodec.ClockRate != uint32(bCodec.ClockRate) {
 		return
 	}
 
 	if strings.HasPrefix(aMimeType, "audio/") &&
-		aCodec.Channels > 0 &&
+		*aCodec.Channels > 0 &&
 		bCodec.Channels > 0 &&
-		aCodec.Channels != bCodec.Channels {
+		*aCodec.Channels != bCodec.Channels {
 		return
 	}
 
 	switch aMimeType {
 	case "audio/multiopus":
-		aNumStreams := aCodec.Parameters.NumStreams
+		aNumStreams := aCodec.SpecificParameters.NumStreams
 		bNumstreams := bCodec.Parameters.NumStreams
 
 		if aNumStreams != bNumstreams {
 			return false
 		}
 
-		aCoupledStreams := aCodec.Parameters.CoupledStreams
+		aCoupledStreams := aCodec.SpecificParameters.CoupledStreams
 		bCoupledStreams := bCodec.Parameters.CoupledStreams
 
 		if aCoupledStreams != bCoupledStreams {
@@ -885,7 +903,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 		}
 
 	case "video/h264":
-		aParameters, bParameters := aCodec.Parameters, bCodec.Parameters
+		aParameters, bParameters := aCodec.SpecificParameters, bCodec.Parameters
 
 		if aParameters.PacketizationMode != bParameters.PacketizationMode {
 			return
@@ -901,7 +919,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 
 			if options.modify {
 				aParameters.ProfileLevelId = selectedProfileLevelId
-				aCodec.Parameters = aParameters
+				aCodec.SpecificParameters = aParameters
 			}
 		}
 	}
@@ -909,7 +927,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 	return true
 }
 
-func matchHeaderExtensionUri(exts []RtpHeaderExtensionParameters, uri string) bool {
+func matchHeaderExtensionUri(exts []*RtpHeaderExtensionParameters, uri FBS__RtpParameters.RtpHeaderExtensionUri) bool {
 	for _, ext := range exts {
 		if ext.Uri == uri {
 			return true
@@ -919,7 +937,7 @@ func matchHeaderExtensionUri(exts []RtpHeaderExtensionParameters, uri string) bo
 	return false
 }
 
-func filterRtcpFeedback(arr []RtcpFeedback, cond func(RtcpFeedback) bool) []RtcpFeedback {
+func filterRtcpFeedback(arr []*FBS__RtpParameters.RtcpFeedbackT, cond func(*FBS__RtpParameters.RtcpFeedbackT) bool) []*FBS__RtpParameters.RtcpFeedbackT {
 	newArr := arr[:0]
 
 	for _, x := range arr {

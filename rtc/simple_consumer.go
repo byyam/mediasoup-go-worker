@@ -61,10 +61,10 @@ func (c *SimpleConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           encoding.Ssrc,
+		Ssrc:           *encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
-		ClockRate:      mediaCodec.ClockRate,
+		ClockRate:      int(mediaCodec.ClockRate),
 		Rid:            "",
 		Cname:          rtpParameters.Rtcp.Cname,
 		RtxSsrc:        0,
@@ -91,7 +91,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {
 		monitor.RtpSendCount(monitor.TraceAudio)
 	}
-	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
+	packet.SSRC = *c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
 	if c.rtpStream.ReceivePacket(packet) { // todo
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
@@ -115,7 +115,7 @@ func (c *SimpleConsumer) RequestKeyFrame() {
 		return
 	}
 	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
-	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, mappedSsrc)
+	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, *mappedSsrc)
 }
 
 func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
