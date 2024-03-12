@@ -82,28 +82,26 @@ func newProducer(param producerParam) (*Producer, error) {
 		id:     param.id,
 		logger: zerowrapper.NewScope("producer", param.id),
 
-		Kind:             param.optionsFBS.Kind,
-		RtpParametersFBS: param.optionsFBS.RtpParameters,
-		Type:             param.options.RtpParameters.GetType(),
-		Paused:           param.optionsFBS.Paused,
-
-		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.options.RtpParameters.Encodings)),
-		rtpStreamScores:        make([]uint8, len(param.options.RtpParameters.Encodings)),
+		Kind:                   param.optionsFBS.Kind,
+		RtpParametersFBS:       param.optionsFBS.RtpParameters,
+		Type:                   param.options.RtpParameters.GetType(),
+		Paused:                 param.optionsFBS.Paused,
+		RtpParameters:          mediasoupdata.NewRtpParameters(param.optionsFBS.RtpParameters),
+		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.optionsFBS.RtpParameters.Encodings)),
+		rtpStreamScores:        make([]uint8, len(param.optionsFBS.RtpParameters.Encodings)),
+		rtpMapping:             param.optionsFBS.RtpMapping,
 	}
-	p.RtpParameters = mediasoupdata.NewRtpParameters(p.RtpParametersFBS)
 	p.onProducerRtpPacketReceivedHandler.Store(param.OnProducerRtpPacketReceived)
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
 	p.onProducerNeedWorstRemoteFractionLostHandler = param.OnProducerNeedWorstRemoteFractionLost
 
-	p.logger.Info().Msgf("input param for producer: %# v", pretty.Formatter(param.optionsFBS))
-
+	p.logger.Info().Msgf("input fbs param for producer: %# v", pretty.Formatter(param.optionsFBS))
+	p.logger.Info().Msgf("init rtp param for producer: %# v", pretty.Formatter(p.RtpParameters))
+	p.logger.Info().Msgf("init rtp mapping for producer: %# v", pretty.Formatter(p.rtpMapping))
 	// init producer with param
 	if err := p.init(param); err != nil {
 		return nil, err
 	}
-
-	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.RtpParameters))
-	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.rtpMapping))
 
 	workerchannel.RegisterHandler(p.id, p.HandleRequest)
 	return p, nil
@@ -113,8 +111,6 @@ func (p *Producer) init(param producerParam) error {
 	if err := p.RtpParameters.Init(); err != nil {
 		return err
 	}
-
-	p.initRtpMapping(param.optionsFBS.RtpMapping)
 
 	p.logger.Info().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
@@ -128,12 +124,6 @@ func (p *Producer) init(param producerParam) error {
 		})
 	}
 	return nil
-}
-
-func (p *Producer) initRtpMapping(rtpMapping *FBS__RtpParameters.RtpMappingT) {
-	p.rtpMapping.Encodings = rtpMapping.Encodings
-	p.rtpMapping.Codecs = rtpMapping.Codecs
-
 }
 
 func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
@@ -362,8 +352,8 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		UseFir:         false,
 		UseInBandFec:   false,
 		UseDtx:         false,
-		//SpatialLayers:  encoding.SpatialLayers,
-		//TemporalLayers: encoding.TemporalLayers,
+		SpatialLayers:  encoding.SpatialLayers,
+		TemporalLayers: encoding.TemporalLayers,
 	}
 	// Check in band FEC in codec parameters.
 	if mediaCodec.SpecificParameters.Useinbandfec == 1 {

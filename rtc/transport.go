@@ -215,7 +215,11 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		var options mediasoupdata.ProducerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Produce(requestT.ProducerId, requestT)
-		response.Data, _ = json.Marshal(data)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyTransport_ProduceResponse,
+			Value: data,
+		}
+		response.RspBody = rspBody
 		response.Err = err
 
 	case FBS__Request.MethodTRANSPORT_CONSUME:
@@ -388,7 +392,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	}, nil
 }
 
-func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) (*mediasoupdata.ProducerData, error) {
+func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) (*FBS__Transport.ProduceResponseT, error) {
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -425,8 +429,8 @@ func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) 
 
 	// todo
 
-	return &mediasoupdata.ProducerData{
-		//Type: producer.Type,
+	return &FBS__Transport.ProduceResponseT{
+		Type: producer.Type,
 	}, nil
 }
 

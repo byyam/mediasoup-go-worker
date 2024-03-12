@@ -199,7 +199,7 @@ type RtpParameters struct {
 	/**
 	 * RTP header extensions in use.
 	 */
-	HeaderExtensions []*RtpHeaderExtensionParameters `json:"headerExtensions,omitempty"`
+	HeaderExtensions []*RtpHeaderExtensionParameters `json:"header_extensions,omitempty"`
 
 	/**
 	 * Transmitted RTP streams and their settings.
@@ -213,16 +213,8 @@ type RtpParameters struct {
 }
 
 func NewRtpParameters(fbs *FBS__RtpParameters.RtpParametersT) *RtpParameters {
-	r := &RtpParameters{
-		Mid:              fbs.Mid,
-		Codecs:           make([]*RtpCodecParameters, 0),
-		HeaderExtensions: make([]*RtpHeaderExtensionParameters, 0),
-		Encodings:        make([]*RtpEncodingParameters, 0),
-		Rtcp:             fbs.Rtcp,
-	}
-	_ = Clone(fbs.Codecs, r.Codecs)
-	_ = Clone(fbs.Encodings, r.Encodings)
-	_ = Clone(fbs.HeaderExtensions, r.HeaderExtensions)
+	r := &RtpParameters{}
+	_ = Clone(fbs, r)
 
 	return r
 }
@@ -383,11 +375,21 @@ func (r *RtpCodecParameters) Init() error {
 	if r.ClockRate <= 0 {
 		return errors.New("missing clockRate")
 	}
+	r.setSpecificParameters()
 
 	if err := r.CheckCodec(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *RtpCodecParameters) setSpecificParameters() {
+	for _, p := range r.Parameters {
+		switch p.Name {
+		case "apt":
+			r.SpecificParameters.Apt = 1
+		}
+	}
 }
 
 func (r *RtpCodecParameters) CheckCodec() error {
@@ -396,11 +398,13 @@ func (r *RtpCodecParameters) CheckCodec() error {
 		if r.SpecificParameters.Apt <= 0 {
 			return errors.New("missing apt parameter in RTX codec")
 		}
+	default:
+		return nil
 	}
 	return nil
 }
 
-func (r RtpCodecParameters) isRtxCodec() bool {
+func (r *RtpCodecParameters) isRtxCodec() bool {
 	return strings.HasSuffix(strings.ToLower(r.MimeType), "/rtx")
 }
 
