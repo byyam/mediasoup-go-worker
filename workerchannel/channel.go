@@ -112,7 +112,7 @@ func (c *Channel) processPayloadNative(nsPayload []byte) {
 func (c *Channel) processPayloadFB(nsPayload []byte) {
 	message := FBS__Message.GetRootAsMessage(nsPayload, 0)
 	messageOffset := message.UnPack()
-	c.logger.Info().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
+	c.logger.Debug().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
 	switch messageOffset.Data.Type {
 	case FBS__Message.BodyRequest:
 		requestOffset := messageOffset.Data.Value.(*FBS__Request.RequestT)
@@ -335,8 +335,14 @@ func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseDa
 	// set from request
 	responseData.Id = requestT.Id
 	responseData.MethodType = requestT.Method
-
-	c.logger.Info().Str("response", responseData.String()).Msg("[handleMessageFBS]responseData")
+	// print rsp data
+	if responseData.Data != nil {
+		data = responseData.Data
+	} else {
+		data, _ = json.Marshal(responseData.RspBody)
+		responseData.Data = data
+	}
+	c.logger.Info().Any("body", responseData.Data).Str("header", responseData.String()).Msg("[channelMsg]response")
 
 	return &responseData, nil
 }

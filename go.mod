@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/go-version v1.4.0
 	github.com/imdario/mergo v0.3.12
 	github.com/jiyeyuran/go-protoo v1.0.7
-	github.com/kr/pretty v0.3.0
+	github.com/kr/pretty v0.3.1
 	github.com/pion/dtls/v2 v2.2.10
 	github.com/pion/ice/v2 v2.3.14
 	github.com/pion/logging v0.2.2
@@ -49,7 +49,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

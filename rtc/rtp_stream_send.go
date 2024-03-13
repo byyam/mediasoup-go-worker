@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/zap"
 
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
@@ -184,5 +185,6 @@ func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
 	stat.PacketsRetransmitted = p.packetsRetransmitted
 	stat.PacketsRepaired = p.packetsRepaired
 
-	p.RtpStream.FillJsonStats(stat)
+	baseStat := &FBS__RtpStream.StatsT{}
+	p.RtpStream.FillJsonStats(baseStat, uint64(nowMs))
 }

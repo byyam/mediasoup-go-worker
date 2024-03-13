@@ -39,7 +39,7 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	w.logger.Info().Str("request", request.String()).Err(response.Err).Msg("[OnChannelRequest] start")
+	w.logger.Info().Any("body", request.Data).Str("header", request.String()).Msg("[channelMsg]request")
 
 	switch request.MethodType {
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:

@@ -33,11 +33,10 @@ type RequestData struct {
 }
 
 func (d RequestData) String() string {
-	return fmt.Sprintf("Id:%d,HandlerId:%s,Method:%s,Data:%s",
+	return fmt.Sprintf("Id:%d,HandlerId:%s,Method:%s",
 		d.Request.Id,
 		d.Request.HandlerId,
-		FBS__Request.EnumNamesMethod[d.MethodType],
-		string(d.Data))
+		FBS__Request.EnumNamesMethod[d.MethodType])
 }
 
 type ResponseData struct {
@@ -50,21 +49,14 @@ type ResponseData struct {
 }
 
 func (d ResponseData) String() string {
-	// print rsp data
-	var data json.RawMessage
-	if d.Data != nil {
-		data = d.Data
-	} else {
-		data, _ = json.Marshal(d.RspBody)
-	}
+
 	var bodyType string
 	if d.RspBody != nil {
 		bodyType = FBS__Response.EnumNamesBody[d.RspBody.Type]
 	}
-	return fmt.Sprintf("Id:%d,Method:%s,BodyType:%s,Err:%v,Data:%s",
+	return fmt.Sprintf("Id:%d,Method:%s,BodyType:%s,Err:%v",
 		d.Id,
 		FBS__Request.EnumNamesMethod[d.MethodType],
 		bodyType,
-		d.Err,
-		string(data))
+		d.Err)
 }

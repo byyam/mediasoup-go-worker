@@ -8,7 +8,7 @@ import (
 
 	"github.com/pion/rtcp"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/pkg/nack"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
@@ -125,15 +125,21 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 	}
 }
 
-func (r *RtpStreamRecv) FillJsonStats(stat *mediasoupdata.ProducerStat) {
+func (r *RtpStreamRecv) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 	nowMs := rtctime.GetTimeMs()
-	stat.Type = "inbound-rtp"
-	stat.Timestamp = nowMs
-	stat.PacketCount = r.transmissionCounter.GetPacketCount()
-	stat.ByteCount = r.transmissionCounter.GetBytes()
-	stat.Bitrate = r.transmissionCounter.GetBitrate(nowMs)
+	stat.Data.Type = FBS__RtpStream.StatsDataRecvStats
+	baseStat := &FBS__RtpStream.StatsT{}
+	r.RtpStream.FillJsonStats(baseStat, uint64(nowMs))
+	recvStat := &FBS__RtpStream.RecvStatsT{
+		Base:           baseStat,
+		Jitter:         0,
+		PacketCount:    uint64(r.transmissionCounter.GetPacketCount()),
+		ByteCount:      uint64(r.transmissionCounter.GetBytes()),
+		Bitrate:        r.transmissionCounter.GetBitrate(nowMs),
+		BitrateByLayer: nil,
+	}
+	stat.Data.Value = recvStat
 
-	r.RtpStream.FillJsonStats(stat)
 }
 
 func (r *RtpStreamRecv) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {

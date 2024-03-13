@@ -40,7 +40,7 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.logger.Info().Msgf("newDirectTransport options:%# v", pretty.Formatter(param.optionsFBS))
+	t.logger.Debug().Msgf("newDirectTransport options:%# v", pretty.Formatter(param.optionsFBS))
 	workerchannel.RegisterHandler(param.Id, t.HandleRequest)
 	return t, nil
 }

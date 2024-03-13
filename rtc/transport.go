@@ -186,7 +186,7 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.NotifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
 
-	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.optionsFBS))
+	transport.logger.Debug().Msgf("newTransport options:%# v", pretty.Formatter(transport.optionsFBS))
 
 	var err error
 	if transport.optionsFBS.EnableSctp {

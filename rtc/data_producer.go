@@ -25,7 +25,7 @@ func newDataProducer(id string, maxMessageSize uint32, opt *FBS__Transport.Produ
 		maxMessageSize: maxMessageSize,
 		opt:            opt,
 	}
-	p.logger.Info().Msgf("newDataProducer options:%# v", pretty.Formatter(opt))
+	p.logger.Debug().Msgf("newDataProducer options:%# v", pretty.Formatter(opt))
 	return p, nil
 }
 

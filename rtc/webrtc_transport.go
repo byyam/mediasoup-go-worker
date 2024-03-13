@@ -72,7 +72,7 @@ func newWebrtcTransport(param webrtcTransportParam) (ITransport, error) {
 	}); err != nil {
 		return nil, err
 	}
-	t.logger.Info().Msgf("newWebrtcTransport options:%# v", pretty.Formatter(param.optionsFBS))
+	t.logger.Debug().Msgf("newWebrtcTransport options:%# v", pretty.Formatter(param.optionsFBS))
 	go func() {
 		<-t.iceServer.CloseChannel()
 		t.logger.Warn().Msg("ice closed")

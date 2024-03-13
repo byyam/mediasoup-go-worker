@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -159,26 +160,30 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 	return true
 }
 
-func (r *RtpStream) FillJsonStats(stat *mediasoupdata2.ProducerStat) {
-	stat.Ssrc = r.GetSsrc()
-	stat.RtxSsrc = r.GetRtxSsrc()
-	stat.Rid = r.params.Rid
-	stat.Kind = r.params.MimeType.Type2String()
-	stat.MimeType = r.params.MimeType.MimeType
-	stat.PacketsLost = r.packetsLost
-	stat.FractionLost = r.fractionLost
-	stat.PacketsRepaired = r.packetsRepaired
-	stat.NackCount = r.nackCount
-	stat.NackPacketCount = r.nackPacketCount
-	stat.PliCount = r.pliCount
-	stat.FirCount = r.firCount
-	stat.Score = uint32(r.score)
-	stat.Rid = r.params.Rid
-	stat.RtxSsrc = r.params.RtxSsrc
-	if r.HasRtx() {
-		stat.RtxPacketsDiscarded = r.rtxStream.GetPacketsDiscarded()
+func (r *RtpStream) FillJsonStats(stat *FBS__RtpStream.StatsT, nowMs uint64) {
+	stat.Data.Type = FBS__RtpStream.StatsDataBaseStats
+	rtxSsrc := r.GetRtxSsrc()
+	baseStat := &FBS__RtpStream.BaseStatsT{
+		Timestamp:            nowMs,
+		Ssrc:                 r.GetSsrc(),
+		Kind:                 0, // r.params.MimeType.Type2String()
+		MimeType:             r.params.MimeType.MimeType,
+		PacketsLost:          uint64(r.packetsLost),
+		FractionLost:         r.fractionLost,
+		PacketsDiscarded:     0,
+		PacketsRetransmitted: 0,
+		PacketsRepaired:      uint64(r.packetsRepaired),
+		NackCount:            uint64(r.nackCount),
+		NackPacketCount:      uint64(r.nackPacketCount),
+		PliCount:             uint64(r.pliCount),
+		FirCount:             uint64(r.firCount),
+		Score:                r.score,
+		Rid:                  r.params.Rid,
+		RtxSsrc:              &rtxSsrc,
+		RtxPacketsDiscarded:  uint64(r.rtxStream.GetPacketsDiscarded()),
+		RoundTripTime:        float32(r.rtt),
 	}
-	stat.RoundTripTime = float32(r.rtt)
+	stat.Data.Value = baseStat
 }
 
 func (r *RtpStream) GetRtpTimestamp(now time.Time) uint32 {

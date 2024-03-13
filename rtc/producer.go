@@ -12,7 +12,9 @@ import (
 
 	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
@@ -95,9 +97,9 @@ func newProducer(param producerParam) (*Producer, error) {
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
 	p.onProducerNeedWorstRemoteFractionLostHandler = param.OnProducerNeedWorstRemoteFractionLost
 
-	p.logger.Info().Msgf("input fbs param for producer: %# v", pretty.Formatter(param.optionsFBS))
-	p.logger.Info().Msgf("init rtp param for producer: %# v", pretty.Formatter(p.RtpParameters))
-	p.logger.Info().Msgf("init rtp mapping for producer: %# v", pretty.Formatter(p.rtpMapping))
+	p.logger.Debug().Msgf("input fbs param for producer: %# v", pretty.Formatter(param.optionsFBS))
+	p.logger.Debug().Msgf("init rtp param for producer: %# v", pretty.Formatter(p.RtpParameters))
+	p.logger.Debug().Msgf("init rtp mapping for producer: %# v", pretty.Formatter(p.rtpMapping))
 	// init producer with param
 	if err := p.init(param); err != nil {
 		return nil, err
@@ -112,7 +114,7 @@ func (p *Producer) init(param producerParam) error {
 		return err
 	}
 
-	p.logger.Info().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
+	p.logger.Debug().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
 	if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
 		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
@@ -243,21 +245,21 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 	return true
 }
 
-func (p *Producer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ProducerStat
+func (p *Producer) FillJsonStats() *FBS__Producer.GetStatsResponseT {
+	pStat := &FBS__Producer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
+	}
 	for idx, rtpStream := range p.rtpStreamByEncodingIdx {
 		if rtpStream == nil {
 			p.logger.Warn().Msgf("rtpStream empty, idx=%d", idx)
 			continue
 		}
-		stat := &mediasoupdata.ProducerStat{}
+		stat := &FBS__RtpStream.StatsT{}
 		rtpStream.FillJsonStats(stat)
-		jsonData = append(jsonData, *stat)
+		pStat.Stats = append(pStat.Stats, stat)
 		p.logger.Info().Msgf("stat:%+v", *stat)
 	}
-	data, _ := json.Marshal(&jsonData)
-	p.logger.Info().Msgf("getStats:%+v", jsonData)
-	return data
+	return pStat
 }
 
 func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
@@ -269,7 +271,13 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 	case FBS__Request.MethodPRODUCER_DUMP:
 		response.Data = p.FillJson()
 	case FBS__Request.MethodPRODUCER_GET_STATS:
-		response.Data = p.FillJsonStats()
+		dataDump := p.FillJsonStats()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyProducer_GetStatsResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 
 	default:
 		response.Err = mserror.ErrInvalidMethod
