@@ -1,13 +1,14 @@
 package rtc
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -151,16 +152,17 @@ func (c *SimpleConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp
 	return packets
 }
 
-func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ConsumerStat
-	if c.rtpStream != nil {
-		var stat mediasoupdata.ConsumerStat
-		c.rtpStream.FillJsonStats(&stat)
-		jsonData = append(jsonData, stat)
+func (c *SimpleConsumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
+	pStat := &FBS__Consumer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
 	}
-	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	if c.rtpStream != nil {
+		stat := &FBS__RtpStream.StatsT{}
+		c.rtpStream.FillJsonStats(stat)
+	} else {
+		c.logger.Warn().Msgf("rtpStream empty")
+	}
+	return pStat
 }
 
 func (c *SimpleConsumer) NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8) {

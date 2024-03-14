@@ -127,6 +127,7 @@ func (r *RtpStreamRecv) RequestKeyFrame() {
 
 func (r *RtpStreamRecv) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 	nowMs := rtctime.GetTimeMs()
+	stat.Data = new(FBS__RtpStream.StatsDataT)
 	stat.Data.Type = FBS__RtpStream.StatsDataRecvStats
 	baseStat := &FBS__RtpStream.StatsT{}
 	r.RtpStream.FillJsonStats(baseStat, uint64(nowMs))

@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 
 	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 
@@ -171,20 +170,18 @@ func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
 	p.logger.Info("retransmission", zap.Uint16s("lost", lostSeqList), zap.Uint16s("request", nackPair.PacketList()))
 }
 
-func (p *RtpStreamSend) FillJsonStats(stat *mediasoupdata.ConsumerStat) {
+func (p *RtpStreamSend) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 	nowMs := rtctime.GetTimeMs()
-	stat.Timestamp = nowMs
-	stat.Type = "outbound-rtp"
-	stat.Bitrate = p.transmissionCounter.GetBitrate(nowMs)
-	stat.ByteCount = p.transmissionCounter.GetBytes()
-	stat.PacketCount = p.transmissionCounter.GetPacketCount()
-	stat.PacketsLost = p.packetsLost
-	stat.FractionLost = p.fractionLost
-	stat.NackCount = p.nackCount
-	stat.NackPacketCount = p.nackPacketCount
-	stat.PacketsRetransmitted = p.packetsRetransmitted
-	stat.PacketsRepaired = p.packetsRepaired
-
+	stat.Data = new(FBS__RtpStream.StatsDataT)
+	stat.Data.Type = FBS__RtpStream.StatsDataSendStats
 	baseStat := &FBS__RtpStream.StatsT{}
 	p.RtpStream.FillJsonStats(baseStat, uint64(nowMs))
+	recvStat := &FBS__RtpStream.SendStatsT{
+		Base:        baseStat,
+		PacketCount: uint64(p.transmissionCounter.GetPacketCount()),
+		ByteCount:   uint64(p.transmissionCounter.GetBytes()),
+		Bitrate:     p.transmissionCounter.GetBitrate(nowMs),
+	}
+	stat.Data.Value = recvStat
+
 }

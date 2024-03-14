@@ -1,12 +1,13 @@
 package rtc
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/kr/pretty"
 	"github.com/rs/zerolog"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -99,16 +100,17 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 	c.rtpStreams = append(c.rtpStreams, c.rtpStream)
 }
 
-func (c *SimulcastConsumer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ConsumerStat
-	if c.rtpStream != nil {
-		var stat mediasoupdata.ConsumerStat
-		c.rtpStream.FillJsonStats(&stat)
-		jsonData = append(jsonData, stat)
+func (c *SimulcastConsumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
+	pStat := &FBS__Consumer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
 	}
-	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	if c.rtpStream != nil {
+		stat := &FBS__RtpStream.StatsT{}
+		c.rtpStream.FillJsonStats(stat)
+	} else {
+		c.logger.Warn().Msgf("rtpStream empty")
+	}
+	return pStat
 }
 
 func (c *SimulcastConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Packet) {

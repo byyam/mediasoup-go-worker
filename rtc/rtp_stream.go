@@ -161,6 +161,7 @@ func (r *RtpStream) ReceivePacket(packet *rtpparser.Packet) bool {
 }
 
 func (r *RtpStream) FillJsonStats(stat *FBS__RtpStream.StatsT, nowMs uint64) {
+	stat.Data = new(FBS__RtpStream.StatsDataT)
 	stat.Data.Type = FBS__RtpStream.StatsDataBaseStats
 	rtxSsrc := r.GetRtxSsrc()
 	baseStat := &FBS__RtpStream.BaseStatsT{
@@ -180,8 +181,10 @@ func (r *RtpStream) FillJsonStats(stat *FBS__RtpStream.StatsT, nowMs uint64) {
 		Score:                r.score,
 		Rid:                  r.params.Rid,
 		RtxSsrc:              &rtxSsrc,
-		RtxPacketsDiscarded:  uint64(r.rtxStream.GetPacketsDiscarded()),
 		RoundTripTime:        float32(r.rtt),
+	}
+	if r.HasRtx() {
+		baseStat.RtxPacketsDiscarded = uint64(r.rtxStream.GetPacketsDiscarded())
 	}
 	stat.Data.Value = baseStat
 }

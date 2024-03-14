@@ -9,7 +9,9 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -57,7 +59,7 @@ type Consumer struct {
 	consumerType           mediasoupdata.ConsumerType
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
-	fillJsonStatsFunc      func() json.RawMessage
+	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 
 	logger zerolog.Logger
 }
@@ -133,7 +135,7 @@ func (c *Consumer) FillJson() json.RawMessage {
 	return data
 }
 
-func (c *Consumer) FillJsonStats() json.RawMessage {
+func (c *Consumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
 	return c.fillJsonStatsFunc()
 }
 
@@ -143,7 +145,7 @@ type consumerParam struct {
 	kind                   mediasoupdata.MediaKind
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
-	fillJsonStatsFunc      func() json.RawMessage
+	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 }
 
 func (c consumerParam) valid() error {
@@ -236,7 +238,13 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 		response.Data = c.FillJson()
 
 	case FBS__Request.MethodCONSUMER_GET_STATS:
-		response.Data = c.FillJsonStats()
+		dataDump := c.FillJsonStats()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataConsumer_GetStatsResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 	}
 }
 
