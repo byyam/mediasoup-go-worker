@@ -77,6 +77,7 @@ func (c *SimpleConsumer) CreateRtpStream() {
 		UseDtx:         false,
 		SpatialLayers:  0,
 		TemporalLayers: 0,
+		// todo Kind
 	}
 	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
 		ParamRtpStream:                 param,

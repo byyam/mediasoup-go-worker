@@ -113,7 +113,10 @@ func (p *Producer) init(param producerParam) error {
 	if err := p.RtpParameters.Init(); err != nil {
 		return err
 	}
-
+	if err := p.RtpHeaderExtensionIds.set(p.RtpParameters.HeaderExtensions, true); err != nil {
+		p.logger.Error().Err(err).Msg("set RtpHeaderExtensionIds failed")
+		return err
+	}
 	p.logger.Debug().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
 	if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
@@ -362,6 +365,7 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		UseDtx:         false,
 		SpatialLayers:  encoding.SpatialLayers,
 		TemporalLayers: encoding.TemporalLayers,
+		Kind:           p.Kind,
 	}
 	// Check in band FEC in codec parameters.
 	if mediaCodec.SpecificParameters.Useinbandfec == 1 {

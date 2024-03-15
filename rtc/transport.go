@@ -419,13 +419,13 @@ func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) 
 		}
 	}
 	t.mapProducers.Store(id, producer)
-	t.logger.Info().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// Take the transport related RTP header extensions of the Producer and
 	// add them to the Transport.
 	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
 	// header extension ids of the Producer (and not their mapped values).
-	//t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
-	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
+	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
+	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).
+		Str("kind", producer.Kind.String()).Str("type", producer.Type.String()).Msgf("Producer created [producerId:%s]", id)
 
 	// todo
 

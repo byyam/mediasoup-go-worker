@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
@@ -40,6 +41,7 @@ type ParamRtpStream struct {
 	UseDtx         bool
 	SpatialLayers  uint8
 	TemporalLayers uint8
+	Kind           FBS__RtpParameters.MediaKind
 }
 
 type RtpStream struct {
@@ -167,7 +169,7 @@ func (r *RtpStream) FillJsonStats(stat *FBS__RtpStream.StatsT, nowMs uint64) {
 	baseStat := &FBS__RtpStream.BaseStatsT{
 		Timestamp:            nowMs,
 		Ssrc:                 r.GetSsrc(),
-		Kind:                 0, // r.params.MimeType.Type2String()
+		Kind:                 r.params.Kind,
 		MimeType:             r.params.MimeType.MimeType,
 		PacketsLost:          uint64(r.packetsLost),
 		FractionLost:         r.fractionLost,
