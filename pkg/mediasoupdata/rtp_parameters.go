@@ -2,6 +2,7 @@ package mediasoupdata
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
@@ -154,6 +155,10 @@ type RtpHeaderExtension struct {
 	Direction RtpHeaderExtensionDirection `json:"direction,omitempty"`
 }
 
+const (
+	AptString = "apt"
+)
+
 /**
  * The RTP send parameters describe a media stream received by mediasoup from
  * an endpoint through its corresponding mediasoup Producer. These parameters
@@ -230,15 +235,68 @@ func (r *RtpParameters) Init() error {
 	}
 
 	// Validate RTP parameters.
-	r.validateCodecs()
+	if err := r.validateCodecs(); err != nil {
+		return err
+	}
 	if err := r.validateEncodings(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *RtpParameters) validateCodecs() {
-	// todo
+func (r *RtpParameters) validateCodecs() error {
+	for _, codec := range r.Codecs {
+		// todo: check duplicated payloadType
+		codecParameters := &RtpCodecMimeType{}
+		if err := codecParameters.SetMimeType(codec.MimeType); err != nil {
+			return err
+		}
+		switch codecParameters.SubType {
+		// A RTX codec must have 'apt' parameter pointing to a non RTX codec.
+		case MimeSubTypeRTX:
+			apt := GetIntegerByName(codec.Parameters, AptString)
+			for _, codec := range r.Codecs {
+				if apt == int32(codec.PayloadType) {
+					codecParameters := &RtpCodecMimeType{}
+					if err := codecParameters.SetMimeType(codec.MimeType); err != nil {
+						return err
+					}
+					if codecParameters.SubType == MimeSubTypeRTX {
+						return errors.New("apt in RTX codec points to a RTX codec")
+					} else if codecParameters.SubType == MimeSubTypeULPFEC {
+						return errors.New("apt in RTX codec points to a ULPFEC codec")
+					} else if codecParameters.SubType == MimeSubTypeFLEXFEC {
+						return errors.New("apt in RTX codec points to a FLEXFEC codec")
+					}
+					return nil
+				}
+			}
+
+		default:
+
+		}
+	}
+	return nil
+}
+
+func GetIntegerByName(params []*FBS__RtpParameters.ParameterT, name string) int32 {
+	for _, param := range params {
+		if param.Name == name {
+			return GetInteger(param)
+		}
+	}
+	return 0
+}
+
+func GetInteger(param *FBS__RtpParameters.ParameterT) int32 {
+	fmt.Printf("apt GetInteger, %s", JsonFormat(param))
+	dataDump := &FBS__RtpParameters.Integer32T{}
+	if err := Clone(param.Value.Value, dataDump); err != nil {
+		fmt.Printf("apt GetInteger clone error:%+v", err)
+		return 0
+	}
+	fmt.Printf("set apt GetInteger, %d", dataDump.Value)
+	return dataDump.Value
 }
 
 func (r *RtpParameters) validateEncodings() error {
@@ -386,8 +444,8 @@ func (r *RtpCodecParameters) Init() error {
 func (r *RtpCodecParameters) setSpecificParameters() {
 	for _, p := range r.Parameters {
 		switch p.Name {
-		case "apt":
-			r.SpecificParameters.Apt = 1
+		case AptString:
+			r.SpecificParameters.Apt = byte(GetInteger(p))
 		}
 	}
 }

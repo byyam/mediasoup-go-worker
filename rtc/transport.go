@@ -456,9 +456,13 @@ func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	// Apply the Transport RTP header extension ids so the RTP listener can use them.
 	packet.SetMidExtensionId(t.recvRtpHeaderExtensionIds.Mid)
 	packet.SetRidExtensionId(t.recvRtpHeaderExtensionIds.Rid)
+	packet.SetRepairedRidExtensionId(t.recvRtpHeaderExtensionIds.RRid)
+	packet.SetAbsSendTimeExtensionId(t.recvRtpHeaderExtensionIds.AbsSendTime)
+	packet.SetTransportWideCc01ExtensionId(t.recvRtpHeaderExtensionIds.TransportWideCc01)
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
+		t.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("producer not found")
 		monitor.RtpRecvCount(monitor.TraceSsrcNotFound)
 		return
 	}

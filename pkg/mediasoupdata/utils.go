@@ -88,3 +88,11 @@ func hostByteOrder() binary.ByteOrder {
 		panic("Could not determine native endianness.")
 	}
 }
+
+func JsonFormat(in interface{}) json.RawMessage {
+	data, err := json.Marshal(in)
+	if err == nil {
+		return data
+	}
+	return nil
+}

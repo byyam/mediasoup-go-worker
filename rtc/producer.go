@@ -97,14 +97,13 @@ func newProducer(param producerParam) (*Producer, error) {
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
 	p.onProducerNeedWorstRemoteFractionLostHandler = param.OnProducerNeedWorstRemoteFractionLost
 
-	p.logger.Debug().Msgf("input fbs param for producer: %# v", pretty.Formatter(param.optionsFBS))
-	p.logger.Debug().Msgf("init rtp param for producer: %# v", pretty.Formatter(p.RtpParameters))
-	p.logger.Debug().Msgf("init rtp mapping for producer: %# v", pretty.Formatter(p.rtpMapping))
+	p.logger.Debug().Any("rtpMapping", p.rtpMapping).Msgf("init rtp mapping for producer")
 	// init producer with param
 	if err := p.init(param); err != nil {
 		return nil, err
 	}
 
+	p.logger.Info().Any("RtpParameters", mediasoupdata.JsonFormat(p.RtpParameters)).Msgf("init rtp param for producer")
 	workerchannel.RegisterHandler(p.id, p.HandleRequest)
 	return p, nil
 }
@@ -144,7 +143,7 @@ func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtp
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
-		p.logger.Warn().Str("packet", packet.String()).Msg("no stream found for received packet")
+		p.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("no stream found for received packet")
 		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
 		return ReceiveRtpPacketResultDISCARDED
 	}
@@ -448,8 +447,9 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 		if rtxCodec != nil && rtxCodec.PayloadType == payloadType {
 			isRtxPacket = true
 		}
+		p.logger.Info().Bool("isMediaPacket", isMediaPacket).Bool("isRtxPacket", isRtxPacket).Msgf("GetRtpStream")
 
-		if isMediaPacket && *encoding.Ssrc == ssrc {
+		if isMediaPacket && encoding != nil && encoding.Ssrc != nil && *encoding.Ssrc == ssrc {
 			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
 			return rtpStream
 		} else if isRtxPacket && encoding.Rtx != nil && encoding.Rtx.Ssrc == ssrc {
@@ -522,7 +522,10 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 	}
 	// If not found, and there is a single encoding without ssrc and RID, this
 	// may be the media or RTX stream.
-	// todo
+	if len(p.RtpParameters.Encodings) == 1 && *p.RtpParameters.Encodings[0].Ssrc == 0 && p.RtpParameters.Encodings[0].Rid == "" {
+		// todo
+		p.logger.Warn().Msgf("may be the media or RTX stream")
+	}
 
 	return nil
 }
