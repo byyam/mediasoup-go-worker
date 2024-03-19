@@ -731,8 +731,11 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		RtpEncodingParametersT: FBS__RtpParameters.RtpEncodingParametersT{
 			Ssrc: &ssrc,
 		},
-		SpatialLayers:  0,
-		TemporalLayers: 0,
+		ParsedScalabilityMode: ScalabilityMode{
+			SpatialLayers:  0,
+			TemporalLayers: 0,
+			Ksvc:           false,
+		},
 	}
 
 	if rtxSupported {

@@ -63,7 +63,7 @@ func (c *SimulcastConsumer) initParam(param consumerParam) error {
 	}
 	encodings := param.consumableRtpEncodings[0]
 	// Ensure there are as many spatial layers as encodings.
-	if int(encodings.SpatialLayers) != len(param.consumableRtpEncodings) {
+	if int(encodings.ParsedScalabilityMode.SpatialLayers) != len(param.consumableRtpEncodings) {
 		return errors.New("encoding.spatialLayers does not match number of consumableRtpEncodings")
 	}
 

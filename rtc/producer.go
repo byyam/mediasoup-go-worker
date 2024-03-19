@@ -86,7 +86,6 @@ func newProducer(param producerParam) (*Producer, error) {
 
 		Kind:                   param.optionsFBS.Kind,
 		RtpParametersFBS:       param.optionsFBS.RtpParameters,
-		Type:                   param.options.RtpParameters.GetType(),
 		Paused:                 param.optionsFBS.Paused,
 		RtpParameters:          mediasoupdata.NewRtpParameters(param.optionsFBS.RtpParameters),
 		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.optionsFBS.RtpParameters.Encodings)),
@@ -127,6 +126,7 @@ func (p *Producer) init(param producerParam) error {
 			onKeyFrameNeeded:     p.OnKeyFrameNeeded,
 		})
 	}
+	p.Type = p.RtpParameters.GetType()
 	return nil
 }
 
@@ -362,8 +362,8 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		UseFir:         false,
 		UseInBandFec:   false,
 		UseDtx:         false,
-		SpatialLayers:  encoding.SpatialLayers,
-		TemporalLayers: encoding.TemporalLayers,
+		SpatialLayers:  encoding.ParsedScalabilityMode.SpatialLayers,
+		TemporalLayers: encoding.ParsedScalabilityMode.TemporalLayers,
 		Kind:           p.Kind,
 	}
 	// Check in band FEC in codec parameters.

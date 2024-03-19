@@ -2,7 +2,6 @@ package mediasoupdata
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
@@ -234,6 +233,12 @@ func (r *RtpParameters) Init() error {
 		}
 	}
 
+	for _, encoding := range r.Encodings {
+		if err := encoding.Init(); err != nil {
+			return err
+		}
+	}
+
 	// Validate RTP parameters.
 	if err := r.validateCodecs(); err != nil {
 		return err
@@ -289,13 +294,10 @@ func GetIntegerByName(params []*FBS__RtpParameters.ParameterT, name string) int3
 }
 
 func GetInteger(param *FBS__RtpParameters.ParameterT) int32 {
-	fmt.Printf("apt GetInteger, %s", JsonFormat(param))
 	dataDump := &FBS__RtpParameters.Integer32T{}
 	if err := Clone(param.Value.Value, dataDump); err != nil {
-		fmt.Printf("apt GetInteger clone error:%+v", err)
 		return 0
 	}
-	fmt.Printf("set apt GetInteger, %d", dataDump.Value)
 	return dataDump.Value
 }
 
@@ -320,13 +322,13 @@ func (r *RtpParameters) validateEncodings() error {
 	// Also, don't allow multiple SVC spatial layers into an encoding if there
 	// are more than one encoding (simulcast).
 	for _, encoding := range r.Encodings {
-		if encoding.SpatialLayers == 0 {
-			encoding.SpatialLayers = 1
+		if encoding.ParsedScalabilityMode.SpatialLayers == 0 {
+			encoding.ParsedScalabilityMode.SpatialLayers = 1
 		}
-		if encoding.TemporalLayers == 0 {
-			encoding.TemporalLayers = 1
+		if encoding.ParsedScalabilityMode.TemporalLayers == 0 {
+			encoding.ParsedScalabilityMode.TemporalLayers = 1
 		}
-		if encoding.SpatialLayers > 1 && len(r.Encodings) > 1 {
+		if encoding.ParsedScalabilityMode.SpatialLayers > 1 && len(r.Encodings) > 1 {
 			return errors.New("cannot use both simulcast and encodings with multiple SVC spatial layers")
 		}
 
@@ -376,7 +378,7 @@ func (r *RtpParameters) Valid() bool {
 
 func (r *RtpParameters) GetType() FBS__RtpParameters.Type {
 	if len(r.Encodings) == 1 {
-		if r.Encodings[0].SpatialLayers > 1 || r.Encodings[0].TemporalLayers > 1 {
+		if r.Encodings[0].ParsedScalabilityMode.SpatialLayers > 1 || r.Encodings[0].ParsedScalabilityMode.TemporalLayers > 1 {
 			return FBS__RtpParameters.TypeSVC
 		}
 		return FBS__RtpParameters.TypeSIMPLE
@@ -511,9 +513,17 @@ type RtcpFeedback struct {
  */
 type RtpEncodingParameters struct {
 	FBS__RtpParameters.RtpEncodingParametersT
+	ParsedScalabilityMode ScalabilityMode `json:"parsed_scalability_mode"`
+}
 
-	SpatialLayers  uint8 `json:"-"` // default 1
-	TemporalLayers uint8 `json:"-"` // default 1
+func (r *RtpEncodingParameters) Init() error {
+
+	mode := ParseScalabilityMode(r.ScalabilityMode)
+	r.ParsedScalabilityMode.SpatialLayers = mode.SpatialLayers
+	r.ParsedScalabilityMode.TemporalLayers = mode.TemporalLayers
+	r.ParsedScalabilityMode.Ksvc = mode.Ksvc
+
+	return nil
 }
 
 // RtpEncodingRtx represents the associated RTX stream for RTP stream.
