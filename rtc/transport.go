@@ -15,10 +15,10 @@ import (
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
-	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -29,6 +29,7 @@ type ITransport interface {
 	Connected()
 	Close()
 	GetJson(data *FBS__Transport.DumpT)
+	GetBaseStats() *FBS__Transport.StatsT
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
@@ -102,36 +103,34 @@ func (t *Transport) FillJson() json.RawMessage {
 	return data
 }
 
-func (t *Transport) FillJsonStats() json.RawMessage {
-	jsonData := mediasoupdata.TransportStat{
-		Type:                        "",
-		TransportId:                 "",
-		Timestamp:                   0,
-		SctpState:                   "",
-		BytesReceived:               0,
-		RecvBitrate:                 0,
-		BytesSent:                   0,
-		SendBitrate:                 0,
-		RtpBytesReceived:            0,
-		RtpRecvBitrate:              0,
-		RtpBytesSent:                0,
-		RtpSendBitrate:              0,
-		RtxBytesReceived:            0,
-		RtxRecvBitrate:              0,
-		RtxBytesSent:                0,
-		RtxSendBitrate:              0,
-		ProbationBytesSent:          0,
-		ProbationSendBitrate:        0,
-		AvailableOutgoingBitrate:    0,
-		AvailableIncomingBitrate:    0,
-		MaxIncomingBitrate:          0,
-		RtpPacketLossReceived:       0,
-		RtpPacketLossSent:           0,
-		WebRtcTransportSpecificStat: nil,
+func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
+	stats := &FBS__Transport.StatsT{
+		TransportId:              t.id,
+		Timestamp:                uint64(rtctime.GetTimeMs()),
+		SctpState:                nil,
+		BytesReceived:            0,
+		RecvBitrate:              0,
+		BytesSent:                0,
+		SendBitrate:              0,
+		RtpBytesReceived:         0,
+		RtpRecvBitrate:           0,
+		RtpBytesSent:             0,
+		RtpSendBitrate:           0,
+		RtxBytesReceived:         0,
+		RtxRecvBitrate:           0,
+		RtxBytesSent:             0,
+		RtxSendBitrate:           0,
+		ProbationBytesSent:       0,
+		ProbationSendBitrate:     0,
+		AvailableOutgoingBitrate: nil,
+		AvailableIncomingBitrate: nil,
+		MaxIncomingBitrate:       nil,
+		MaxOutgoingBitrate:       nil,
+		MinOutgoingBitrate:       nil,
+		RtpPacketLossReceived:    nil,
+		RtpPacketLossSent:        nil,
 	}
-	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
-	t.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	return stats
 }
 
 type transportParam struct {
@@ -267,18 +266,6 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	case FBS__Request.MethodTRANSPORT_SET_MAX_OUTGOING_BITRATE:
 
 	case FBS__Request.MethodTRANSPORT_ENABLE_TRACE_EVENT:
-
-	case FBS__Request.MethodTRANSPORT_GET_STATS:
-		// todo: why use webrtc stats
-		response.Data = t.FillJsonStats()
-		// set rsp
-		dataDump := &FBS__Transport.StatsT{}
-		_ = mediasoupdata.Clone(&response.Data, dataDump)
-		rspBody := &FBS__Response.BodyT{
-			Type:  FBS__Response.BodyWebRtcTransport_GetStatsResponse,
-			Value: &FBS__WebRtcTransport.GetStatsResponseT{Base: dataDump},
-		}
-		response.RspBody = rspBody
 
 	case FBS__Request.MethodTRANSPORT_CLOSE_PRODUCER:
 		requestT := request.Request.Body.Value.(*FBS__Transport.CloseProducerRequestT)

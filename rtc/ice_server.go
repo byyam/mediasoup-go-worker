@@ -70,8 +70,8 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	ufrag, _ := iceutil.GenerateUFrag()
 	pwd, _ := iceutil.GeneratePwd()
 	d := &iceServer{
-		iceLite:          param.iceLite, // todo: support full ICE
-		state:            FBS__WebRtcTransport.IceStateNEW,
+		iceLite:          param.iceLite,                    // todo: support full ICE
+		state:            FBS__WebRtcTransport.IceStateNEW, // todo: completed
 		logger:           zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
@@ -260,7 +260,25 @@ func (d *iceServer) GetIceParameters() *FBS__WebRtcTransport.IceParametersT {
 }
 
 func (d *iceServer) GetSelectedTuple() *FBS__Transport.TupleT {
-	return &FBS__Transport.TupleT{}
+	tuple := &FBS__Transport.TupleT{}
+	// ice conn may be nil
+	if d.iceConn == nil {
+		return tuple
+	}
+	localAddr := d.iceConn.LocalAddr()
+	localUdpAddr, ok := localAddr.(*net.UDPAddr)
+	if !ok {
+		tuple.LocalIp = localUdpAddr.IP.String()
+		tuple.LocalPort = uint16(localUdpAddr.Port)
+	}
+	remoteAddr := d.iceConn.RemoteAddr()
+	remoteUdpAddr, ok := remoteAddr.(*net.UDPAddr)
+	if !ok {
+		tuple.RemoteIp = remoteUdpAddr.IP.String()
+		tuple.RemotePort = uint16(remoteUdpAddr.Port)
+	}
+	tuple.Protocol = FBS__Transport.ProtocolUDP
+	return tuple
 }
 
 func (d *iceServer) GetState() FBS__WebRtcTransport.IceState {
@@ -289,6 +307,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []*FBS__WebRtcTransport.
 func (d *iceServer) GetConn() (*iceConn, error) {
 	if d.connDone != nil {
 		<-d.connDone
+		d.state = FBS__WebRtcTransport.IceStateCONNECTED
 		d.logger.Info().Msg("ice connected")
 	}
 	return d.iceConn, nil
@@ -314,6 +333,7 @@ func (d *iceServer) Disconnect() {
 		}
 	}
 	d.udpMux.RemoveConnByUfrag(d.localUfrag)
+	d.state = FBS__WebRtcTransport.IceStateDISCONNECTED
 	d.logger.Info().Msg("ice disconnect")
 }
 

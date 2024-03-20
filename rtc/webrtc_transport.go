@@ -119,9 +119,27 @@ func (t *WebrtcTransport) HandleRequest(request workerchannel.RequestData, respo
 
 	case FBS__Request.MethodTRANSPORT_RESTART_ICE:
 
+	case FBS__Request.MethodTRANSPORT_GET_STATS:
+		response.RspBody = &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWebRtcTransport_GetStatsResponse,
+			Value: t.FillJsonStats(),
+		}
+
 	default:
 		t.ITransport.HandleRequest(request, response)
 	}
+}
+
+func (t *WebrtcTransport) FillJsonStats() *FBS__WebRtcTransport.GetStatsResponseT {
+	stats := &FBS__WebRtcTransport.GetStatsResponseT{
+		Base:             t.ITransport.GetBaseStats(),
+		IceRole:          t.iceServer.GetRole(),
+		IceState:         t.iceServer.GetState(),
+		IceSelectedTuple: t.iceServer.GetSelectedTuple(),
+		DtlsState:        t.dtlsTransport.GetState(),
+	}
+	t.logger.Debug().Any("stats", stats).Msg("FillJsonStats")
+	return stats
 }
 
 func (t *WebrtcTransport) connect(options *FBS__WebRtcTransport.DtlsParametersT) (*FBS__WebRtcTransport.ConnectResponseT, error) {
