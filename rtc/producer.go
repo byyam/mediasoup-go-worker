@@ -265,14 +265,13 @@ func (p *Producer) FillJsonStats() *FBS__Producer.GetStatsResponseT {
 }
 
 func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	defer func() {
-		p.logger.Debug().Msgf("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
-	}()
+	p.logger.Debug().Str("request", request.String()).Msg("handle channel request")
 
 	switch request.MethodType {
 	case FBS__Request.MethodPRODUCER_DUMP:
 		response.Data = p.FillJson()
 	case FBS__Request.MethodPRODUCER_GET_STATS:
+		// request body is null
 		dataDump := p.FillJsonStats()
 		// set rsp
 		rspBody := &FBS__Response.BodyT{

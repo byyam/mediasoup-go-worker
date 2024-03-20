@@ -33,7 +33,7 @@ type RequestData struct {
 }
 
 func (d RequestData) String() string {
-	return fmt.Sprintf("Id:%d,HandlerId:%s,Method:%s",
+	return fmt.Sprintf("Id:[%d] HandlerId:[%s] Method:[%s]",
 		d.Request.Id,
 		d.Request.HandlerId,
 		FBS__Request.EnumNamesMethod[d.MethodType])

@@ -16,6 +16,8 @@ var (
 	ErrProducerExist               = errors.New("producer already exist")
 	ErrProducerNotFound            = errors.New("producer not found")
 	ErrConsumerNotFound            = errors.New("consumer not found")
+	ErrDataProducerExist           = errors.New("data producer already exist")
+	ErrDataProducerNotFound        = errors.New("data producer not found")
 	ErrNoSRTPProtectionProfile     = errors.New("DTLS Handshake completed and no SRTP Protection Profile was chosen")
 	ErrSubTypeNotRtx               = errors.New("mimeType.subtype is not RTX")
 )
