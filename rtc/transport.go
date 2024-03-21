@@ -18,6 +18,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/ratecalculator"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
@@ -34,6 +35,8 @@ type ITransport interface {
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
 	ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet)
+	DataReceived(len int)
+	DataSent(len int)
 }
 
 type Transport struct {
@@ -66,6 +69,15 @@ type Transport struct {
 	sendRtcpPacketFunc         func(packet rtcp.Packet)
 	sendRtcpCompoundPacketFunc func(packets []rtcp.Packet)
 	NotifyCloseFunc            func()
+
+	// stats
+	recvTransmission          *ratecalculator.RateCalculator
+	sendTransmission          *ratecalculator.RateCalculator
+	recvRtpTransmission       *RtpDataCounter
+	sendRtpTransmission       *RtpDataCounter // todo
+	recvRtxTransmission       *RtpDataCounter
+	sendRtxTransmission       *RtpDataCounter // todo
+	sendProbationTransmission *RtpDataCounter // todo
 
 	// close
 	closeOnce sync.Once
@@ -104,24 +116,25 @@ func (t *Transport) FillJson() json.RawMessage {
 }
 
 func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
+	nowMs := rtctime.GetTimeMs()
 	stats := &FBS__Transport.StatsT{
 		TransportId:              t.id,
-		Timestamp:                uint64(rtctime.GetTimeMs()),
+		Timestamp:                uint64(nowMs),
 		SctpState:                nil,
-		BytesReceived:            0,
-		RecvBitrate:              0,
-		BytesSent:                0,
-		SendBitrate:              0,
-		RtpBytesReceived:         0,
-		RtpRecvBitrate:           0,
-		RtpBytesSent:             0,
-		RtpSendBitrate:           0,
-		RtxBytesReceived:         0,
-		RtxRecvBitrate:           0,
-		RtxBytesSent:             0,
-		RtxSendBitrate:           0,
-		ProbationBytesSent:       0,
-		ProbationSendBitrate:     0,
+		BytesReceived:            uint64(t.recvTransmission.GetBytes()),
+		RecvBitrate:              t.recvTransmission.GetRate(nowMs),
+		BytesSent:                uint64(t.sendTransmission.GetBytes()),
+		SendBitrate:              t.sendTransmission.GetRate(nowMs),
+		RtpBytesReceived:         uint64(t.recvRtpTransmission.GetBytes()),
+		RtpRecvBitrate:           t.recvRtpTransmission.GetBitrate(nowMs),
+		RtpBytesSent:             uint64(t.sendRtpTransmission.GetBytes()),
+		RtpSendBitrate:           t.sendRtpTransmission.GetBitrate(nowMs),
+		RtxBytesReceived:         uint64(t.recvRtxTransmission.GetBytes()),
+		RtxRecvBitrate:           t.recvRtxTransmission.GetBitrate(nowMs),
+		RtxBytesSent:             uint64(t.sendRtxTransmission.GetBytes()),
+		RtxSendBitrate:           t.sendRtxTransmission.GetBitrate(nowMs),
+		ProbationBytesSent:       uint64(t.sendProbationTransmission.GetBytes()),
+		ProbationSendBitrate:     t.sendProbationTransmission.GetBitrate(nowMs),
 		AvailableOutgoingBitrate: nil,
 		AvailableIncomingBitrate: nil,
 		MaxIncomingBitrate:       nil,
@@ -169,10 +182,17 @@ func newTransport(param transportParam) (ITransport, error) {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
-		id:          param.Id,
-		optionsFBS:  param.OptionsFBS,
-		logger:      zerowrapper.NewScope("transport", param.Id),
-		rtpListener: newRtpListener(),
+		id:                        param.Id,
+		optionsFBS:                param.OptionsFBS,
+		logger:                    zerowrapper.NewScope("transport", param.Id),
+		rtpListener:               newRtpListener(),
+		recvTransmission:          ratecalculator.NewRateCalculator(0, 0, 0, nil),
+		sendTransmission:          ratecalculator.NewRateCalculator(0, 0, 0, nil),
+		recvRtpTransmission:       NewRtpDataCounter(0),
+		sendRtpTransmission:       NewRtpDataCounter(0),
+		recvRtxTransmission:       NewRtpDataCounter(0),
+		sendRtxTransmission:       NewRtpDataCounter(0),
+		sendProbationTransmission: NewRtpDataCounter(0),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
@@ -438,6 +458,14 @@ func (t *Transport) DataProduce(id string, request *FBS__Transport.ProduceDataRe
 	return dataProducer, nil
 }
 
+func (t *Transport) DataReceived(len int) {
+	t.recvTransmission.Update(len, rtctime.GetTimeMs())
+}
+
+func (t *Transport) DataSent(len int) {
+	t.sendTransmission.Update(len, rtctime.GetTimeMs())
+}
+
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	// Apply the Transport RTP header extension ids so the RTP listener can use them.
 	packet.SetMidExtensionId(t.recvRtpHeaderExtensionIds.Mid)
@@ -453,7 +481,18 @@ func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 		return
 	}
 
-	producer.ReceiveRtpPacket(packet)
+	result := producer.ReceiveRtpPacket(packet)
+	switch result {
+	case ReceiveRtpPacketResultMEDIA:
+		t.recvRtpTransmission.Update(packet)
+	case ReceiveRtpPacketResultRETRANSMISSION:
+		t.recvRtxTransmission.Update(packet)
+	case ReceiveRtpPacketResultDISCARDED:
+		// todo
+		// Tell the child class to remove this SSRC.
+	default:
+
+	}
 }
 
 func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtpparser.Packet) {

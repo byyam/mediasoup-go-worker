@@ -184,6 +184,7 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 		t.logger.Warn().Msg("webrtc not connected, ignore received packet")
 		return
 	}
+	t.ITransport.DataReceived(len(data)) // transport stats
 	if muxpkg.MatchSRTPOrSRTCP(data) {
 		if !muxpkg.IsRTCP(data) {
 			monitor.RtpRecvCount(monitor.TraceReceive)
@@ -253,6 +254,7 @@ func (t *WebrtcTransport) SendRtpPacket(packet *rtpparser.Packet) {
 		t.logger.Error().Err(err).Msg("write EncryptRTP error")
 		return
 	}
+	t.ITransport.DataSent(len(encrypted))
 }
 
 func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
@@ -273,6 +275,7 @@ func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
 		return
 	}
+	t.ITransport.DataSent(len(encrypted))
 	monitor.RtcpSendCount(monitor.TraceSend)
 }
 
@@ -294,6 +297,7 @@ func (t *WebrtcTransport) SendRtcpCompoundPacket(packets []rtcp.Packet) {
 		monitor.RtcpSendCount(monitor.TraceEncryptFailed)
 		return
 	}
+	t.ITransport.DataSent(len(encrypted))
 	monitor.RtcpSendCount(monitor.TraceSend)
 }
 
