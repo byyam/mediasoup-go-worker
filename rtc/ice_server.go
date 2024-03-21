@@ -267,13 +267,13 @@ func (d *iceServer) GetSelectedTuple() *FBS__Transport.TupleT {
 	}
 	localAddr := d.iceConn.LocalAddr()
 	localUdpAddr, ok := localAddr.(*net.UDPAddr)
-	if !ok {
+	if ok {
 		tuple.LocalIp = localUdpAddr.IP.String()
 		tuple.LocalPort = uint16(localUdpAddr.Port)
 	}
 	remoteAddr := d.iceConn.RemoteAddr()
 	remoteUdpAddr, ok := remoteAddr.(*net.UDPAddr)
-	if !ok {
+	if ok {
 		tuple.RemoteIp = remoteUdpAddr.IP.String()
 		tuple.RemotePort = uint16(remoteUdpAddr.Port)
 	}
