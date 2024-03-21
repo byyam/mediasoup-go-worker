@@ -120,6 +120,11 @@ func (p *Packet) GetRid() string {
 	return string(extenValue)
 }
 
+func (p *Packet) GetRrid() string {
+	extenValue := p.GetExtension(p.rridExtensionId)
+	return string(extenValue)
+}
+
 func (p *Packet) UpdateMid(mid string) error {
 	return p.SetExtension(p.midExtensionId, []byte(mid))
 }

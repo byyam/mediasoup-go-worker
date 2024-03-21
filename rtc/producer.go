@@ -143,7 +143,8 @@ func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtp
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
-		p.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("no stream found for received packet")
+		p.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rrid", packet.GetRrid()).
+			Str("rid", packet.GetRid()).Msg("no stream found for received packet")
 		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
 		return ReceiveRtpPacketResultDISCARDED
 	}
@@ -446,7 +447,7 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 		if rtxCodec != nil && rtxCodec.PayloadType == payloadType {
 			isRtxPacket = true
 		}
-		p.logger.Info().Bool("isMediaPacket", isMediaPacket).Bool("isRtxPacket", isRtxPacket).Msgf("GetRtpStream")
+		p.logger.Debug().Bool("isMediaPacket", isMediaPacket).Bool("isRtxPacket", isRtxPacket).Msgf("GetRtpStream")
 
 		if isMediaPacket && encoding != nil && encoding.Ssrc != nil && *encoding.Ssrc == ssrc {
 			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)

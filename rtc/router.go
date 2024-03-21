@@ -47,9 +47,7 @@ func NewRouter(id string) *Router {
 }
 
 func (r *Router) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	defer func() {
-		r.logger.Debug().Str("request", request.String()).Err(response.Err).Msg("handle channel request done")
-	}()
+	r.logger.Debug().Str("request", request.String()).Err(response.Err).Msg("handle channel request")
 
 	switch request.MethodType {
 	case FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT:
