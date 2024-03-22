@@ -125,6 +125,19 @@ func (p *Packet) GetRrid() string {
 	return string(extenValue)
 }
 
+func (p *Packet) ReadRid(rid *string) bool {
+	// First try with the RID id then with the Repaired RID id.
+	if p.GetRid() != "" {
+		*rid = p.GetRid()
+		return true
+	}
+	if p.GetRrid() != "" {
+		*rid = p.GetRrid()
+		return true
+	}
+	return false
+}
+
 func (p *Packet) UpdateMid(mid string) error {
 	return p.SetExtension(p.midExtensionId, []byte(mid))
 }

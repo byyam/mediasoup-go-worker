@@ -447,10 +447,10 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 		if rtxCodec != nil && rtxCodec.PayloadType == payloadType {
 			isRtxPacket = true
 		}
-		p.logger.Debug().Bool("isMediaPacket", isMediaPacket).Bool("isRtxPacket", isRtxPacket).Msgf("GetRtpStream")
 
 		if isMediaPacket && encoding != nil && encoding.Ssrc != nil && *encoding.Ssrc == ssrc {
 			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
+			p.logger.Info().Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("CreateRtpStream by SSRC")
 			return rtpStream
 		} else if isRtxPacket && encoding.Rtx != nil && encoding.Rtx.Ssrc == ssrc {
 			v, ok := p.mapSsrcRtpStream.Load(encoding.Ssrc)
@@ -472,15 +472,16 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 
 			// Insert the new RTX ssrc into the map.
 			p.mapRtxSsrcRtpStream.Store(ssrc, rtpStream)
-
+			p.logger.Info().Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("Find RTX RtpStream by SSRC")
 			return rtpStream
 		}
 	}
 
 	// If not found, look for an encoding matching the packet RID value.
-	if packet.GetRid() != "" {
+	var rid string
+	if packet.ReadRid(&rid) {
 		for idx, encoding := range p.RtpParameters.Encodings {
-			if encoding.Rid != packet.GetRid() {
+			if encoding.Rid != rid {
 				continue
 			}
 			mediaCodec := p.RtpParameters.GetCodecForEncoding(encoding)
@@ -511,11 +512,38 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 					return nil
 				}
 				rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
-				p.logger.Info().Str("RID", packet.GetRid()).Msg("CreateRtpStream by RID")
-				return rtpStream
-			} else if isRtxPacket {
-				// todo
+				p.logger.Info().Str("RID", packet.GetRid()).Uint32("ssrc", ssrc).Uint8("pt", payloadType).
+					Msg("CreateRtpStream by RID")
 
+				return rtpStream
+
+			} else if isRtxPacket {
+				var gotRtpStream *RtpStreamRecv
+				// Ensure a stream already exists with same RID.
+				p.mapSsrcRtpStream.Range(func(key, value any) bool {
+					rtpStream, ok := value.(*RtpStreamRecv)
+					if !ok || rtpStream == nil {
+						return true
+					}
+					if rtpStream.GetRid() == rid { // RID or RRID
+						// Ensure no RTX ssrc was previously detected.
+						if rtpStream.rtxStream != nil {
+							p.logger.Warn().Msg("ignoring RTX packet with new SSRC (RID lookup)")
+							return false
+						}
+						// Update the stream RTX data.
+						rtpStream.SetRtx(payloadType, ssrc)
+						// Insert the new RTX ssrc into the map.
+						p.mapRtxSsrcRtpStream.Store(ssrc, rtpStream)
+						gotRtpStream = rtpStream
+					}
+					return true
+				})
+				if gotRtpStream != nil {
+					p.logger.Info().Str("RID", packet.GetRid()).Str("RRID", packet.GetRrid()).
+						Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("Find RTX RtpStream by RID or RRID")
+					return gotRtpStream
+				}
 			}
 		}
 		p.logger.Warn().Msg("ignoring packet with unknown RID (RID lookup)")
