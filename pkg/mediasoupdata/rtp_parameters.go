@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
 
@@ -92,7 +93,7 @@ type RtpCodecCapability struct {
 	/**
 	 * Transport layer and codec-specific feedback messages for this codec.
 	 */
-	RtcpFeedback []RtcpFeedback `json:"rtcpFeedback,omitempty"`
+	RtcpFeedback []*FBS__RtpParameters.RtcpFeedbackT `json:"rtcpFeedback,omitempty"`
 }
 
 func (r RtpCodecCapability) isRtxCodec() bool {
@@ -153,6 +154,10 @@ type RtpHeaderExtension struct {
 	Direction RtpHeaderExtensionDirection `json:"direction,omitempty"`
 }
 
+const (
+	AptString = "apt"
+)
+
 /**
  * The RTP send parameters describe a media stream received by mediasoup from
  * an endpoint through its corresponding mediasoup Producer. These parameters
@@ -198,7 +203,7 @@ type RtpParameters struct {
 	/**
 	 * RTP header extensions in use.
 	 */
-	HeaderExtensions []RtpHeaderExtensionParameters `json:"headerExtensions,omitempty"`
+	HeaderExtensions []*RtpHeaderExtensionParameters `json:"header_extensions,omitempty"`
 
 	/**
 	 * Transmitted RTP streams and their settings.
@@ -208,9 +213,14 @@ type RtpParameters struct {
 	/**
 	 * Parameters used for RTCP.
 	 */
-	Rtcp RtcpParameters `json:"rtcp,omitempty"`
+	Rtcp *FBS__RtpParameters.RtcpParametersT `json:"rtcp,omitempty"`
+}
 
-	HasRtcp bool `json:"-"`
+func NewRtpParameters(fbs *FBS__RtpParameters.RtpParametersT) *RtpParameters {
+	r := &RtpParameters{}
+	_ = Clone(fbs, r)
+
+	return r
 }
 
 func (r *RtpParameters) Init() error {
@@ -223,19 +233,72 @@ func (r *RtpParameters) Init() error {
 		}
 	}
 
-	if r.Rtcp.Cname != "" {
-		r.HasRtcp = true
+	for _, encoding := range r.Encodings {
+		if err := encoding.Init(); err != nil {
+			return err
+		}
 	}
+
 	// Validate RTP parameters.
-	r.validateCodecs()
+	if err := r.validateCodecs(); err != nil {
+		return err
+	}
 	if err := r.validateEncodings(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *RtpParameters) validateCodecs() {
-	// todo
+func (r *RtpParameters) validateCodecs() error {
+	for _, codec := range r.Codecs {
+		// todo: check duplicated payloadType
+		codecParameters := &RtpCodecMimeType{}
+		if err := codecParameters.SetMimeType(codec.MimeType); err != nil {
+			return err
+		}
+		switch codecParameters.SubType {
+		// A RTX codec must have 'apt' parameter pointing to a non RTX codec.
+		case MimeSubTypeRTX:
+			apt := GetIntegerByName(codec.Parameters, AptString)
+			for _, codec := range r.Codecs {
+				if apt == int32(codec.PayloadType) {
+					codecParameters := &RtpCodecMimeType{}
+					if err := codecParameters.SetMimeType(codec.MimeType); err != nil {
+						return err
+					}
+					if codecParameters.SubType == MimeSubTypeRTX {
+						return errors.New("apt in RTX codec points to a RTX codec")
+					} else if codecParameters.SubType == MimeSubTypeULPFEC {
+						return errors.New("apt in RTX codec points to a ULPFEC codec")
+					} else if codecParameters.SubType == MimeSubTypeFLEXFEC {
+						return errors.New("apt in RTX codec points to a FLEXFEC codec")
+					}
+					return nil
+				}
+			}
+
+		default:
+
+		}
+	}
+	return nil
+}
+
+func GetIntegerByName(params []*FBS__RtpParameters.ParameterT, name string) int32 {
+	for _, param := range params {
+		if param.Name == name {
+			return GetInteger(param)
+		}
+	}
+	return 0
+}
+
+func GetInteger(param *FBS__RtpParameters.ParameterT) int32 {
+	dataDump := &FBS__RtpParameters.Integer32T{}
+	if err := Clone(param.Value.Value, dataDump); err != nil {
+		return 0
+	}
+	return dataDump.Value
 }
 
 func (r *RtpParameters) validateEncodings() error {
@@ -259,23 +322,22 @@ func (r *RtpParameters) validateEncodings() error {
 	// Also, don't allow multiple SVC spatial layers into an encoding if there
 	// are more than one encoding (simulcast).
 	for _, encoding := range r.Encodings {
-		if encoding.SpatialLayers == 0 {
-			encoding.SpatialLayers = 1
+		if encoding.ParsedScalabilityMode.SpatialLayers == 0 {
+			encoding.ParsedScalabilityMode.SpatialLayers = 1
 		}
-		if encoding.TemporalLayers == 0 {
-			encoding.TemporalLayers = 1
+		if encoding.ParsedScalabilityMode.TemporalLayers == 0 {
+			encoding.ParsedScalabilityMode.TemporalLayers = 1
 		}
-		if encoding.SpatialLayers > 1 && len(r.Encodings) > 1 {
+		if encoding.ParsedScalabilityMode.SpatialLayers > 1 && len(r.Encodings) > 1 {
 			return errors.New("cannot use both simulcast and encodings with multiple SVC spatial layers")
 		}
 
-		if !encoding.HasCodecPayloadType {
-			encoding.CodecPayloadType = firstMediaPayloadType
-			encoding.HasCodecPayloadType = true
+		if encoding.CodecPayloadType == nil {
+			encoding.CodecPayloadType = &firstMediaPayloadType
 		} else {
 			var exist bool
 			for _, codec := range r.Codecs {
-				if codec.PayloadType == encoding.CodecPayloadType {
+				if codec.PayloadType == *encoding.CodecPayloadType {
 					// Must be a media codec.
 					if codec.RtpCodecMimeType.IsMediaCodec() {
 						exist = true
@@ -314,22 +376,22 @@ func (r *RtpParameters) Valid() bool {
 	return true
 }
 
-func (r *RtpParameters) GetType() ProducerType {
+func (r *RtpParameters) GetType() FBS__RtpParameters.Type {
 	if len(r.Encodings) == 1 {
-		if r.Encodings[0].SpatialLayers > 1 || r.Encodings[0].TemporalLayers > 1 {
-			return RtpParametersType_Svc
+		if r.Encodings[0].ParsedScalabilityMode.SpatialLayers > 1 || r.Encodings[0].ParsedScalabilityMode.TemporalLayers > 1 {
+			return FBS__RtpParameters.TypeSVC
 		}
-		return RtpParametersType_Simple
+		return FBS__RtpParameters.TypeSIMPLE
 	} else if len(r.Encodings) > 1 {
-		return RtpParametersType_Simulcast
+		return FBS__RtpParameters.TypeSIMULCAST
 	}
-	return RtpParametersType_None
+	return FBS__RtpParameters.TypeSIMPLE
 }
 
 func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
 	payloadType := encoding.CodecPayloadType
 	for _, codec := range r.Codecs {
-		if codec.PayloadType == payloadType {
+		if codec.PayloadType == *payloadType {
 			return codec
 		}
 	}
@@ -339,7 +401,7 @@ func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *Rt
 func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
 	payloadType := encoding.CodecPayloadType
 	for _, codec := range r.Codecs {
-		if codec.RtpCodecMimeType.IsFeatureCodec() && codec.Parameters.Apt == payloadType {
+		if codec.RtpCodecMimeType.IsFeatureCodec() && codec.SpecificParameters.Apt == *payloadType {
 			return codec
 		}
 	}
@@ -352,38 +414,13 @@ func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) 
  * supportedRtpCapabilities.ts file.
  */
 type RtpCodecParameters struct {
-	/**
-	 * The codec MIME media type/subtype (e.g. 'audio/opus', 'video/VP8').
-	 */
-	MimeType string `json:"mimeType"`
-
-	/**
-	 * The value that goes in the RTP Payload Type Field. Must be unique.
-	 */
-	PayloadType uint8 `json:"payloadType"`
-
-	/**
-	 * Codec clock rate expressed in Hertz.
-	 */
-	ClockRate int `json:"clockRate"`
-
-	/**
-	 * The int of channels supported (e.g. two for stereo). Just for audio.
-	 * Default 1.
-	 */
-	Channels uint8 `json:"channels,omitempty"`
-
+	FBS__RtpParameters.RtpCodecParametersT
 	/**
 	 * Codec-specific parameters available for signaling. Some parameters (such
 	 * as 'packetization-mode' and 'profile-level-id' in H264 or 'profile-id' in
 	 * VP9) are critical for codec matching.
 	 */
-	Parameters RtpCodecSpecificParameters `json:"parameters,omitempty"`
-
-	/**
-	 * Transport layer and codec-specific feedback messages for this codec.
-	 */
-	RtcpFeedback []RtcpFeedback `json:"rtcpFeedback,omitempty"`
+	SpecificParameters RtpCodecSpecificParameters `json:"specific_parameters,omitempty"`
 
 	RtpCodecMimeType RtpCodecMimeType `json:"-"`
 }
@@ -398,6 +435,7 @@ func (r *RtpCodecParameters) Init() error {
 	if r.ClockRate <= 0 {
 		return errors.New("missing clockRate")
 	}
+	r.setSpecificParameters()
 
 	if err := r.CheckCodec(); err != nil {
 		return err
@@ -405,17 +443,28 @@ func (r *RtpCodecParameters) Init() error {
 	return nil
 }
 
+func (r *RtpCodecParameters) setSpecificParameters() {
+	for _, p := range r.Parameters {
+		switch p.Name {
+		case AptString:
+			r.SpecificParameters.Apt = byte(GetInteger(p))
+		}
+	}
+}
+
 func (r *RtpCodecParameters) CheckCodec() error {
 	switch r.RtpCodecMimeType.SubType {
 	case MimeSubTypeRTX:
-		if r.Parameters.Apt <= 0 {
+		if r.SpecificParameters.Apt <= 0 {
 			return errors.New("missing apt parameter in RTX codec")
 		}
+	default:
+		return nil
 	}
 	return nil
 }
 
-func (r RtpCodecParameters) isRtxCodec() bool {
+func (r *RtpCodecParameters) isRtxCodec() bool {
 	return strings.HasSuffix(strings.ToLower(r.MimeType), "/rtx")
 }
 
@@ -463,51 +512,18 @@ type RtcpFeedback struct {
  * stream and its associated RTX stream (if any).
  */
 type RtpEncodingParameters struct {
-	/**
-	 * The media SSRC.
-	 */
-	Ssrc uint32 `json:"ssrc,omitempty"`
+	FBS__RtpParameters.RtpEncodingParametersT
+	ParsedScalabilityMode ScalabilityMode `json:"parsed_scalability_mode"`
+}
 
-	/**
-	 * The RID RTP extension value. Must be unique.
-	 */
-	Rid string `json:"rid,omitempty"`
+func (r *RtpEncodingParameters) Init() error {
 
-	/**
-	 * Codec payload type this encoding affects. If unset, first media codec is
-	 * chosen.
-	 */
-	CodecPayloadType    byte `json:"codecPayloadType,omitempty"`
-	HasCodecPayloadType bool `json:"-"`
+	mode := ParseScalabilityMode(r.ScalabilityMode)
+	r.ParsedScalabilityMode.SpatialLayers = mode.SpatialLayers
+	r.ParsedScalabilityMode.TemporalLayers = mode.TemporalLayers
+	r.ParsedScalabilityMode.Ksvc = mode.Ksvc
 
-	/**
-	 * RTX stream information. It must contain a numeric ssrc field indicating
-	 * the RTX SSRC.
-	 */
-	Rtx *RtpEncodingRtx `json:"rtx,omitempty"`
-
-	/**
-	 * It indicates whether discontinuous RTP transmission will be used. Useful
-	 * for audio (if the codec supports it) and for video screen sharing (when
-	 * static content is being transmitted, this option disables the RTP
-	 * inactivity checks in mediasoup). Default false.
-	 */
-	Dtx bool `json:"dtx,omitempty"`
-
-	/**
-	 * int of spatial and temporal layers in the RTP stream (e.g. 'L1T3').
-	 * See webrtc-svc.
-	 */
-	ScalabilityMode string `json:"scalabilityMode,omitempty"`
-
-	/**
-	 * Others.
-	 */
-	ScaleResolutionDownBy int `json:"scaleResolutionDownBy,omitempty"`
-	MaxBitrate            int `json:"maxBitrate,omitempty"`
-
-	SpatialLayers  uint8 `json:"-"` // default 1
-	TemporalLayers uint8 `json:"-"` // default 1
+	return nil
 }
 
 // RtpEncodingRtx represents the associated RTX stream for RTP stream.
@@ -524,27 +540,12 @@ type RtpEncodingRtx struct {
  * parameters are currently considered.
  */
 type RtpHeaderExtensionParameters struct {
-	/**
-	 * The URI of the RTP header extension, as defined in RFC 5285.
-	 */
-	Uri string `json:"uri"`
-
-	/**
-	 * The numeric identifier that goes in the RTP packet. Must be unique.
-	 */
-	Id int `json:"id"`
-
-	/**
-	 * If true, the value in the header is encrypted as per RFC 6904. Default false.
-	 */
-	Encrypt bool `json:"encrypt,omitempty"`
+	FBS__RtpParameters.RtpHeaderExtensionParametersT
 
 	/**
 	 * Configuration parameters for the header extension.
 	 */
-	Parameters *RtpCodecSpecificParameters `json:"parameters,omitempty"`
-
-	Type RtpHeaderExtensionUri
+	SpecificParameters *RtpCodecSpecificParameters `json:"specific_parameters,omitempty"`
 }
 
 /**

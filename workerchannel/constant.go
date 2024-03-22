@@ -1,5 +1,9 @@
 package workerchannel
 
+import (
+	"github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
+)
+
 const (
 	NativeJsonVersion = "3.9.0"
 	NativeVersion     = "3.10.5"
@@ -13,3 +17,7 @@ const (
 	PayloadConsumerChannelFd = 5
 	PayloadProducerChannelFd = 6
 )
+
+var EventMap = map[Notification.Event]string{
+	Notification.EventWORKER_RUNNING: "running",
+}

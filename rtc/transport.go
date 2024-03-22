@@ -11,9 +11,15 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__DataConsumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataConsumer"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	"github.com/byyam/mediasoup-go-worker/pkg/ratecalculator"
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpprobation"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -23,20 +29,25 @@ import (
 type ITransport interface {
 	Connected()
 	Close()
-	GetJson(data *mediasoupdata.TransportDump)
+	GetJson(data *FBS__Transport.DumpT)
+	GetBaseStats() *FBS__Transport.StatsT
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	ReceiveRtpPacket(packet *rtpparser.Packet)
 	ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet)
+	DataReceived(len int)
+	DataSent(len int)
 }
 
 type Transport struct {
-	id      string
-	options mediasoupdata.TransportOptions
-	logger  zerolog.Logger
+	id         string
+	optionsFBS *FBS__Transport.OptionsT
+	logger     zerolog.Logger
 
 	mapProducers              sync.Map //map[string]*Producer
 	mapConsumers              sync.Map
+	mapDataProducers          sync.Map
+	mapDataConsumers          sync.Map
 	mapSsrcConsumer           sync.Map
 	mapRtxSsrcConsumer        sync.Map
 	rtpListener               *RtpListener
@@ -51,12 +62,22 @@ type Transport struct {
 	onTransportConsumerClosedHandler              func(producerId, consumerId string)
 	onTransportConsumerKeyFrameRequestedHandler   func(consumerId string, mappedSsrc uint32)
 	onTransportNeedWorstRemoteFractionLostHandler func(producerId string, worstRemoteFractionLost *uint8)
+	onTransportDataProducerClosedHandler          func(producerId string)
 
 	// transport base call sons
 	sendRtpPacketFunc          func(packet *rtpparser.Packet)
 	sendRtcpPacketFunc         func(packet rtcp.Packet)
 	sendRtcpCompoundPacketFunc func(packets []rtcp.Packet)
-	notifyCloseFunc            func()
+	NotifyCloseFunc            func()
+
+	// stats
+	recvTransmission          *ratecalculator.RateCalculator
+	sendTransmission          *ratecalculator.RateCalculator
+	recvRtpTransmission       *RtpDataCounter
+	sendRtpTransmission       *RtpDataCounter // todo
+	recvRtxTransmission       *RtpDataCounter
+	sendRtxTransmission       *RtpDataCounter // todo
+	sendProbationTransmission *RtpDataCounter // todo
 
 	// close
 	closeOnce sync.Once
@@ -69,7 +90,7 @@ func (t *Transport) Close() {
 	})
 }
 
-func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
+func (t *Transport) GetJson(data *FBS__Transport.DumpT) {
 	var producerIds []string
 	t.mapProducers.Range(func(key, value interface{}) bool {
 		producerIds = append(producerIds, key.(string))
@@ -77,11 +98,13 @@ func (t *Transport) GetJson(data *mediasoupdata.TransportDump) {
 	})
 
 	data.Id = t.id
-	data.Direct = t.options.Direct
+	data.Direct = t.optionsFBS.Direct
 	data.ProducerIds = producerIds
 	if t.sctpAssociation != nil {
 		data.SctpParameters = t.sctpAssociation.GetSctpAssociationParam()
 	}
+	data.RecvRtpHeaderExtensions = &FBS__Transport.RecvRtpHeaderExtensionsT{}
+	data.RtpListener = &FBS__Transport.RtpListenerT{}
 }
 
 func (t *Transport) FillJson() json.RawMessage {
@@ -92,41 +115,41 @@ func (t *Transport) FillJson() json.RawMessage {
 	return data
 }
 
-func (t *Transport) FillJsonStats() json.RawMessage {
-	jsonData := mediasoupdata.TransportStat{
-		Type:                        "",
-		TransportId:                 "",
-		Timestamp:                   0,
-		SctpState:                   "",
-		BytesReceived:               0,
-		RecvBitrate:                 0,
-		BytesSent:                   0,
-		SendBitrate:                 0,
-		RtpBytesReceived:            0,
-		RtpRecvBitrate:              0,
-		RtpBytesSent:                0,
-		RtpSendBitrate:              0,
-		RtxBytesReceived:            0,
-		RtxRecvBitrate:              0,
-		RtxBytesSent:                0,
-		RtxSendBitrate:              0,
-		ProbationBytesSent:          0,
-		ProbationSendBitrate:        0,
-		AvailableOutgoingBitrate:    0,
-		AvailableIncomingBitrate:    0,
-		MaxIncomingBitrate:          0,
-		RtpPacketLossReceived:       0,
-		RtpPacketLossSent:           0,
-		WebRtcTransportSpecificStat: nil,
+func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
+	nowMs := rtctime.GetTimeMs()
+	stats := &FBS__Transport.StatsT{
+		TransportId:              t.id,
+		Timestamp:                uint64(nowMs),
+		SctpState:                nil,
+		BytesReceived:            uint64(t.recvTransmission.GetBytes()),
+		RecvBitrate:              t.recvTransmission.GetRate(nowMs),
+		BytesSent:                uint64(t.sendTransmission.GetBytes()),
+		SendBitrate:              t.sendTransmission.GetRate(nowMs),
+		RtpBytesReceived:         uint64(t.recvRtpTransmission.GetBytes()),
+		RtpRecvBitrate:           t.recvRtpTransmission.GetBitrate(nowMs),
+		RtpBytesSent:             uint64(t.sendRtpTransmission.GetBytes()),
+		RtpSendBitrate:           t.sendRtpTransmission.GetBitrate(nowMs),
+		RtxBytesReceived:         uint64(t.recvRtxTransmission.GetBytes()),
+		RtxRecvBitrate:           t.recvRtxTransmission.GetBitrate(nowMs),
+		RtxBytesSent:             uint64(t.sendRtxTransmission.GetBytes()),
+		RtxSendBitrate:           t.sendRtxTransmission.GetBitrate(nowMs),
+		ProbationBytesSent:       uint64(t.sendProbationTransmission.GetBytes()),
+		ProbationSendBitrate:     t.sendProbationTransmission.GetBitrate(nowMs),
+		AvailableOutgoingBitrate: nil,
+		AvailableIncomingBitrate: nil,
+		MaxIncomingBitrate:       nil,
+		MaxOutgoingBitrate:       nil,
+		MinOutgoingBitrate:       nil,
+		RtpPacketLossReceived:    nil,
+		RtpPacketLossSent:        nil,
 	}
-	data, _ := json.Marshal(&([]mediasoupdata.TransportStat{jsonData}))
-	t.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	return stats
 }
 
 type transportParam struct {
 	Id                                     string
 	Options                                mediasoupdata.TransportOptions
+	OptionsFBS                             *FBS__Transport.OptionsT
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)
 	OnTransportProducerRtpPacketReceived   func(producer *Producer, packet *rtpparser.Packet)
@@ -155,15 +178,21 @@ func (t transportParam) valid() bool {
 }
 
 func newTransport(param transportParam) (ITransport, error) {
-	var err error
 	if !param.valid() {
 		return nil, mserror.ErrInvalidParam
 	}
 	transport := &Transport{
-		id:          param.Id,
-		options:     param.Options,
-		logger:      zerowrapper.NewScope("transport", param.Id),
-		rtpListener: newRtpListener(),
+		id:                        param.Id,
+		optionsFBS:                param.OptionsFBS,
+		logger:                    zerowrapper.NewScope("transport", param.Id),
+		rtpListener:               newRtpListener(),
+		recvTransmission:          ratecalculator.NewRateCalculator(0, 0, 0, nil),
+		sendTransmission:          ratecalculator.NewRateCalculator(0, 0, 0, nil),
+		recvRtpTransmission:       NewRtpDataCounter(0),
+		sendRtpTransmission:       NewRtpDataCounter(0),
+		recvRtxTransmission:       NewRtpDataCounter(0),
+		sendRtxTransmission:       NewRtpDataCounter(0),
+		sendProbationTransmission: NewRtpDataCounter(0),
 	}
 	transport.onTransportNewProducerHandler.Store(param.OnTransportNewProducer)
 	transport.onTransportProducerClosedHandler = param.OnTransportProducerClosed
@@ -175,13 +204,14 @@ func newTransport(param transportParam) (ITransport, error) {
 	transport.sendRtpPacketFunc = param.SendRtpPacketFunc
 	transport.sendRtcpPacketFunc = param.SendRtcpPacketFunc
 	transport.sendRtcpCompoundPacketFunc = param.SendRtcpCompoundPacketFunc
-	transport.notifyCloseFunc = param.NotifyCloseFunc
+	transport.NotifyCloseFunc = param.NotifyCloseFunc
 	go transport.OnTimer()
 
-	transport.logger.Info().Msgf("newTransport options:%# v", pretty.Formatter(transport.options))
+	transport.logger.Debug().Msgf("newTransport options:%# v", pretty.Formatter(transport.optionsFBS))
 
-	if transport.options.EnableSctp {
-		transport.sctpAssociation, err = newSctpAssociation(transport.options.SctpOptions)
+	var err error
+	if transport.optionsFBS.EnableSctp {
+		transport.sctpAssociation, err = newSctpAssociation(transport.optionsFBS)
 		if err != nil {
 			transport.logger.Err(err).Msg("newSctpAssociation failed")
 			return nil, err
@@ -192,101 +222,110 @@ func newTransport(param transportParam) (ITransport, error) {
 }
 
 func (t *Transport) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	defer func() {
-		t.logger.Info().Str("request", request.String()).Str("response", response.String()).Msg("handle channel request done")
-	}()
+	t.logger.Debug().Str("request", request.String()).Msg("handle channel request")
 
-	switch request.Method {
+	switch request.MethodType {
 
-	case mediasoupdata.MethodTransportDump:
+	case FBS__Request.MethodTRANSPORT_DUMP:
 		response.Data = t.FillJson()
 
-	case mediasoupdata.MethodTransportClose:
-		t.notifyCloseFunc() // call son close, tiger this close
-
-	case mediasoupdata.MethodTransportProduce:
-		var options mediasoupdata.ProducerOptions
-		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Produce(request.Internal.ProducerId, options)
-		response.Data, _ = json.Marshal(data)
+	case FBS__Request.MethodTRANSPORT_PRODUCE:
+		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceRequestT)
+		if _, ok := t.mapProducers.Load(requestT.ProducerId); ok {
+			response.Err = mserror.ErrProducerExist
+			return
+		}
+		data, err := t.Produce(requestT.ProducerId, requestT)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyTransport_ProduceResponse,
+			Value: data,
+		}
+		response.RspBody = rspBody
 		response.Err = err
 
-	case mediasoupdata.MethodTransportConsume:
+	case FBS__Request.MethodTRANSPORT_CONSUME:
 		var options mediasoupdata.ConsumerOptions
 		_ = json.Unmarshal(request.Data, &options)
 		data, err := t.Consume(request.Internal.ProducerId, request.Internal.ConsumerId, options)
 		response.Data, _ = json.Marshal(data)
 		response.Err = err
 
-	case mediasoupdata.MethodTransportProduceData:
-		var options mediasoupdata.DataProducerOptions
-		_ = json.Unmarshal(request.Data, &options)
-		dataProducer, err := t.DataProduce(request.Internal.DataProducerId, options)
+	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
+		requestT := request.Request.Body.Value.(*FBS__Transport.ProduceDataRequestT)
+		if _, ok := t.mapDataProducers.Load(requestT.DataProducerId); ok {
+			response.Err = mserror.ErrDataProducerExist
+			return
+		}
+		dataProducer, err := t.DataProduce(requestT.DataProducerId, requestT)
 		if err != nil {
 			response.Err = err
 			return
 		}
-		response.Data = dataProducer.FillJson()
-
-	case mediasoupdata.MethodTransportConsumeData:
-
-	case mediasoupdata.MethodTransportSetMaxIncomingBitrate:
-
-	case mediasoupdata.MethodTransportSetMaxOutgoingBitrate:
-
-	case mediasoupdata.MethodTransportEnableTraceEvent:
-
-	case mediasoupdata.MethodTransportGetStats:
-		response.Data = t.FillJsonStats()
-
-	// producer
-	case mediasoupdata.MethodProducerDump, mediasoupdata.MethodProducerGetStats, mediasoupdata.MethodProducerPause,
-		mediasoupdata.MethodProducerResume, mediasoupdata.MethodProducerEnableTraceEvent:
-		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
-		if !ok {
-			response.Err = mserror.ErrProducerNotFound
-			return
+		// set rsp
+		dataDump := dataProducer.FillJson()
+		_ = mediasoupdata.Clone(&response.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataProducer_DumpResponse,
+			Value: dataDump,
 		}
-		producer := value.(*Producer)
-		producer.HandleRequest(request, response)
+		response.RspBody = rspBody
 
-	case mediasoupdata.MethodProducerClose:
-		value, ok := t.mapProducers.Load(request.Internal.ProducerId)
+	case FBS__Request.MethodTRANSPORT_CONSUME_DATA:
+		// todo
+		// set rsp
+		dataDump := &FBS__DataConsumer.DumpResponseT{}
+		_ = mediasoupdata.Clone(&response.Data, dataDump)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataConsumer_DumpResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
+
+	case FBS__Request.MethodTRANSPORT_SET_MAX_INCOMING_BITRATE:
+
+	case FBS__Request.MethodTRANSPORT_SET_MAX_OUTGOING_BITRATE:
+
+	case FBS__Request.MethodTRANSPORT_ENABLE_TRACE_EVENT:
+
+	case FBS__Request.MethodTRANSPORT_CLOSE_PRODUCER:
+		requestT := request.Request.Body.Value.(*FBS__Transport.CloseProducerRequestT)
+		value, ok := t.mapProducers.Load(requestT.ProducerId)
 		if !ok {
 			response.Err = mserror.ErrProducerNotFound
 			return
 		}
 		producer := value.(*Producer)
 		producer.Close()
-		t.mapProducers.Delete(request.Internal.ProducerId)
+		t.mapProducers.Delete(requestT.ProducerId)
 		t.onTransportProducerClosedHandler(producer.id)
 
-	// consumer
-	case mediasoupdata.MethodConsumerDump, mediasoupdata.MethodConsumerGetStats, mediasoupdata.MethodConsumerPause,
-		mediasoupdata.MethodConsumerResume, mediasoupdata.MethodConsumerSetPreferredLayers, mediasoupdata.MethodConsumerSetPriority,
-		mediasoupdata.MethodConsumerRequestKeyFrame, mediasoupdata.MethodConsumerEnableTraceEvent:
-		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
-		if !ok {
-			response.Err = mserror.ErrConsumerNotFound
-			return
-		}
-		consumer := value.(IConsumer)
-		consumer.HandleRequest(request, response)
-
-	case mediasoupdata.MethodConsumerClose:
-		value, ok := t.mapConsumers.Load(request.Internal.ConsumerId)
+	case FBS__Request.MethodTRANSPORT_CLOSE_CONSUMER:
+		requestT := request.Request.Body.Value.(*FBS__Transport.CloseConsumerRequestT)
+		value, ok := t.mapConsumers.Load(requestT.ConsumerId)
 		if !ok {
 			response.Err = mserror.ErrConsumerNotFound
 			return
 		}
 		consumer := value.(IConsumer)
 		consumer.Close()
-		t.mapConsumers.Delete(request.Internal.ConsumerId)
+		t.mapConsumers.Delete(requestT.ConsumerId)
 		for _, ssrc := range consumer.GetMediaSsrcs() {
 			t.mapSsrcConsumer.Delete(ssrc)
 		}
 		t.onTransportConsumerClosedHandler(request.Internal.ProducerId, consumer.GetId())
 
+	case FBS__Request.MethodTRANSPORT_CLOSE_DATAPRODUCER:
+		requestT := request.Request.Body.Value.(*FBS__Transport.CloseDataProducerRequestT)
+		value, ok := t.mapDataProducers.Load(requestT.DataProducerId)
+		if !ok {
+			response.Err = mserror.ErrDataProducerNotFound
+			return
+		}
+		producer := value.(*DataProducer)
+		producer.Close()
+		t.mapDataProducers.Delete(requestT.DataProducerId)
+		// todo: register
+		t.onTransportDataProducerClosedHandler(producer.id)
 	default:
 		t.logger.Error().Str("method", request.Method).Msg("transport handle request method not found")
 		return
@@ -356,7 +395,7 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	}, nil
 }
 
-func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*mediasoupdata.ProducerData, error) {
+func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) (*FBS__Transport.ProduceResponseT, error) {
 	if id == "" {
 		return nil, mserror.ErrInvalidParam
 	}
@@ -365,7 +404,7 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 	}
 	producer, err := newProducer(producerParam{
 		id:                                    id,
-		options:                               options,
+		optionsFBS:                            request,
 		OnProducerRtpPacketReceived:           t.OnProducerRtpPacketReceived,
 		OnProducerSendRtcpPacket:              t.OnProducerSendRtcpPacket,
 		OnProducerNeedWorstRemoteFractionLost: t.onTransportNeedWorstRemoteFractionLostHandler,
@@ -383,45 +422,77 @@ func (t *Transport) Produce(id string, options mediasoupdata.ProducerOptions) (*
 		}
 	}
 	t.mapProducers.Store(id, producer)
-	t.logger.Info().Msgf("Producer created [producerId:%s],type:%s", id, producer.Type)
 	// Take the transport related RTP header extensions of the Producer and
 	// add them to the Transport.
 	// NOTE: Producer::GetRtpHeaderExtensionIds() returns the original
 	// header extension ids of the Producer (and not their mapped values).
 	t.recvRtpHeaderExtensionIds = producer.RtpHeaderExtensionIds
-	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).Msg("recvRtpHeaderExtensionIds")
+	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).
+		Str("kind", producer.Kind.String()).Str("type", producer.Type.String()).Msgf("Producer created [producerId:%s]", id)
 
 	// todo
 
-	return &mediasoupdata.ProducerData{Type: producer.Type}, nil
+	return &FBS__Transport.ProduceResponseT{
+		Type: producer.Type,
+	}, nil
 }
 
-func (t *Transport) DataProduce(id string, options mediasoupdata.DataProducerOptions) (*DataProducer, error) {
-	if id == "" {
+func (t *Transport) DataProduce(id string, request *FBS__Transport.ProduceDataRequestT) (*DataProducer, error) {
+	if request.DataProducerId == "" {
 		return nil, mserror.ErrInvalidParam
 	}
-	dataProducer, err := newDataProducer(id, t.options.MaxMessageSize, options)
+	if _, ok := t.mapDataProducers.Load(id); ok {
+		return nil, mserror.ErrDuplicatedId
+	}
+	maxMessageSize := uint32(0)
+	if t.sctpAssociation != nil {
+		maxMessageSize = t.sctpAssociation.GetSctpAssociationParam().MaxMessageSize
+	}
+	dataProducer, err := newDataProducer(id, maxMessageSize, request)
 	if err != nil {
 		t.logger.Err(err).Msg("data produce failed")
 		return nil, err
 	}
-	// todo: store in map
-	t.logger.Debug().Msgf("DataProducer created [producerId:%s],type:%s", id, dataProducer.options.Type)
+	t.mapDataProducers.Store(id, dataProducer)
+	t.logger.Debug().Msgf("DataProducer created [producerId:%s],type:%s,optionsFBS:%+v", id, request.Type, t.optionsFBS)
 	return dataProducer, nil
+}
+
+func (t *Transport) DataReceived(len int) {
+	t.recvTransmission.Update(len, rtctime.GetTimeMs())
+}
+
+func (t *Transport) DataSent(len int) {
+	t.sendTransmission.Update(len, rtctime.GetTimeMs())
 }
 
 func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	// Apply the Transport RTP header extension ids so the RTP listener can use them.
 	packet.SetMidExtensionId(t.recvRtpHeaderExtensionIds.Mid)
 	packet.SetRidExtensionId(t.recvRtpHeaderExtensionIds.Rid)
+	packet.SetRepairedRidExtensionId(t.recvRtpHeaderExtensionIds.RRid)
+	packet.SetAbsSendTimeExtensionId(t.recvRtpHeaderExtensionIds.AbsSendTime)
+	packet.SetTransportWideCc01ExtensionId(t.recvRtpHeaderExtensionIds.TransportWideCc01)
 	// get producer from ssrc, to producer
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
+		t.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("producer not found")
 		monitor.RtpRecvCount(monitor.TraceSsrcNotFound)
 		return
 	}
 
-	producer.ReceiveRtpPacket(packet)
+	result := producer.ReceiveRtpPacket(packet)
+	switch result {
+	case ReceiveRtpPacketResultMEDIA:
+		t.recvRtpTransmission.Update(packet)
+	case ReceiveRtpPacketResultRETRANSMISSION:
+		t.recvRtxTransmission.Update(packet)
+	case ReceiveRtpPacketResultDISCARDED:
+		// todo
+		// Tell the child class to remove this SSRC.
+	default:
+
+	}
 }
 
 func (t *Transport) OnProducerRtpPacketReceived(producer *Producer, packet *rtpparser.Packet) {

@@ -6,6 +6,9 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
+	"github.com/byyam/mediasoup-go-worker/mserror"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/rtc"
@@ -36,27 +39,35 @@ func (w *workerBase) GetPid() int {
 
 func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (response workerchannel.ResponseData) {
 
-	w.logger.Info().Str("request", request.String()).Msg("handle channel request start")
+	w.logger.Info().Any("body", request.Data).Str("header", request.String()).Msg("[channelMsg]request")
 
-	// support new message format: handlerId
-	if err := workerchannel.ConvertRequestData(&request); err != nil {
-		w.logger.Error().Err(err).Msg("convert request data failed")
-		response.Err = err
-		return
-	}
-
-	switch request.Method {
-	case mediasoupdata.MethodWorkerCreateRouter:
-		router := rtc.NewRouter(request.Internal.RouterId)
-		w.routerMap.Store(request.Internal.RouterId, router)
-	case mediasoupdata.MethodWorkerClose:
+	switch request.MethodType {
+	case FBS__Request.MethodWORKER_CREATE_ROUTER:
+		requestT := request.Request.Body.Value.(*FBS__Worker.CreateRouterRequestT)
+		router := rtc.NewRouter(requestT.RouterId)
+		if router == nil {
+			response.Err = mserror.ErrInvalidParam
+			return
+		}
+		w.routerMap.Store(requestT.RouterId, router)
+	case FBS__Request.MethodWORKER_CLOSE:
 		w.Stop()
-	case mediasoupdata.MethodWorkerDump:
+	case FBS__Request.MethodWORKER_DUMP:
 		response.Data = w.FillJson()
-	case mediasoupdata.MethodWorkerGetResourceUsage:
+	case FBS__Request.MethodWORKER_GET_RESOURCE_USAGE:
 		response.Data = w.FillJsonResourceUsage()
-	case mediasoupdata.MethodWorkerUpdateSettings:
-		// todo
+	case FBS__Request.MethodWORKER_UPDATE_SETTINGS:
+	// todo
+	case FBS__Request.MethodWORKER_CLOSE_ROUTER:
+		requestT := request.Request.Body.Value.(*FBS__Worker.CloseRouterRequestT)
+		v, ok := w.routerMap.Load(requestT.RouterId)
+		if !ok {
+			response.Err = mserror.ErrRouterNotFound
+			return
+		}
+		router := v.(*rtc.Router)
+		router.Close()
+
 	default:
 		h, err := workerchannel.GetChannelRequestHandler(request.HandlerId)
 		if err != nil {
@@ -73,7 +84,6 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 		//router := r.(*rtc.Router)
 		//router.HandleRequest(request, &response)
 	}
-	w.logger.Info().Str("request", request.String()).Msg("handle channel request done")
 	return
 }
 

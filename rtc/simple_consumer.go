@@ -1,13 +1,14 @@
 package rtc
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -61,10 +62,10 @@ func (c *SimpleConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           encoding.Ssrc,
+		Ssrc:           *encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
-		ClockRate:      mediaCodec.ClockRate,
+		ClockRate:      int(mediaCodec.ClockRate),
 		Rid:            "",
 		Cname:          rtpParameters.Rtcp.Cname,
 		RtxSsrc:        0,
@@ -76,6 +77,7 @@ func (c *SimpleConsumer) CreateRtpStream() {
 		UseDtx:         false,
 		SpatialLayers:  0,
 		TemporalLayers: 0,
+		// todo Kind
 	}
 	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
 		ParamRtpStream:                 param,
@@ -91,7 +93,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {
 		monitor.RtpSendCount(monitor.TraceAudio)
 	}
-	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
+	packet.SSRC = *c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
 	if c.rtpStream.ReceivePacket(packet) { // todo
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)
@@ -115,7 +117,7 @@ func (c *SimpleConsumer) RequestKeyFrame() {
 		return
 	}
 	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
-	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, mappedSsrc)
+	c.onConsumerKeyFrameRequestedHandler(c.IConsumer, *mappedSsrc)
 }
 
 func (c *SimpleConsumer) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) {
@@ -151,16 +153,17 @@ func (c *SimpleConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp
 	return packets
 }
 
-func (c *SimpleConsumer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ConsumerStat
-	if c.rtpStream != nil {
-		var stat mediasoupdata.ConsumerStat
-		c.rtpStream.FillJsonStats(&stat)
-		jsonData = append(jsonData, stat)
+func (c *SimpleConsumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
+	pStat := &FBS__Consumer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
 	}
-	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	if c.rtpStream != nil {
+		stat := &FBS__RtpStream.StatsT{}
+		c.rtpStream.FillJsonStats(stat)
+	} else {
+		c.logger.Warn().Msgf("rtpStream empty")
+	}
+	return pStat
 }
 
 func (c *SimpleConsumer) NeedWorstRemoteFractionLost(worstRemoteFractionLost *uint8) {

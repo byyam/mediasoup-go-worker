@@ -30,8 +30,8 @@ type TransportDump struct {
 	MapRtxSsrcConsumerId    map[string]string        `json:"mapRtxSsrcConsumerId,omitempty"`
 	DataProducerIds         []string                 `json:"dataProducerIds,omitempty"`
 	DataConsumerIds         []string                 `json:"dataConsumerIds,omitempty"`
-	RecvRtpHeaderExtensions *RecvRtpHeaderExtensions `json:"recvRtpHeaderExtensions,omitempty"`
-	RtpListener             *RtpListener             `json:"rtpListener,omitempty"`
+	RecvRtpHeaderExtensions *RecvRtpHeaderExtensions `json:"recv_rtp_header_extensions,omitempty"`
+	RtpListener             *RtpListener             `json:"rtp_listener,omitempty"`
 	SctpParameters          SctpParameters           `json:"sctpParameters,omitempty"`
 	SctpState               SctpState                `json:"sctpState,omitempty"`
 	SctpListener            *SctpListener            `json:"sctpListener,omitempty"`

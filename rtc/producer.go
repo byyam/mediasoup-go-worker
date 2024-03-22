@@ -10,6 +10,12 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -30,15 +36,16 @@ type Producer struct {
 	id     string
 	logger zerolog.Logger
 
-	Kind                  mediasoupdata.MediaKind
-	RtpParameters         mediasoupdata.RtpParameters
-	Type                  mediasoupdata.ProducerType
+	Kind                  FBS__RtpParameters.MediaKind
+	RtpParametersFBS      *FBS__RtpParameters.RtpParametersT
+	RtpParameters         *mediasoupdata.RtpParameters
+	Type                  FBS__RtpParameters.Type
 	RtpHeaderExtensionIds RtpHeaderExtensionIds
 	Paused                bool
 
 	rtpStreamByEncodingIdx []*RtpStreamRecv
 	rtpStreamScores        []uint8
-	rtpMapping             mediasoupdata.RtpMapping
+	rtpMapping             *FBS__RtpParameters.RtpMappingT
 	mapMappedSsrcSsrc      sync.Map
 	mapSsrcRtpStream       sync.Map
 	mapRtxSsrcRtpStream    sync.Map
@@ -66,41 +73,36 @@ const (
 type producerParam struct {
 	id                                    string
 	options                               mediasoupdata.ProducerOptions
+	optionsFBS                            *FBS__Transport.ProduceRequestT
 	OnProducerRtpPacketReceived           func(*Producer, *rtpparser.Packet)
 	OnProducerSendRtcpPacket              func(packet rtcp.Packet)
 	OnProducerNeedWorstRemoteFractionLost func(producerId string, worstRemoteFractionLost *uint8)
 }
 
 func newProducer(param producerParam) (*Producer, error) {
-	if ok := param.options.Valid(); !ok {
-		return nil, mserror.ErrInvalidParam
-	}
 	p := &Producer{
 		id:     param.id,
 		logger: zerowrapper.NewScope("producer", param.id),
 
-		Kind:          param.options.Kind,
-		RtpParameters: param.options.RtpParameters,
-		Type:          param.options.RtpParameters.GetType(),
-		Paused:        param.options.Paused,
-
-		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.options.RtpParameters.Encodings)),
-		rtpStreamScores:        make([]uint8, len(param.options.RtpParameters.Encodings)),
+		Kind:                   param.optionsFBS.Kind,
+		RtpParametersFBS:       param.optionsFBS.RtpParameters,
+		Paused:                 param.optionsFBS.Paused,
+		RtpParameters:          mediasoupdata.NewRtpParameters(param.optionsFBS.RtpParameters),
+		rtpStreamByEncodingIdx: make([]*RtpStreamRecv, len(param.optionsFBS.RtpParameters.Encodings)),
+		rtpStreamScores:        make([]uint8, len(param.optionsFBS.RtpParameters.Encodings)),
+		rtpMapping:             param.optionsFBS.RtpMapping,
 	}
 	p.onProducerRtpPacketReceivedHandler.Store(param.OnProducerRtpPacketReceived)
 	p.onProducerSendRtcpPacketHandler = param.OnProducerSendRtcpPacket
 	p.onProducerNeedWorstRemoteFractionLostHandler = param.OnProducerNeedWorstRemoteFractionLost
 
-	p.logger.Info().Msgf("input param for producer: %# v", pretty.Formatter(param.options))
-
+	p.logger.Debug().Any("rtpMapping", p.rtpMapping).Msgf("init rtp mapping for producer")
 	// init producer with param
 	if err := p.init(param); err != nil {
 		return nil, err
 	}
 
-	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.RtpParameters))
-	p.logger.Info().Msgf("init param for producer: %# v", pretty.Formatter(p.rtpMapping))
-
+	p.logger.Info().Any("RtpParameters", mediasoupdata.JsonFormat(p.RtpParameters)).Msgf("init rtp param for producer")
 	workerchannel.RegisterHandler(p.id, p.HandleRequest)
 	return p, nil
 }
@@ -109,46 +111,40 @@ func (p *Producer) init(param producerParam) error {
 	if err := p.RtpParameters.Init(); err != nil {
 		return err
 	}
-
-	p.initRtpMapping(param.options.RtpMapping)
-	if err := p.RtpHeaderExtensionIds.set(param.options.RtpParameters.HeaderExtensions, true); err != nil {
+	if err := p.RtpHeaderExtensionIds.set(p.RtpParameters.HeaderExtensions, true); err != nil {
 		p.logger.Error().Err(err).Msg("set RtpHeaderExtensionIds failed")
 		return err
 	}
-	p.logger.Info().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
+	p.logger.Debug().Msgf("set RtpHeaderExtensionIds:%# v", pretty.Formatter(p.RtpHeaderExtensionIds))
 
-	if p.Kind == mediasoupdata.MediaKind_Audio {
+	if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
 		p.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
 	} else {
 		p.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
 		p.keyFrameRequestManager = NewKeyFrameRequestManager(&KeyFrameRequestManagerParam{
-			keyFrameRequestDelay: param.options.KeyFrameRequestDelay,
+			keyFrameRequestDelay: param.optionsFBS.KeyFrameRequestDelay,
 			onKeyFrameNeeded:     p.OnKeyFrameNeeded,
 		})
 	}
+	p.Type = p.RtpParameters.GetType()
 	return nil
 }
 
-func (p *Producer) initRtpMapping(rtpMapping mediasoupdata.RtpMapping) {
-	p.rtpMapping.Encodings = rtpMapping.Encodings
-	p.rtpMapping.Codecs = rtpMapping.Codecs
-
-}
-
 func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
-	if p.Kind == mediasoupdata.MediaKind_Video && packet.IsKeyFrame() {
+	if p.Kind == FBS__RtpParameters.MediaKindVIDEO && packet.IsKeyFrame() {
 		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug().Msg("isKeyFrame")
 	}
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == FBS__RtpParameters.MediaKindVIDEO {
 		monitor.RtpRecvCount(monitor.TraceVideo)
-	} else if p.Kind == mediasoupdata.MediaKind_Audio {
+	} else if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
 		monitor.RtpRecvCount(monitor.TraceAudio)
 	}
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
-		p.logger.Warn().Str("packet", packet.String()).Msg("no stream found for received packet")
+		p.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rrid", packet.GetRrid()).
+			Str("rid", packet.GetRid()).Msg("no stream found for received packet")
 		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
 		return ReceiveRtpPacketResultDISCARDED
 	}
@@ -228,7 +224,7 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 	//		}
 	//	}
 	//}
-	if p.Kind == mediasoupdata.MediaKind_Audio {
+	if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
 		// Proxy urn:ietf:params:rtp-hdrext:ssrc-audio-level.
 		payload := packet.GetExtension(p.RtpHeaderExtensionIds.SsrcAudioLevel)
 		if payload != nil {
@@ -236,7 +232,7 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 				p.logger.Warn().Msgf("set RTP header extension ssrc audio level failed:%s,mappedSsrc:%d", err, mappedSsrc)
 			}
 		}
-	} else if p.Kind == mediasoupdata.MediaKind_Video {
+	} else if p.Kind == FBS__RtpParameters.MediaKindVIDEO {
 		// todo
 	}
 	// Assign mediasoup RTP header extension ids (just those that mediasoup may
@@ -252,33 +248,38 @@ func (p *Producer) MangleRtpPacket(packet *rtpparser.Packet, rtpStream *RtpStrea
 	return true
 }
 
-func (p *Producer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ProducerStat
+func (p *Producer) FillJsonStats() *FBS__Producer.GetStatsResponseT {
+	pStat := &FBS__Producer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
+	}
 	for idx, rtpStream := range p.rtpStreamByEncodingIdx {
 		if rtpStream == nil {
 			p.logger.Warn().Msgf("rtpStream empty, idx=%d", idx)
 			continue
 		}
-		stat := &mediasoupdata.ProducerStat{}
+		stat := &FBS__RtpStream.StatsT{}
 		rtpStream.FillJsonStats(stat)
-		jsonData = append(jsonData, *stat)
+		pStat.Stats = append(pStat.Stats, stat)
 		p.logger.Info().Msgf("stat:%+v", *stat)
 	}
-	data, _ := json.Marshal(&jsonData)
-	p.logger.Info().Msgf("getStats:%+v", jsonData)
-	return data
+	return pStat
 }
 
 func (p *Producer) HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData) {
-	defer func() {
-		p.logger.Debug().Msgf("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
-	}()
+	p.logger.Debug().Str("request", request.String()).Msg("handle channel request")
 
-	switch request.Method {
-	case mediasoupdata.MethodProducerDump:
+	switch request.MethodType {
+	case FBS__Request.MethodPRODUCER_DUMP:
 		response.Data = p.FillJson()
-	case mediasoupdata.MethodProducerGetStats:
-		response.Data = p.FillJsonStats()
+	case FBS__Request.MethodPRODUCER_GET_STATS:
+		// request body is null
+		dataDump := p.FillJsonStats()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyProducer_GetStatsResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 
 	default:
 		response.Err = mserror.ErrInvalidMethod
@@ -288,16 +289,15 @@ func (p *Producer) HandleRequest(request workerchannel.RequestData, response *wo
 }
 
 func (p *Producer) FillJson() json.RawMessage {
-	dumpData := mediasoupdata.ProducerDump{
+	dumpData := FBS__Producer.DumpResponseT{
 		Id:              p.id,
-		Kind:            string(p.Kind),
-		Type:            string(p.Type),
-		RtpParameters:   p.RtpParameters,
+		Kind:            p.Kind,
+		Type:            p.Type,
+		RtpParameters:   p.RtpParametersFBS,
 		RtpMapping:      p.rtpMapping,
-		Encodings:       mediasoupdata.RtpMappingEncoding{},
 		RtpStreams:      nil,
 		Paused:          p.Paused,
-		TraceEventTypes: "",
+		TraceEventTypes: nil,
 	}
 	data, _ := json.Marshal(&dumpData)
 	p.logger.Debug().Msgf("dumpData:%+v", dumpData)
@@ -352,7 +352,7 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		Ssrc:           ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
-		ClockRate:      mediaCodec.ClockRate,
+		ClockRate:      int(mediaCodec.ClockRate),
 		Rid:            encoding.Rid,
 		Cname:          p.RtpParameters.Rtcp.Cname,
 		RtxSsrc:        0,
@@ -362,15 +362,16 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		UseFir:         false,
 		UseInBandFec:   false,
 		UseDtx:         false,
-		SpatialLayers:  encoding.SpatialLayers,
-		TemporalLayers: encoding.TemporalLayers,
+		SpatialLayers:  encoding.ParsedScalabilityMode.SpatialLayers,
+		TemporalLayers: encoding.ParsedScalabilityMode.TemporalLayers,
+		Kind:           p.Kind,
 	}
 	// Check in band FEC in codec parameters.
-	if mediaCodec.Parameters.Useinbandfec == 1 {
+	if mediaCodec.SpecificParameters.Useinbandfec == 1 {
 		params.UseInBandFec = true
 	}
 	// Check DTX in codec parameters.
-	if mediaCodec.Parameters.Usedtx == 1 {
+	if mediaCodec.SpecificParameters.Usedtx == 1 {
 		params.UseDtx = true
 	}
 	// Check DTX in the encoding.
@@ -447,8 +448,9 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 			isRtxPacket = true
 		}
 
-		if isMediaPacket && encoding.Ssrc == ssrc {
+		if isMediaPacket && encoding != nil && encoding.Ssrc != nil && *encoding.Ssrc == ssrc {
 			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
+			p.logger.Info().Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("CreateRtpStream by SSRC")
 			return rtpStream
 		} else if isRtxPacket && encoding.Rtx != nil && encoding.Rtx.Ssrc == ssrc {
 			v, ok := p.mapSsrcRtpStream.Load(encoding.Ssrc)
@@ -470,15 +472,16 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 
 			// Insert the new RTX ssrc into the map.
 			p.mapRtxSsrcRtpStream.Store(ssrc, rtpStream)
-
+			p.logger.Info().Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("Find RTX RtpStream by SSRC")
 			return rtpStream
 		}
 	}
 
 	// If not found, look for an encoding matching the packet RID value.
-	if packet.GetRid() != "" {
+	var rid string
+	if packet.ReadRid(&rid) {
 		for idx, encoding := range p.RtpParameters.Encodings {
-			if encoding.Rid != packet.GetRid() {
+			if encoding.Rid != rid {
 				continue
 			}
 			mediaCodec := p.RtpParameters.GetCodecForEncoding(encoding)
@@ -509,31 +512,61 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 					return nil
 				}
 				rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
-				p.logger.Info().Str("RID", packet.GetRid()).Msg("CreateRtpStream by RID")
-				return rtpStream
-			} else if isRtxPacket {
-				// todo
+				p.logger.Info().Str("RID", packet.GetRid()).Uint32("ssrc", ssrc).Uint8("pt", payloadType).
+					Msg("CreateRtpStream by RID")
 
+				return rtpStream
+
+			} else if isRtxPacket {
+				var gotRtpStream *RtpStreamRecv
+				// Ensure a stream already exists with same RID.
+				p.mapSsrcRtpStream.Range(func(key, value any) bool {
+					rtpStream, ok := value.(*RtpStreamRecv)
+					if !ok || rtpStream == nil {
+						return true
+					}
+					if rtpStream.GetRid() == rid { // RID or RRID
+						// Ensure no RTX ssrc was previously detected.
+						if rtpStream.rtxStream != nil {
+							p.logger.Warn().Msg("ignoring RTX packet with new SSRC (RID lookup)")
+							return false
+						}
+						// Update the stream RTX data.
+						rtpStream.SetRtx(payloadType, ssrc)
+						// Insert the new RTX ssrc into the map.
+						p.mapRtxSsrcRtpStream.Store(ssrc, rtpStream)
+						gotRtpStream = rtpStream
+					}
+					return true
+				})
+				if gotRtpStream != nil {
+					p.logger.Info().Str("RID", packet.GetRid()).Str("RRID", packet.GetRrid()).
+						Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("Find RTX RtpStream by RID or RRID")
+					return gotRtpStream
+				}
 			}
 		}
 		p.logger.Warn().Msg("ignoring packet with unknown RID (RID lookup)")
 	}
 	// If not found, and there is a single encoding without ssrc and RID, this
 	// may be the media or RTX stream.
-	// todo
+	if len(p.RtpParameters.Encodings) == 1 && *p.RtpParameters.Encodings[0].Ssrc == 0 && p.RtpParameters.Encodings[0].Rid == "" {
+		// todo
+		p.logger.Warn().Msgf("may be the media or RTX stream")
+	}
 
 	return nil
 }
 
 func (p *Producer) PreProcessRtpPacket(packet *rtpparser.Packet) {
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == FBS__RtpParameters.MediaKindVIDEO {
 		packet.SetFrameMarking07ExtensionId(p.RtpHeaderExtensionIds.FrameMarking07)
 		packet.SetFrameMarkingExtensionId(p.RtpHeaderExtensionIds.FrameMarking)
 	}
 }
 
 func (p *Producer) PostProcessRtpPacket(packet *rtpparser.Packet) {
-	if p.Kind == mediasoupdata.MediaKind_Video {
+	if p.Kind == FBS__RtpParameters.MediaKindVIDEO {
 	}
 	// todo
 }

@@ -1,12 +1,13 @@
 package rtc
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/kr/pretty"
 	"github.com/rs/zerolog"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -62,7 +63,7 @@ func (c *SimulcastConsumer) initParam(param consumerParam) error {
 	}
 	encodings := param.consumableRtpEncodings[0]
 	// Ensure there are as many spatial layers as encodings.
-	if int(encodings.SpatialLayers) != len(param.consumableRtpEncodings) {
+	if int(encodings.ParsedScalabilityMode.SpatialLayers) != len(param.consumableRtpEncodings) {
 		return errors.New("encoding.spatialLayers does not match number of consumableRtpEncodings")
 	}
 
@@ -75,10 +76,10 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           encoding.Ssrc,
+		Ssrc:           *encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
-		ClockRate:      mediaCodec.ClockRate,
+		ClockRate:      int(mediaCodec.ClockRate),
 		Rid:            "",
 		Cname:          rtpParameters.Rtcp.Cname,
 		RtxSsrc:        0,
@@ -90,6 +91,7 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 		UseDtx:         false,
 		SpatialLayers:  0,
 		TemporalLayers: 0,
+		//todo Kind
 	}
 	c.rtpStream = newRtpStreamSend(&ParamRtpStreamSend{
 		ParamRtpStream:                 param,
@@ -99,16 +101,17 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 	c.rtpStreams = append(c.rtpStreams, c.rtpStream)
 }
 
-func (c *SimulcastConsumer) FillJsonStats() json.RawMessage {
-	var jsonData []mediasoupdata.ConsumerStat
-	if c.rtpStream != nil {
-		var stat mediasoupdata.ConsumerStat
-		c.rtpStream.FillJsonStats(&stat)
-		jsonData = append(jsonData, stat)
+func (c *SimulcastConsumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
+	pStat := &FBS__Consumer.GetStatsResponseT{
+		Stats: make([]*FBS__RtpStream.StatsT, 0),
 	}
-	data, _ := json.Marshal(&jsonData)
-	c.logger.Debug().Msgf("getStats:%+v", jsonData)
-	return data
+	if c.rtpStream != nil {
+		stat := &FBS__RtpStream.StatsT{}
+		c.rtpStream.FillJsonStats(stat)
+	} else {
+		c.logger.Warn().Msgf("rtpStream empty")
+	}
+	return pStat
 }
 
 func (c *SimulcastConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Packet) {

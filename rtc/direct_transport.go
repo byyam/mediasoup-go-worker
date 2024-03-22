@@ -7,7 +7,8 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	FBS__DirectTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/DirectTransport"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -20,7 +21,7 @@ type DirectTransport struct {
 }
 
 type directTransportParam struct {
-	options mediasoupdata.DirectTransportOptions
+	optionsFBS *FBS__DirectTransport.DirectTransportOptionsT
 	transportParam
 }
 
@@ -34,19 +35,24 @@ func newDirectTransport(param directTransportParam) (ITransport, error) {
 	param.SendRtcpPacketFunc = t.SendRtcpPacket
 	param.SendRtcpCompoundPacketFunc = t.SendRtcpCompoundPacket
 	param.NotifyCloseFunc = t.Close
-	param.options.Direct = true
+	param.optionsFBS.Base.Direct = true
 	t.ITransport, err = newTransport(param.transportParam)
 	if err != nil {
 		return nil, err
 	}
-	t.logger.Info().Msgf("newDirectTransport options:%# v", pretty.Formatter(param.options))
+	t.logger.Debug().Msgf("newDirectTransport options:%# v", pretty.Formatter(param.optionsFBS))
 	workerchannel.RegisterHandler(param.Id, t.HandleRequest)
 	return t, nil
 }
 
 func (t *DirectTransport) FillJson() json.RawMessage {
-	// todo
-	return nil
+	dataDump := &FBS__Transport.DumpT{}
+
+	t.ITransport.GetJson(dataDump)
+	data, _ := json.Marshal(dataDump)
+
+	t.logger.Debug().Str("data", string(data)).Msg("dumpData")
+	return data
 }
 
 func (t *DirectTransport) SendRtpPacket(packet *rtpparser.Packet) {

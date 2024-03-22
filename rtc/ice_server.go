@@ -9,6 +9,8 @@ import (
 
 	"github.com/rs/zerolog"
 
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/iceutil"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
@@ -33,7 +35,7 @@ const (
 
 type iceServer struct {
 	iceLite    bool
-	state      mediasoupdata.IceState
+	state      FBS__WebRtcTransport.IceState
 	localUfrag string
 	localPwd   string
 	logger     zerolog.Logger
@@ -68,8 +70,8 @@ func newIceServer(param iceServerParam) (*iceServer, error) {
 	ufrag, _ := iceutil.GenerateUFrag()
 	pwd, _ := iceutil.GeneratePwd()
 	d := &iceServer{
-		iceLite:          param.iceLite, // todo: support full ICE
-		state:            mediasoupdata.IceState_New,
+		iceLite:          param.iceLite,                    // todo: support full ICE
+		state:            FBS__WebRtcTransport.IceStateNEW, // todo: completed
 		logger:           zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_ICE), param.transportId),
 		localUfrag:       ufrag,
 		localPwd:         pwd,
@@ -144,7 +146,7 @@ func (d *iceServer) connect(networkTypes []ice.NetworkType) error {
 		if err != nil {
 			return err
 		}
-		// d.logger.Debug("read mux n=%d, addr=%s, err=%v", n, srcAddr.String(), err)
+		d.logger.Debug().Msgf("read mux n=%d, addr=%s, err=%v", n, srcAddr.String(), err)
 		if err := d.handleInboundMsg(buf[:n], n, srcAddr); err != nil {
 			return err
 		}
@@ -249,35 +251,53 @@ func (d *iceServer) sendBindingSuccess(m *stun.Message, remote net.Addr) error {
 	return nil
 }
 
-func (d *iceServer) GetIceParameters() mediasoupdata.IceParameters {
-	return mediasoupdata.IceParameters{
+func (d *iceServer) GetIceParameters() *FBS__WebRtcTransport.IceParametersT {
+	return &FBS__WebRtcTransport.IceParametersT{
 		UsernameFragment: d.localUfrag,
 		Password:         d.localPwd,
 		IceLite:          d.iceLite,
 	}
 }
 
-func (d *iceServer) GetSelectedTuple() mediasoupdata.TransportTuple {
-	return mediasoupdata.TransportTuple{}
+func (d *iceServer) GetSelectedTuple() *FBS__Transport.TupleT {
+	tuple := &FBS__Transport.TupleT{}
+	// ice conn may be nil
+	if d.iceConn == nil {
+		return tuple
+	}
+	localAddr := d.iceConn.LocalAddr()
+	localUdpAddr, ok := localAddr.(*net.UDPAddr)
+	if ok {
+		tuple.LocalIp = localUdpAddr.IP.String()
+		tuple.LocalPort = uint16(localUdpAddr.Port)
+	}
+	remoteAddr := d.iceConn.RemoteAddr()
+	remoteUdpAddr, ok := remoteAddr.(*net.UDPAddr)
+	if ok {
+		tuple.RemoteIp = remoteUdpAddr.IP.String()
+		tuple.RemotePort = uint16(remoteUdpAddr.Port)
+	}
+	tuple.Protocol = FBS__Transport.ProtocolUDP
+	return tuple
 }
 
-func (d *iceServer) GetState() mediasoupdata.IceState {
+func (d *iceServer) GetState() FBS__WebRtcTransport.IceState {
 	return d.state
 }
 
-func (d *iceServer) GetRole() string {
-	return "controlled"
+func (d *iceServer) GetRole() FBS__WebRtcTransport.IceRole {
+	return FBS__WebRtcTransport.IceRoleCONTROLLED
 }
 
-func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandidate) {
-	candidate := mediasoupdata.IceCandidate{
+func (d *iceServer) GetLocalCandidates() (iceCandidates []*FBS__WebRtcTransport.IceCandidateT) {
+	candidate := &FBS__WebRtcTransport.IceCandidateT{
 		Foundation: "udpcandidate",
 		Priority:   0,
 		Ip:         conf.Settings.RtcListenIp,
-		Protocol:   "udp",
-		Port:       uint32(global.ICEMuxPort),
-		Type:       "host",
-		TcpType:    "",
+		Protocol:   FBS__Transport.ProtocolUDP,
+		Port:       global.ICEMuxPort,
+		Type:       FBS__WebRtcTransport.IceCandidateTypeHOST,
+		TcpType:    nil,
 	}
 	iceCandidates = append(iceCandidates, candidate)
 
@@ -287,6 +307,7 @@ func (d *iceServer) GetLocalCandidates() (iceCandidates []mediasoupdata.IceCandi
 func (d *iceServer) GetConn() (*iceConn, error) {
 	if d.connDone != nil {
 		<-d.connDone
+		d.state = FBS__WebRtcTransport.IceStateCONNECTED
 		d.logger.Info().Msg("ice connected")
 	}
 	return d.iceConn, nil
@@ -312,6 +333,7 @@ func (d *iceServer) Disconnect() {
 		}
 	}
 	d.udpMux.RemoveConnByUfrag(d.localUfrag)
+	d.state = FBS__WebRtcTransport.IceStateDISCONNECTED
 	d.logger.Info().Msg("ice disconnect")
 }
 

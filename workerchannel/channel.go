@@ -8,8 +8,13 @@ import (
 	"strings"
 	"sync/atomic"
 
+	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/rs/zerolog"
 
+	FBS__Message "github.com/byyam/mediasoup-go-worker/fbs/FBS/Message"
+	FBS__Notification "github.com/byyam/mediasoup-go-worker/fbs/FBS/Notification"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -47,7 +52,7 @@ func NewChannel(netParser netparser.INetParser, id string, bufferFormat int) *Ch
 	c := &Channel{
 		netParser:    netParser,
 		bufferFormat: bufferFormat,
-		logger:       zerowrapper.NewScope(fmt.Sprintf("channel-json[%v]", bufferFormat), id),
+		logger:       zerowrapper.NewScope(fmt.Sprintf("workerchannel[%v]", bufferFormat), id),
 	}
 	c.logger.Info().Msgf("channel start, bufferFormat=%d", c.bufferFormat)
 	go c.runReadLoop()
@@ -63,14 +68,14 @@ func (c *Channel) runReadLoop() {
 			c.logger.Error().Err(err).Msg("[runReadLoop]Channel read buffer error")
 			break
 		}
-		c.logger.Debug().Str("payload", string(payload[:n])).Send()
+		c.logger.Debug().Bytes("payload", payload[:n]).Send()
 		switch c.bufferFormat {
 		case NativeJsonFormat:
 			c.processPayloadJsonFormat(payload[:n])
 		case NativeFormat:
-			c.processPayload(payload[:n])
+			c.processPayloadNative(payload[:n])
 		case FlatBufferFormat:
-			c.logger.Error().Msg("[runReadLoop]flat buffer format")
+			c.processPayloadFB(payload[:n])
 		default:
 			c.logger.Error().Int("[runReadLoop]bufferFormat", c.bufferFormat).Send()
 		}
@@ -81,16 +86,16 @@ func (c *Channel) processPayloadJsonFormat(nsPayload []byte) {
 	switch nsPayload[0] {
 	case '{':
 		if err := c.processJsonMessage(nsPayload); err != nil {
-			c.logger.Error().Err(err).Msg("process message failed")
+			c.logger.Error().Err(err).Msg("[processPayloadJsonFormat] processJsonMessage failed")
 		}
 	case 'X':
-		c.logger.Debug().Str("payload", string(nsPayload[1:])).Send()
+		c.logger.Debug().Bytes("payload", nsPayload[1:]).Send()
 	default:
-		c.logger.Error().Str("payload", string(nsPayload)).Msg("unexpected data")
+		c.logger.Error().Bytes("payload", nsPayload).Msg("[processPayloadJsonFormat]unexpected data")
 	}
 }
 
-func (c *Channel) processPayload(nsPayload []byte) {
+func (c *Channel) processPayloadNative(nsPayload []byte) {
 	// https://github.com/versatica/mediasoup/commit/ed15a863a5ed095f58a16d972c8e25bf24f17933
 	// const request = `${id}:${method}:${handlerId}:${JSON.stringify(data)}`;
 	messages := strings.SplitN(string(nsPayload), ":", 4)
@@ -99,8 +104,24 @@ func (c *Channel) processPayload(nsPayload []byte) {
 		c.logger.Error().Strs("messages", messages).Msg("messages length invalid")
 		return
 	}
-	if err := c.processMessage(messages); err != nil {
-		c.logger.Error().Err(err).Msg("process message failed")
+	if err := c.processNativeMessage(messages); err != nil {
+		c.logger.Error().Err(err).Msg("[processPayloadNative] processNativeMessage failed")
+	}
+}
+
+func (c *Channel) processPayloadFB(nsPayload []byte) {
+	message := FBS__Message.GetRootAsMessage(nsPayload, 0)
+	messageOffset := message.UnPack()
+	c.logger.Debug().Msgf("[processPayloadFB]msg offset:%+v", messageOffset)
+	switch messageOffset.Data.Type {
+	case FBS__Message.BodyRequest:
+		requestOffset := messageOffset.Data.Value.(*FBS__Request.RequestT)
+		c.logger.Info().Msgf("[processPayloadFB]request method:%+v", requestOffset)
+		if err := c.processFBMessage(requestOffset); err != nil {
+			c.logger.Error().Err(err).Msg("[processPayloadFB] processFBMessage failed")
+		}
+	default:
+		c.logger.Error().Int("DataType", int(message.DataType())).Msg("[processPayloadFB]unexpected data type")
 	}
 }
 
@@ -115,25 +136,9 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 		}
 		return nil
 	}
-	// get prefix of method
-	methodFields := strings.SplitN(method, ".", 2)
-	if len(methodFields) != 2 {
-		return errors.New("method is not formatted")
-	}
-	// set handlerId
-	switch methodFields[0] {
-	case mediasoupdata.MethodPrefixWorker, mediasoupdata.MethodPrefixRouter:
-		internal.RouterId = handlerId
-	case mediasoupdata.MethodPrefixTransport:
-		internal.TransportId = handlerId
-	case mediasoupdata.MethodPrefixProducer:
-		internal.ProducerId = handlerId
-	case mediasoupdata.MethodPrefixConsumer:
-		internal.ConsumerId = handlerId
-	case mediasoupdata.MethodPrefixRtpObserver:
-		internal.RtpObserverId = handlerId
-	default:
-		return errors.New("unknown method prefix")
+	methodFields, err := c.setInternalId(method, handlerId, internal)
+	if err != nil {
+		return err
 	}
 	// set objectId
 	switch methodFields[0] {
@@ -158,7 +163,46 @@ func (c *Channel) setHandlerId(method, handlerId, data string, internal *Interna
 	return nil
 }
 
-func (c *Channel) processMessage(messages []string) error {
+func (c *Channel) setInternalId(method, handlerId string, internal *InternalData) ([]string, error) {
+	// get prefix of method
+	methodFields := strings.SplitN(method, ".", 2)
+	if len(methodFields) != 2 {
+		return methodFields, errors.New("method is not formatted")
+	}
+	// set handlerId
+	switch methodFields[0] {
+	case mediasoupdata.MethodPrefixWorker, mediasoupdata.MethodPrefixRouter:
+		internal.RouterId = handlerId
+	case mediasoupdata.MethodPrefixTransport:
+		internal.TransportId = handlerId
+	case mediasoupdata.MethodPrefixProducer:
+		internal.ProducerId = handlerId
+	case mediasoupdata.MethodPrefixConsumer:
+		internal.ConsumerId = handlerId
+	case mediasoupdata.MethodPrefixRtpObserver:
+		internal.RtpObserverId = handlerId
+	default:
+		return methodFields, errors.New("unknown method prefix")
+	}
+	return methodFields, nil
+}
+
+func (c *Channel) processFBMessage(requestT *FBS__Request.RequestT) error {
+	// process
+	responseData, err := c.handleMessageFBS(requestT)
+	if err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]handleMessageFBS failed")
+		return err
+	}
+	// encode
+	if err := c.returnFBMessage(responseData); err != nil {
+		c.logger.Error().Err(err).Msg("[processFBMessage]returnFBMessage failed")
+		return err
+	}
+	return nil
+}
+
+func (c *Channel) processNativeMessage(messages []string) error {
 	idStr := messages[0]
 	method := messages[1]
 	handlerId := messages[2]
@@ -182,8 +226,10 @@ func (c *Channel) processMessage(messages []string) error {
 		Data:     json.RawMessage(data),
 	}
 
+	_ = ConvertRequestData(reqData.Method, &internal, &handlerId)
+
 	// handle
-	rspData, _ := c.handleMessage(&reqData, &internal)
+	rspData, _ := c.handleMessage(&reqData, &internal, handlerId)
 	c.logger.Info().Int64("id", rspData.Id).Str("method", rspData.Method).Msg("rspData")
 
 	// encode
@@ -204,8 +250,11 @@ func (c *Channel) processJsonMessage(nsPayload []byte) error {
 	_ = internal.Unmarshal(reqData.Internal)
 	c.logger.Info().Int64("id", reqData.Id).Str("method", reqData.Method).Msg("reqData")
 
+	var handlerId string
+	_ = ConvertRequestData(reqData.Method, &internal, &handlerId)
+
 	// handle
-	rspData, _ := c.handleMessage(&reqData, &internal)
+	rspData, _ := c.handleMessage(&reqData, &internal, handlerId)
 
 	// encode
 	if err := c.returnMessage(rspData); err != nil {
@@ -228,16 +277,87 @@ func (c *Channel) returnMessage(rspData *channelData) error {
 	return nil
 }
 
-func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*channelData, error) {
+func (c *Channel) returnFBMessage(responseData *ResponseData) error {
+	accepted := true
+	var errMsg string
+	if responseData.Err != nil {
+		accepted = false
+		errMsg = responseData.Err.Error()
+	}
+	// set response
+	b := flatbuffers.NewBuilder(0)
+	r := FBS__Message.MessageT{Data: &FBS__Message.BodyT{
+		Type: FBS__Message.BodyResponse,
+		Value: &FBS__Response.ResponseT{
+			Id:       responseData.Id,
+			Accepted: accepted,
+			Error:    errMsg,
+			Body:     responseData.RspBody,
+		},
+	}}
+	b.Finish(r.Pack(b))
+	sendBuf := b.FinishedBytes()
+
+	if len(sendBuf) > NS_MESSAGE_MAX_LEN {
+		return errors.New("[returnFBMessage]channel response too big")
+	}
+	if err := c.netParser.WriteBuffer(sendBuf); err != nil {
+		return err
+	}
+	c.logger.Info().Int("len", len(sendBuf)).Err(responseData.Err).Uint32("id", responseData.Id).
+		Str("method", FBS__Request.EnumNamesMethod[responseData.MethodType]).Msg("[returnFBMessage]response")
+	return nil
+}
+
+func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseData, error) {
+	// print data json and now handlers get options from data
+	var err error
+	var data json.RawMessage
+	if requestT.Body != nil {
+		data, err = json.Marshal(requestT.Body.Value)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData ResponseData
+	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
+		responseData = handler(RequestData{
+			MethodType: requestT.Method,
+			HandlerId:  requestT.HandlerId,
+			Method:     FBSRequestMethod[requestT.Method],
+			Request:    requestT,
+			Data:       data,
+		})
+	} else {
+		responseData.Err = errors.New("[handleMessageFBS]OnRequestHandler not register")
+	}
+	// set from request
+	responseData.Id = requestT.Id
+	responseData.MethodType = requestT.Method
+	// print rsp data
+	if responseData.Data != nil {
+		data = responseData.Data
+	} else {
+		data, _ = json.Marshal(responseData.RspBody)
+		responseData.Data = data
+	}
+	c.logger.Info().Any("body", responseData.Data).Str("header", responseData.String()).Msg("[channelMsg]response")
+
+	return &responseData, nil
+}
+
+func (c *Channel) handleMessage(reqData *channelData, internal *InternalData, handlerId string) (*channelData, error) {
 	var ret ResponseData
 	rspData := new(channelData)
 	rspData.Id = reqData.Id
 	rspData.Method = reqData.Method
 	if handler, ok := c.OnRequestHandler.Load().(func(request RequestData) ResponseData); ok && handler != nil {
 		ret = handler(RequestData{
-			Method:   reqData.Method,
-			Internal: *internal,
-			Data:     reqData.Data,
+			HandlerId: handlerId,
+			Method:    reqData.Method,
+			Internal:  *internal,
+			Data:      reqData.Data,
 		})
 	} else {
 		rspData.Error = "OnRequestHandler not register"
@@ -255,25 +375,50 @@ func (c *Channel) handleMessage(reqData *channelData, internal *InternalData) (*
 	return rspData, nil
 }
 
-func (c *Channel) Event(targetId int, event string) {
+func (c *Channel) Event(targetId string, event FBS__Notification.Event) {
 	switch c.bufferFormat {
 	case NativeJsonFormat, NativeFormat:
 		c.eventJson(targetId, event)
-	//case FlatBufferFormat:
-
+	case FlatBufferFormat:
+		c.eventFB(targetId, event)
 	default:
 		c.logger.Error().Int("[Event]bufferFormat", c.bufferFormat).Send()
 	}
 }
 
-func (c *Channel) eventJson(targetId int, event string) {
+func (c *Channel) eventJson(targetId string, event FBS__Notification.Event) {
 	msg := channelData{
-		TargetId: strconv.Itoa(targetId),
-		Event:    event,
+		TargetId: targetId,
+		Event:    EventMap[event],
 	}
 	jsonByte, _ := json.Marshal(&msg)
 	err := c.netParser.WriteBuffer(jsonByte)
-	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Str("event", msg.Event).Msg("send Event msg")
+	c.logger.Info().Err(err).Str("targetId", msg.TargetId).Int("event", int(event)).Msg("[eventJson]send Event msg")
+}
+
+func (c *Channel) eventFB(targetId string, event FBS__Notification.Event) {
+	b := flatbuffers.NewBuilder(0)
+	// targetIdOffset
+	targetIdOffset := flatbuffers.UOffsetT(0)
+	if targetId != "" {
+		targetIdOffset = b.CreateString(targetId)
+	}
+	// notification offset
+	FBS__Notification.NotificationStart(b)
+	FBS__Notification.NotificationAddHandlerId(b, targetIdOffset)
+	FBS__Notification.NotificationAddEvent(b, FBS__Notification.EventWORKER_RUNNING)
+	FBS__Notification.NotificationAddBodyType(b, FBS__Notification.BodyNONE)
+	FBS__Notification.NotificationAddBody(b, flatbuffers.UOffsetT(0))
+	notificationOffset := FBS__Notification.NotificationEnd(b)
+	// msg offset
+	FBS__Message.MessageStart(b)
+	FBS__Message.MessageAddDataType(b, FBS__Message.BodyNotification)
+	FBS__Message.MessageAddData(b, notificationOffset)
+	messageOffset := FBS__Message.MessageEnd(b)
+	// send msg
+	b.Finish(messageOffset)
+	err := c.netParser.WriteBuffer(b.FinishedBytes())
+	c.logger.Info().Err(err).Str("targetId", targetId).Int("event", int(event)).Msg("[eventFB]send Event msg")
 }
 
 func (c *Channel) Close() {

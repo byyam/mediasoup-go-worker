@@ -5,9 +5,40 @@ package Consumer
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"strconv"
-
-	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
 )
+
+type TraceInfo byte
+
+const (
+	TraceInfoNONE              TraceInfo = 0
+	TraceInfoKeyFrameTraceInfo TraceInfo = 1
+	TraceInfoFirTraceInfo      TraceInfo = 2
+	TraceInfoPliTraceInfo      TraceInfo = 3
+	TraceInfoRtpTraceInfo      TraceInfo = 4
+)
+
+var EnumNamesTraceInfo = map[TraceInfo]string{
+	TraceInfoNONE:              "NONE",
+	TraceInfoKeyFrameTraceInfo: "KeyFrameTraceInfo",
+	TraceInfoFirTraceInfo:      "FirTraceInfo",
+	TraceInfoPliTraceInfo:      "PliTraceInfo",
+	TraceInfoRtpTraceInfo:      "RtpTraceInfo",
+}
+
+var EnumValuesTraceInfo = map[string]TraceInfo{
+	"NONE":              TraceInfoNONE,
+	"KeyFrameTraceInfo": TraceInfoKeyFrameTraceInfo,
+	"FirTraceInfo":      TraceInfoFirTraceInfo,
+	"PliTraceInfo":      TraceInfoPliTraceInfo,
+	"RtpTraceInfo":      TraceInfoRtpTraceInfo,
+}
+
+func (v TraceInfo) String() string {
+	if s, ok := EnumNamesTraceInfo[v]; ok {
+		return s
+	}
+	return "TraceInfo(" + strconv.FormatInt(int64(v), 10) + ")"
+}
 
 type TraceInfoT struct {
 	Type TraceInfo
@@ -20,13 +51,13 @@ func (t *TraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	}
 	switch t.Type {
 	case TraceInfoKeyFrameTraceInfo:
-		return t.Value.(*FBS__Consumer.KeyFrameTraceInfoT).Pack(builder)
+		return t.Value.(*KeyFrameTraceInfoT).Pack(builder)
 	case TraceInfoFirTraceInfo:
-		return t.Value.(*FBS__Consumer.FirTraceInfoT).Pack(builder)
+		return t.Value.(*FirTraceInfoT).Pack(builder)
 	case TraceInfoPliTraceInfo:
-		return t.Value.(*FBS__Consumer.PliTraceInfoT).Pack(builder)
+		return t.Value.(*PliTraceInfoT).Pack(builder)
 	case TraceInfoRtpTraceInfo:
-		return t.Value.(*FBS__Consumer.RtpTraceInfoT).Pack(builder)
+		return t.Value.(*RtpTraceInfoT).Pack(builder)
 	}
 	return 0
 }
@@ -34,21 +65,21 @@ func (t *TraceInfoT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 func (rcv TraceInfo) UnPack(table flatbuffers.Table) *TraceInfoT {
 	switch rcv {
 	case TraceInfoKeyFrameTraceInfo:
-		var x FBS__Consumer.KeyFrameTraceInfo
+		var x KeyFrameTraceInfo
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__Consumer.TraceInfoT{Type: TraceInfoKeyFrameTraceInfo, Value: x.UnPack()}
+		return &TraceInfoT{Type: TraceInfoKeyFrameTraceInfo, Value: x.UnPack()}
 	case TraceInfoFirTraceInfo:
-		var x FBS__Consumer.FirTraceInfo
+		var x FirTraceInfo
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__Consumer.TraceInfoT{Type: TraceInfoFirTraceInfo, Value: x.UnPack()}
+		return &TraceInfoT{Type: TraceInfoFirTraceInfo, Value: x.UnPack()}
 	case TraceInfoPliTraceInfo:
-		var x FBS__Consumer.PliTraceInfo
+		var x PliTraceInfo
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__Consumer.TraceInfoT{Type: TraceInfoPliTraceInfo, Value: x.UnPack()}
+		return &TraceInfoT{Type: TraceInfoPliTraceInfo, Value: x.UnPack()}
 	case TraceInfoRtpTraceInfo:
-		var x FBS__Consumer.RtpTraceInfo
+		var x RtpTraceInfo
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__Consumer.TraceInfoT{Type: TraceInfoRtpTraceInfo, Value: x.UnPack()}
+		return &TraceInfoT{Type: TraceInfoRtpTraceInfo, Value: x.UnPack()}
 	}
 	return nil
 }

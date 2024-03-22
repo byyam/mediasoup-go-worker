@@ -5,9 +5,37 @@ package RtpStream
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"strconv"
-
-	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 )
+
+type StatsData byte
+
+const (
+	StatsDataNONE      StatsData = 0
+	StatsDataBaseStats StatsData = 1
+	StatsDataRecvStats StatsData = 2
+	StatsDataSendStats StatsData = 3
+)
+
+var EnumNamesStatsData = map[StatsData]string{
+	StatsDataNONE:      "NONE",
+	StatsDataBaseStats: "BaseStats",
+	StatsDataRecvStats: "RecvStats",
+	StatsDataSendStats: "SendStats",
+}
+
+var EnumValuesStatsData = map[string]StatsData{
+	"NONE":      StatsDataNONE,
+	"BaseStats": StatsDataBaseStats,
+	"RecvStats": StatsDataRecvStats,
+	"SendStats": StatsDataSendStats,
+}
+
+func (v StatsData) String() string {
+	if s, ok := EnumNamesStatsData[v]; ok {
+		return s
+	}
+	return "StatsData(" + strconv.FormatInt(int64(v), 10) + ")"
+}
 
 type StatsDataT struct {
 	Type StatsData
@@ -20,11 +48,11 @@ func (t *StatsDataT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	}
 	switch t.Type {
 	case StatsDataBaseStats:
-		return t.Value.(*FBS__RtpStream.BaseStatsT).Pack(builder)
+		return t.Value.(*BaseStatsT).Pack(builder)
 	case StatsDataRecvStats:
-		return t.Value.(*FBS__RtpStream.RecvStatsT).Pack(builder)
+		return t.Value.(*RecvStatsT).Pack(builder)
 	case StatsDataSendStats:
-		return t.Value.(*FBS__RtpStream.SendStatsT).Pack(builder)
+		return t.Value.(*SendStatsT).Pack(builder)
 	}
 	return 0
 }
@@ -32,17 +60,17 @@ func (t *StatsDataT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 func (rcv StatsData) UnPack(table flatbuffers.Table) *StatsDataT {
 	switch rcv {
 	case StatsDataBaseStats:
-		var x FBS__RtpStream.BaseStats
+		var x BaseStats
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataBaseStats, Value: x.UnPack()}
+		return &StatsDataT{Type: StatsDataBaseStats, Value: x.UnPack()}
 	case StatsDataRecvStats:
-		var x FBS__RtpStream.RecvStats
+		var x RecvStats
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataRecvStats, Value: x.UnPack()}
+		return &StatsDataT{Type: StatsDataRecvStats, Value: x.UnPack()}
 	case StatsDataSendStats:
-		var x FBS__RtpStream.SendStats
+		var x SendStats
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpStream.StatsDataT{Type: StatsDataSendStats, Value: x.UnPack()}
+		return &StatsDataT{Type: StatsDataSendStats, Value: x.UnPack()}
 	}
 	return nil
 }

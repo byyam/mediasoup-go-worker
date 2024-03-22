@@ -5,9 +5,43 @@ package RtpParameters
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"strconv"
-
-	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 )
+
+type Value byte
+
+const (
+	ValueNONE           Value = 0
+	ValueBoolean        Value = 1
+	ValueInteger32      Value = 2
+	ValueDouble         Value = 3
+	ValueString         Value = 4
+	ValueInteger32Array Value = 5
+)
+
+var EnumNamesValue = map[Value]string{
+	ValueNONE:           "NONE",
+	ValueBoolean:        "Boolean",
+	ValueInteger32:      "Integer32",
+	ValueDouble:         "Double",
+	ValueString:         "String",
+	ValueInteger32Array: "Integer32Array",
+}
+
+var EnumValuesValue = map[string]Value{
+	"NONE":           ValueNONE,
+	"Boolean":        ValueBoolean,
+	"Integer32":      ValueInteger32,
+	"Double":         ValueDouble,
+	"String":         ValueString,
+	"Integer32Array": ValueInteger32Array,
+}
+
+func (v Value) String() string {
+	if s, ok := EnumNamesValue[v]; ok {
+		return s
+	}
+	return "Value(" + strconv.FormatInt(int64(v), 10) + ")"
+}
 
 type ValueT struct {
 	Type Value
@@ -20,15 +54,15 @@ func (t *ValueT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	}
 	switch t.Type {
 	case ValueBoolean:
-		return t.Value.(*FBS__RtpParameters.BooleanT).Pack(builder)
+		return t.Value.(*BooleanT).Pack(builder)
 	case ValueInteger32:
-		return t.Value.(*FBS__RtpParameters.Integer32T).Pack(builder)
+		return t.Value.(*Integer32T).Pack(builder)
 	case ValueDouble:
-		return t.Value.(*FBS__RtpParameters.DoubleT).Pack(builder)
+		return t.Value.(*DoubleT).Pack(builder)
 	case ValueString:
-		return t.Value.(*FBS__RtpParameters.StringT).Pack(builder)
+		return t.Value.(*StringT).Pack(builder)
 	case ValueInteger32Array:
-		return t.Value.(*FBS__RtpParameters.Integer32ArrayT).Pack(builder)
+		return t.Value.(*Integer32ArrayT).Pack(builder)
 	}
 	return 0
 }
@@ -36,25 +70,25 @@ func (t *ValueT) Pack(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 func (rcv Value) UnPack(table flatbuffers.Table) *ValueT {
 	switch rcv {
 	case ValueBoolean:
-		var x FBS__RtpParameters.Boolean
+		var x Boolean
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpParameters.ValueT{Type: ValueBoolean, Value: x.UnPack()}
+		return &ValueT{Type: ValueBoolean, Value: x.UnPack()}
 	case ValueInteger32:
-		var x FBS__RtpParameters.Integer32
+		var x Integer32
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpParameters.ValueT{Type: ValueInteger32, Value: x.UnPack()}
+		return &ValueT{Type: ValueInteger32, Value: x.UnPack()}
 	case ValueDouble:
-		var x FBS__RtpParameters.Double
+		var x Double
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpParameters.ValueT{Type: ValueDouble, Value: x.UnPack()}
+		return &ValueT{Type: ValueDouble, Value: x.UnPack()}
 	case ValueString:
-		var x FBS__RtpParameters.String
+		var x String
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpParameters.ValueT{Type: ValueString, Value: x.UnPack()}
+		return &ValueT{Type: ValueString, Value: x.UnPack()}
 	case ValueInteger32Array:
-		var x FBS__RtpParameters.Integer32Array
+		var x Integer32Array
 		x.Init(table.Bytes, table.Pos)
-		return &FBS__RtpParameters.ValueT{Type: ValueInteger32Array, Value: x.UnPack()}
+		return &ValueT{Type: ValueInteger32Array, Value: x.UnPack()}
 	}
 	return nil
 }

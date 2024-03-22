@@ -5,12 +5,14 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/rs/zerolog"
 
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -45,9 +47,9 @@ type dtlsTransport struct {
 	dtlsConn               *dtls.Conn
 	dtlsConnState          dtls.State
 	config                 *dtls.Config
-	state                  mediasoupdata.DtlsState
-	fingerPrints           []mediasoupdata.DtlsFingerprint
-	role                   mediasoupdata.DtlsRole
+	state                  FBS__WebRtcTransport.DtlsState
+	fingerPrints           []*FBS__WebRtcTransport.FingerprintT
+	role                   FBS__WebRtcTransport.DtlsRole
 	tlsCerts               []tls.Certificate
 	logger                 zerolog.Logger
 	connTimeout            time.Duration
@@ -58,19 +60,19 @@ type dtlsTransport struct {
 
 type dtlsTransportParam struct {
 	transportId string
-	role        mediasoupdata.DtlsRole
+	role        FBS__WebRtcTransport.DtlsRole
 	connTimeout *time.Duration
 }
 
 func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	d := &dtlsTransport{
-		state:                  mediasoupdata.DtlsState_New,
+		state:                  FBS__WebRtcTransport.DtlsStateNEW,
 		role:                   param.role,
 		logger:                 zerowrapper.NewScope(string(mediasoupdata.WorkerLogTag_DTLS), param.transportId),
 		fingerprintAlgorithms:  defaultFingerprintAlgorithms,
 		sRTPProtectionProfiles: defaultSRTPProtectionProfiles,
 	}
-	d.fingerPrints = make([]mediasoupdata.DtlsFingerprint, len(d.fingerprintAlgorithms))
+	d.fingerPrints = make([]*FBS__WebRtcTransport.FingerprintT, len(d.fingerprintAlgorithms))
 	if param.connTimeout == nil {
 		d.connTimeout = defaultDtlsConnectTimeout
 	} else {
@@ -83,14 +85,14 @@ func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	return d, nil
 }
 
-func (d *dtlsTransport) GetDtlsParameters() mediasoupdata.DtlsParameters {
-	return mediasoupdata.DtlsParameters{
+func (d *dtlsTransport) GetDtlsParameters() *FBS__WebRtcTransport.DtlsParametersT {
+	return &FBS__WebRtcTransport.DtlsParametersT{
 		Role:         d.role,
 		Fingerprints: d.fingerPrints,
 	}
 }
 
-func (d *dtlsTransport) GetState() mediasoupdata.DtlsState {
+func (d *dtlsTransport) GetState() FBS__WebRtcTransport.DtlsState {
 	return d.state
 }
 
@@ -107,16 +109,32 @@ func (d *dtlsTransport) selfSignCerts() error {
 	d.logger.Debug().Msgf("x509 length:%d", len(x509cert.Raw))
 	// set fingerprint
 	for i, algo := range d.fingerprintAlgorithms {
-		name, err := fingerprint.StringFromHash(algo)
-		if err != nil {
-			return err
-		}
+		// name not match ms algoType.
+		//name, err := fingerprint.StringFromHash(algo)
+		//if err != nil {
+		//	return err
+		//}
 		value, err := fingerprint.Fingerprint(x509cert, algo)
 		if err != nil {
 			return err
 		}
-		d.fingerPrints[i] = mediasoupdata.DtlsFingerprint{
-			Algorithm: name,
+		var algoType FBS__WebRtcTransport.FingerprintAlgorithm
+		switch algo {
+		case crypto.SHA1:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA1
+		case crypto.SHA224:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA224
+		case crypto.SHA256:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA256
+		case crypto.SHA384:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA384
+		case crypto.SHA512:
+			algoType = FBS__WebRtcTransport.FingerprintAlgorithmSHA512
+		default:
+			return errors.New("unhandled default case")
+		}
+		d.fingerPrints[i] = &FBS__WebRtcTransport.FingerprintT{
+			Algorithm: algoType,
 			Value:     value,
 		}
 	}
@@ -135,30 +153,30 @@ func (d *dtlsTransport) prepareConfig(timeout time.Duration) {
 	}
 }
 
-func (d *dtlsTransport) SetRole(remoteParam *mediasoupdata.DtlsParameters) (*mediasoupdata.TransportConnectData, error) {
+func (d *dtlsTransport) SetRole(remoteParam *FBS__WebRtcTransport.DtlsParametersT) (*FBS__WebRtcTransport.ConnectResponseT, error) {
 
 	switch remoteParam.Role {
-	case mediasoupdata.DtlsRole_Client, mediasoupdata.DtlsRole_Auto:
-		d.role = mediasoupdata.DtlsRole_Server
-	case mediasoupdata.DtlsRole_Server:
-		d.role = mediasoupdata.DtlsRole_Client
+	case FBS__WebRtcTransport.DtlsRoleCLIENT, FBS__WebRtcTransport.DtlsRoleAUTO:
+		d.role = FBS__WebRtcTransport.DtlsRoleSERVER
+	case FBS__WebRtcTransport.DtlsRoleSERVER:
+		d.role = FBS__WebRtcTransport.DtlsRoleCLIENT
 	default:
 		return nil, mserror.ErrInvalidParam
 	}
-	return &mediasoupdata.TransportConnectData{DtlsLocalRole: d.role}, nil
+	return &FBS__WebRtcTransport.ConnectResponseT{DtlsLocalRole: d.role}, nil
 }
 
 func (d *dtlsTransport) Connect(iceConn net.Conn) error {
-	d.state = mediasoupdata.DtlsState_Connecting
+	d.state = FBS__WebRtcTransport.DtlsStateCONNECTING
 	var err error
 	defer func() {
 		if err != nil {
-			d.state = mediasoupdata.DtlsState_Failed
+			d.state = FBS__WebRtcTransport.DtlsStateFAILED
 			d.logger.Error().Msgf("dtls connecting failed:%v", err)
 		}
 	}()
 	d.logger.Debug().Msgf("dtlsRole=%s,iceConn=%s|%s", d.role, iceConn.LocalAddr(), iceConn.RemoteAddr())
-	if d.role == mediasoupdata.DtlsRole_Client {
+	if d.role == FBS__WebRtcTransport.DtlsRoleCLIENT {
 		d.config.InsecureSkipVerify = true
 		if d.dtlsConn, err = dtls.Client(iceConn, d.config); err != nil {
 			return err
@@ -169,7 +187,7 @@ func (d *dtlsTransport) Connect(iceConn net.Conn) error {
 		}
 	}
 	d.dtlsConnState = d.dtlsConn.ConnectionState()
-	d.state = mediasoupdata.DtlsState_Connected
+	d.state = FBS__WebRtcTransport.DtlsStateCONNECTED
 	d.logger.Info().Msg("DtlsState_Connected")
 	return nil
 }
@@ -191,7 +209,7 @@ func (d *dtlsTransport) GetSRTPConfig() (*srtp.Config, error) {
 		Profile: d.srtpProtectionProfile,
 	}
 	var isClient bool
-	if d.role == mediasoupdata.DtlsRole_Client {
+	if d.role == FBS__WebRtcTransport.DtlsRoleCLIENT {
 		isClient = true
 	}
 	if err := srtpConfig.ExtractSessionKeysFromDTLS(&d.dtlsConnState, isClient); err != nil {

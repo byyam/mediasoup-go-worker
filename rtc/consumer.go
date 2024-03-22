@@ -9,6 +9,9 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -56,7 +59,7 @@ type Consumer struct {
 	consumerType           mediasoupdata.ConsumerType
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
-	fillJsonStatsFunc      func() json.RawMessage
+	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 
 	logger zerolog.Logger
 }
@@ -132,7 +135,7 @@ func (c *Consumer) FillJson() json.RawMessage {
 	return data
 }
 
-func (c *Consumer) FillJsonStats() json.RawMessage {
+func (c *Consumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
 	return c.fillJsonStatsFunc()
 }
 
@@ -142,7 +145,7 @@ type consumerParam struct {
 	kind                   mediasoupdata.MediaKind
 	rtpParameters          mediasoupdata.RtpParameters
 	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
-	fillJsonStatsFunc      func() json.RawMessage
+	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 }
 
 func (c consumerParam) valid() error {
@@ -208,7 +211,7 @@ func (c *Consumer) init(param consumerParam) error {
 	}
 	// Fill media SSRCs vector.
 	for _, encoding := range c.rtpParameters.Encodings {
-		c.mediaSsrcs = append(c.mediaSsrcs, encoding.Ssrc)
+		c.mediaSsrcs = append(c.mediaSsrcs, *encoding.Ssrc)
 	}
 	// todo: Fill RTX SSRCs vector.
 	//for _, encoding := range c.rtpParameters.Encodings {
@@ -229,13 +232,19 @@ func (c *Consumer) HandleRequest(request workerchannel.RequestData, response *wo
 		c.logger.Debug().Msgf("method=%s,internal=%+v,response:%s", request.Method, request.Internal, response)
 	}()
 
-	switch request.Method {
+	switch request.MethodType {
 
-	case mediasoupdata.MethodConsumerDump:
+	case FBS__Request.MethodCONSUMER_DUMP:
 		response.Data = c.FillJson()
 
-	case mediasoupdata.MethodConsumerGetStats:
-		response.Data = c.FillJsonStats()
+	case FBS__Request.MethodCONSUMER_GET_STATS:
+		dataDump := c.FillJsonStats()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyDataConsumer_GetStatsResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 	}
 }
 
