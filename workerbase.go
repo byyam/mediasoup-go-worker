@@ -1,15 +1,14 @@
 package mediasoup_go_worker
 
 import (
-	"encoding/json"
 	"sync"
 
 	"github.com/rs/zerolog"
 
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/mserror"
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/rtc"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -53,9 +52,23 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 	case FBS__Request.MethodWORKER_CLOSE:
 		w.Stop()
 	case FBS__Request.MethodWORKER_DUMP:
-		response.Data = w.FillJson()
+		// request body is null
+		dataDump := w.FillJson()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWorker_DumpResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 	case FBS__Request.MethodWORKER_GET_RESOURCE_USAGE:
-		response.Data = w.FillJsonResourceUsage()
+		// request body is null
+		dataDump := w.FillJsonResourceUsage()
+		// set rsp
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyWorker_ResourceUsageResponse,
+			Value: dataDump,
+		}
+		response.RspBody = rspBody
 	case FBS__Request.MethodWORKER_UPDATE_SETTINGS:
 	// todo
 	case FBS__Request.MethodWORKER_CLOSE_ROUTER:
@@ -76,13 +89,6 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 		}
 		h(request, &response)
 
-		//r, ok := w.routerMap.Load(request.Internal.RouterId)
-		//if !ok {
-		//	response.Err = mserror.ErrRouterNotFound
-		//	return
-		//}
-		//router := r.(*rtc.Router)
-		//router.HandleRequest(request, &response)
 	}
 	return
 }
@@ -96,41 +102,47 @@ func (w *workerBase) Stop() {
 	w.logger.Warn().Int("pid", w.pid).Msg("worker is killed")
 }
 
-func (w *workerBase) FillJson() json.RawMessage {
+func (w *workerBase) FillJson() *FBS__Worker.DumpResponseT {
 	var routerIds []string
 	w.routerMap.Range(func(key, value interface{}) bool {
 		routerIds = append(routerIds, key.(string))
 		return true
 	})
-	dumpData := mediasoupdata.WorkerDump{
-		Pid:       w.pid,
-		RouterIds: routerIds,
+
+	channelRequestHandlerIds := &FBS__Worker.ChannelMessageHandlersT{
+		ChannelRequestHandlers:      workerchannel.GetChannelRequestHandlerStats(),
+		ChannelNotificationHandlers: nil,
 	}
-	data, _ := json.Marshal(&dumpData)
-	w.logger.Debug().Msgf("dumpData:%+v", dumpData)
+
+	data := &FBS__Worker.DumpResponseT{
+		Pid:                    uint32(w.pid),
+		WebRtcServerIds:        nil,
+		RouterIds:              routerIds,
+		ChannelMessageHandlers: channelRequestHandlerIds,
+		Liburing:               nil,
+	}
 	return data
 }
 
-func (w *workerBase) FillJsonResourceUsage() json.RawMessage {
-	// todo
-	ruData := mediasoupdata.WorkerResourceUsage{
-		RU_Utime:    0,
-		RU_Stime:    0,
-		RU_Maxrss:   0,
-		RU_Ixrss:    0,
-		RU_Idrss:    0,
-		RU_Isrss:    0,
-		RU_Minflt:   0,
-		RU_Majflt:   0,
-		RU_Nswap:    0,
-		RU_Inblock:  0,
-		RU_Oublock:  0,
-		RU_Msgsnd:   0,
-		RU_Msgrcv:   0,
-		RU_Nsignals: 0,
-		RU_Nvcsw:    0,
-		RU_Nivcsw:   0,
+func (w *workerBase) FillJsonResourceUsage() *FBS__Worker.ResourceUsageResponseT {
+
+	ruData := &FBS__Worker.ResourceUsageResponseT{
+		RuUtime:    0,
+		RuStime:    0,
+		RuMaxrss:   0,
+		RuIxrss:    0,
+		RuIdrss:    0,
+		RuIsrss:    0,
+		RuMinflt:   0,
+		RuMajflt:   0,
+		RuNswap:    0,
+		RuInblock:  0,
+		RuOublock:  0,
+		RuMsgsnd:   0,
+		RuMsgrcv:   0,
+		RuNsignals: 0,
+		RuNvcsw:    0,
+		RuNivcsw:   0,
 	}
-	data, _ := json.Marshal(&ruData)
-	return data
+	return ruData
 }

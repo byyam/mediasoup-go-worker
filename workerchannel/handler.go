@@ -57,6 +57,15 @@ func GetChannelRequestHandler(id string) (Handler, error) {
 	return channelHandlers.getHandler(id)
 }
 
+func GetChannelRequestHandlerStats() []string {
+	var channelRequestHandlers []string
+	for id, _ := range channelHandlers.handlers {
+		channelRequestHandlers = append(channelRequestHandlers, id)
+	}
+
+	return channelRequestHandlers
+}
+
 func (c *cHandlers) registerHandler(id string, h Handler) {
 	c.Lock()
 	defer c.Unlock()

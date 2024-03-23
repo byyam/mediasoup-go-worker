@@ -37,6 +37,7 @@ type ITransport interface {
 	ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet)
 	DataReceived(len int)
 	DataSent(len int)
+	NotifyClose()
 }
 
 type Transport struct {
@@ -679,4 +680,8 @@ func (t *Transport) sendNacks() {
 
 func (t *Transport) Connected() {
 
+}
+
+func (t *Transport) NotifyClose() {
+	t.NotifyCloseFunc()
 }

@@ -183,17 +183,10 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			response.Err = mserror.ErrTransportNotFound
 			return
 		}
-		transport := v.(*Transport)
-		transport.NotifyCloseFunc() // call son close, tiger this close
+		transport := v.(ITransport)
+		transport.NotifyClose() // call son close, tiger this close
 
 	default:
-		//t, ok := r.mapTransports.Load(request.Internal.TransportId)
-		//if !ok {
-		//	response.Err = mserror.ErrTransportNotFound
-		//	return
-		//}
-		//transport := t.(ITransport)
-		//transport.HandleRequest(request, response)
 		r.logger.Error().Str("method", request.Method).Msg("router handle request method not found")
 		response.Err = mserror.ErrInvalidMethod
 		return
