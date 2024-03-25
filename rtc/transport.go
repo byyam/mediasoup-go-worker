@@ -11,9 +11,11 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
 	FBS__DataConsumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/DataConsumer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/mserror"
@@ -245,10 +247,13 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.Err = err
 
 	case FBS__Request.MethodTRANSPORT_CONSUME:
-		var options mediasoupdata.ConsumerOptions
-		_ = json.Unmarshal(request.Data, &options)
-		data, err := t.Consume(request.Internal.ProducerId, request.Internal.ConsumerId, options)
-		response.Data, _ = json.Marshal(data)
+		requestT := request.Request.Body.Value.(*FBS__Transport.ConsumeRequestT)
+		data, err := t.Consume(requestT.ProducerId, requestT.ConsumerId, requestT)
+		rspBody := &FBS__Response.BodyT{
+			Type:  FBS__Response.BodyTransport_ConsumeResponse,
+			Value: data,
+		}
+		response.RspBody = rspBody
 		response.Err = err
 
 	case FBS__Request.MethodTRANSPORT_PRODUCE_DATA:
@@ -333,51 +338,51 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 	}
 }
 
-func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata.ConsumerOptions) (*mediasoupdata.ConsumerData, error) {
+func (t *Transport) Consume(producerId, consumerId string, requestT *FBS__Transport.ConsumeRequestT) (*FBS__Transport.ConsumeResponseT, error) {
 	if producerId == "" || consumerId == "" {
 		return nil, mserror.ErrInvalidParam
 	}
 
 	var consumer IConsumer
 	var err error
-	switch options.Type {
-	case mediasoupdata.ConsumerType_Simple:
+	switch requestT.Type {
+	case FBS__RtpParameters.TypeSIMPLE:
 		consumer, err = newSimpleConsumer(simpleConsumerParam{
-			consumerParam: consumerParam{
+			consumerParam: &consumerParam{
 				id:                     consumerId,
 				producerId:             producerId,
-				kind:                   options.Kind,
-				rtpParameters:          options.RtpParameters,
-				consumableRtpEncodings: options.ConsumableRtpEncodings,
+				kind:                   requestT.Kind,
+				rtpParameters:          mediasoupdata.NewRtpParameters(requestT.RtpParameters),
+				consumableRtpEncodings: requestT.ConsumableRtpEncodings,
 			},
 			OnConsumerSendRtpPacket:       t.OnConsumerSendRtpPacket,
 			OnConsumerKeyFrameRequested:   t.OnConsumerKeyFrameRequested,
 			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
 		})
 
-	case mediasoupdata.ConsumerType_Simulcast:
+	case FBS__RtpParameters.TypeSIMULCAST:
 		consumer, err = newSimulcastConsumer(simulcastConsumerParam{
-			consumerParam: consumerParam{
+			consumerParam: &consumerParam{
 				id:                     consumerId,
 				producerId:             producerId,
-				kind:                   options.Kind,
-				rtpParameters:          options.RtpParameters,
-				consumableRtpEncodings: options.ConsumableRtpEncodings,
+				kind:                   requestT.Kind,
+				rtpParameters:          mediasoupdata.NewRtpParameters(requestT.RtpParameters),
+				consumableRtpEncodings: requestT.ConsumableRtpEncodings,
 			},
 			OnConsumerSendRtpPacket:       t.OnConsumerSendRtpPacket,
 			OnConsumerKeyFrameRequested:   t.OnConsumerKeyFrameRequested,
 			OnConsumerRetransmitRtpPacket: t.OnConsumerRetransmitRtpPacket,
 		})
 
-	case mediasoupdata.ConsumerType_Svc:
+	case FBS__RtpParameters.TypeSVC:
 		// todo
 	default:
-		t.logger.Error().Str("type", string(options.Type)).Msg("unsupported consumer type")
+		t.logger.Error().Str("type", requestT.Type.String()).Msg("unsupported consumer type")
 		return nil, mserror.ErrInvalidParam
 	}
 
 	if err != nil {
-		t.logger.Error().Msgf("create consumer[%s] failed:%v", options.Type, err)
+		t.logger.Error().Msgf("create consumer[%s] failed:%v", requestT.Type.String(), err)
 		return nil, err
 	}
 	if err := t.onTransportNewConsumerHandler(consumer, producerId); err != nil {
@@ -388,11 +393,21 @@ func (t *Transport) Consume(producerId, consumerId string, options mediasoupdata
 	for _, ssrc := range consumer.GetMediaSsrcs() {
 		t.mapSsrcConsumer.Store(ssrc, consumer)
 	}
-	t.logger.Debug().Msgf("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v", producerId, consumerId, options.Type, options.Kind, consumer.GetMediaSsrcs())
-	return &mediasoupdata.ConsumerData{
+	t.logger.Debug().Msgf("Consumer created [producerId:%s][consumerId:%s],type:%s,kind:%s,ssrc:%v",
+		producerId, consumerId, requestT.Type.String(), requestT.Kind.String(), consumer.GetMediaSsrcs())
+	// todo
+	return &FBS__Transport.ConsumeResponseT{
 		Paused:         false,
 		ProducerPaused: false,
-		Score:          mediasoupdata.ConsumerScore{},
+		Score: &FBS__Consumer.ConsumerScoreT{
+			Score:          0,
+			ProducerScore:  0,
+			ProducerScores: nil,
+		},
+		PreferredLayers: &FBS__Consumer.ConsumerLayersT{
+			SpatialLayer:  0,
+			TemporalLayer: nil,
+		},
 	}, nil
 }
 

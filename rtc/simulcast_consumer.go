@@ -3,7 +3,6 @@ package rtc
 import (
 	"errors"
 
-	"github.com/kr/pretty"
 	"github.com/rs/zerolog"
 
 	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
@@ -26,7 +25,7 @@ type SimulcastConsumer struct {
 }
 
 type simulcastConsumerParam struct {
-	consumerParam
+	*consumerParam
 	OnConsumerSendRtpPacket       func(consumer IConsumer, packet *rtpparser.Packet)
 	OnConsumerKeyFrameRequested   func(consumer IConsumer, mappedSsrc uint32)
 	OnConsumerRetransmitRtpPacket func(packet *rtpparser.Packet)
@@ -46,7 +45,6 @@ func newSimulcastConsumer(param simulcastConsumerParam) (*SimulcastConsumer, err
 		return nil, err
 	}
 
-	c.logger.Info().Msgf("param: %# v", pretty.Formatter(param.consumerParam))
 	if err := c.initParam(param.consumerParam); err != nil {
 		return nil, err
 	}
@@ -57,11 +55,14 @@ func newSimulcastConsumer(param simulcastConsumerParam) (*SimulcastConsumer, err
 	return c, nil
 }
 
-func (c *SimulcastConsumer) initParam(param consumerParam) error {
-	if len(param.consumableRtpEncodings) <= 1 {
+func (c *SimulcastConsumer) initParam(param *consumerParam) error {
+	c.logger.Info().Any("consumableRtpEncodings", mediasoupdata.JsonFormat(param.consumableRtpEncodings)).
+		Any("rtpParameters", mediasoupdata.JsonFormat(param.rtpParameters)).
+		Msgf("initParam")
+	if len(param.consumableRtpEncodings) <= 1 || len(param.rtpParameters.Encodings) == 0 {
 		return errors.New("invalid consumableRtpEncodings with size <= 1")
 	}
-	encodings := param.consumableRtpEncodings[0]
+	encodings := param.rtpParameters.Encodings[0]
 	// Ensure there are as many spatial layers as encodings.
 	if int(encodings.ParsedScalabilityMode.SpatialLayers) != len(param.consumableRtpEncodings) {
 		return errors.New("encoding.spatialLayers does not match number of consumableRtpEncodings")
@@ -116,4 +117,8 @@ func (c *SimulcastConsumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
 
 func (c *SimulcastConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Packet) {
 
+}
+
+func (c *SimulcastConsumer) SendRtpPacket(packet *rtpparser.Packet) {
+	// todo
 }

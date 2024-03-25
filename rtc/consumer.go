@@ -12,6 +12,7 @@ import (
 	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Response "github.com/byyam/mediasoup-go-worker/fbs/FBS/Response"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	"github.com/byyam/mediasoup-go-worker/internal/ms_rtcp"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
@@ -25,12 +26,12 @@ type IConsumer interface {
 	FillJson() json.RawMessage
 	HandleRequest(request workerchannel.RequestData, response *workerchannel.ResponseData)
 	GetType() mediasoupdata.ConsumerType
-	GetRtpParameters() mediasoupdata.RtpParameters
+	GetRtpParameters() *mediasoupdata.RtpParameters
 	SendRtpPacket(packet *rtpparser.Packet)
 	ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint32)
 	GetMediaSsrcs() []uint32
-	GetKind() mediasoupdata.MediaKind
-	GetConsumableRtpEncodings() []*mediasoupdata.RtpEncodingParameters
+	GetKind() FBS__RtpParameters.MediaKind
+	GetConsumableRtpEncodings() []*FBS__RtpParameters.RtpEncodingParametersT
 	ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport)
 	ReceiveNack(nackPacket *rtcp.TransportLayerNack)
 	GetRtpStreams() []*RtpStreamSend
@@ -47,7 +48,7 @@ type IConsumer interface {
 type Consumer struct {
 	Id                         string
 	ProducerId                 string
-	Kind                       mediasoupdata.MediaKind
+	Kind                       FBS__RtpParameters.MediaKind
 	RtpHeaderExtensionIds      RtpHeaderExtensionIds
 	mediaSsrcs                 []uint32
 	rtxSsrcs                   []uint32
@@ -57,8 +58,8 @@ type Consumer struct {
 	lastRtcpSentTime time.Time
 
 	consumerType           mediasoupdata.ConsumerType
-	rtpParameters          mediasoupdata.RtpParameters
-	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
+	rtpParameters          *mediasoupdata.RtpParameters
+	consumableRtpEncodings []*FBS__RtpParameters.RtpEncodingParametersT
 	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 
 	logger zerolog.Logger
@@ -85,7 +86,7 @@ func (c *Consumer) GetRtpStreams() []*RtpStreamSend {
 	panic("implement me")
 }
 
-func (c *Consumer) GetKind() mediasoupdata.MediaKind {
+func (c *Consumer) GetKind() FBS__RtpParameters.MediaKind {
 	return c.Kind
 }
 
@@ -97,11 +98,11 @@ func (c *Consumer) GetType() mediasoupdata.ConsumerType {
 	return c.consumerType
 }
 
-func (c *Consumer) GetRtpParameters() mediasoupdata.RtpParameters {
+func (c *Consumer) GetRtpParameters() *mediasoupdata.RtpParameters {
 	return c.rtpParameters
 }
 
-func (c *Consumer) GetConsumableRtpEncodings() []*mediasoupdata.RtpEncodingParameters {
+func (c *Consumer) GetConsumableRtpEncodings() []*FBS__RtpParameters.RtpEncodingParametersT {
 	return c.consumableRtpEncodings
 }
 
@@ -115,11 +116,11 @@ func (c *Consumer) Close() {
 
 func (c *Consumer) FillJson() json.RawMessage {
 	jsonData := mediasoupdata.ConsumerDump{
-		Id:                         c.Id,
-		ProducerId:                 c.ProducerId,
-		Kind:                       string(c.Kind),
-		Type:                       string(c.consumerType),
-		RtpParameters:              c.rtpParameters,
+		Id:         c.Id,
+		ProducerId: c.ProducerId,
+		Kind:       string(c.Kind),
+		Type:       string(c.consumerType),
+		// RtpParameters:              c.rtpParameters,
 		ConsumableRtpEncodings:     nil,
 		SupportedCodecPayloadTypes: nil,
 		Paused:                     false,
@@ -142,9 +143,9 @@ func (c *Consumer) FillJsonStats() *FBS__Consumer.GetStatsResponseT {
 type consumerParam struct {
 	id                     string
 	producerId             string
-	kind                   mediasoupdata.MediaKind
-	rtpParameters          mediasoupdata.RtpParameters
-	consumableRtpEncodings []*mediasoupdata.RtpEncodingParameters
+	kind                   FBS__RtpParameters.MediaKind
+	rtpParameters          *mediasoupdata.RtpParameters
+	consumableRtpEncodings []*FBS__RtpParameters.RtpEncodingParametersT
 	fillJsonStatsFunc      func() *FBS__Consumer.GetStatsResponseT
 }
 
@@ -161,7 +162,7 @@ func (c consumerParam) valid() error {
 	return nil
 }
 
-func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer, error) {
+func newConsumer(typ mediasoupdata.ConsumerType, param *consumerParam) (IConsumer, error) {
 	if err := param.valid(); err != nil {
 		return nil, err
 	}
@@ -175,17 +176,17 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 		consumableRtpEncodings: param.consumableRtpEncodings,
 		fillJsonStatsFunc:      param.fillJsonStatsFunc,
 	}
-	c.logger.Info().Msgf("input param for consumer: %# v", pretty.Formatter(param))
 	// init consumer with param
 	if err := c.init(param); err != nil {
 		return nil, err
 	}
-	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.rtpParameters))
-	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.consumableRtpEncodings))
-	c.logger.Info().Msgf("new consumer:%# v", pretty.Formatter(c.mediaSsrcs))
+	c.logger.Info().Any("RtpParameters", mediasoupdata.JsonFormat(c.rtpParameters)).
+		Any("consumableRtpEncodings", mediasoupdata.JsonFormat(c.consumableRtpEncodings)).
+		Uints32("mediaSsrcs", c.mediaSsrcs).
+		Msgf("init rtp param for consumer")
 
 	// Set the RTCP report generation interval.
-	if c.GetKind() == mediasoupdata.MediaKind_Audio {
+	if c.GetKind() == FBS__RtpParameters.MediaKindAUDIO {
 		c.maxRtcpInterval = ms_rtcp.MaxAudioIntervalMs
 	} else {
 		c.maxRtcpInterval = ms_rtcp.MaxVideoIntervalMs
@@ -194,7 +195,7 @@ func newConsumer(typ mediasoupdata.ConsumerType, param consumerParam) (IConsumer
 	return c, nil
 }
 
-func (c *Consumer) init(param consumerParam) error {
+func (c *Consumer) init(param *consumerParam) error {
 	if err := c.rtpParameters.Init(); err != nil {
 		return err
 	}

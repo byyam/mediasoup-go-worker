@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
@@ -29,7 +30,7 @@ type SimpleConsumer struct {
 }
 
 type simpleConsumerParam struct {
-	consumerParam
+	*consumerParam
 	OnConsumerSendRtpPacket       func(consumer IConsumer, packet *rtpparser.Packet)
 	OnConsumerKeyFrameRequested   func(consumer IConsumer, mappedSsrc uint32)
 	OnConsumerRetransmitRtpPacket func(packet *rtpparser.Packet)
@@ -88,9 +89,9 @@ func (c *SimpleConsumer) CreateRtpStream() {
 }
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
-	if c.GetKind() == mediasoupdata.MediaKind_Video {
+	if c.GetKind() == FBS__RtpParameters.MediaKindVIDEO {
 		monitor.RtpSendCount(monitor.TraceVideo)
-	} else if c.GetKind() == mediasoupdata.MediaKind_Audio {
+	} else if c.GetKind() == FBS__RtpParameters.MediaKindAUDIO {
 		monitor.RtpSendCount(monitor.TraceAudio)
 	}
 	packet.SSRC = *c.GetRtpParameters().Encodings[0].Ssrc
@@ -113,7 +114,7 @@ func (c *SimpleConsumer) ReceiveKeyFrameRequest(feedbackFormat uint8, ssrc uint3
 }
 
 func (c *SimpleConsumer) RequestKeyFrame() {
-	if c.GetKind() != mediasoupdata.MediaKind_Video {
+	if c.GetKind() != FBS__RtpParameters.MediaKindVIDEO {
 		return
 	}
 	mappedSsrc := c.GetConsumableRtpEncodings()[0].Ssrc
