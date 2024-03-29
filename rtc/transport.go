@@ -77,10 +77,15 @@ type Transport struct {
 	recvTransmission          *ratecalculator.RateCalculator
 	sendTransmission          *ratecalculator.RateCalculator
 	recvRtpTransmission       *RtpDataCounter
-	sendRtpTransmission       *RtpDataCounter // todo
+	sendRtpTransmission       *RtpDataCounter
 	recvRtxTransmission       *RtpDataCounter
-	sendRtxTransmission       *RtpDataCounter // todo
+	sendRtxTransmission       *RtpDataCounter
 	sendProbationTransmission *RtpDataCounter // todo
+
+	// tcc
+	tccServer          *TransportCongestionControlServer
+	tccClient          *TransportCongestionControlClient // todo
+	maxIncomingBitrate uint32
 
 	// close
 	closeOnce sync.Once
@@ -288,6 +293,12 @@ func (t *Transport) HandleRequest(request workerchannel.RequestData, response *w
 		response.RspBody = rspBody
 
 	case FBS__Request.MethodTRANSPORT_SET_MAX_INCOMING_BITRATE:
+		requestT := request.Request.Body.Value.(*FBS__Transport.SetMaxIncomingBitrateRequestT)
+		t.maxIncomingBitrate = requestT.MaxIncomingBitrate
+		t.logger.Info().Msgf("maximum incoming bitrate set to %d", t.maxIncomingBitrate)
+		if t.tccServer != nil {
+			t.tccServer.SetMaxIncomingBitrate(t.maxIncomingBitrate)
+		}
 
 	case FBS__Request.MethodTRANSPORT_SET_MAX_OUTGOING_BITRATE:
 
@@ -446,7 +457,49 @@ func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) 
 	t.logger.Info().Str("recvRtpHeaderExtensionIds", t.recvRtpHeaderExtensionIds.String()).
 		Str("kind", producer.Kind.String()).Str("type", producer.Type.String()).Msgf("Producer created [producerId:%s]", id)
 
-	// todo
+	// Check if TransportCongestionControlServer or REMB server must be
+	// created.
+	rtpHeaderExtensionIds := producer.RtpHeaderExtensionIds
+
+	// Set TransportCongestionControlServer.
+	if t.tccServer == nil {
+		createTccServer := false
+		var bweType BweType
+
+		if rtpHeaderExtensionIds.TransportWideCc01 != 0 && producer.RtpParameters.CheckRTCPFeedbackType("transport-cc") {
+			t.logger.Info().Str("producerId", id).Msgf("enabling TransportCongestionControlServer with transport-cc")
+			// Use transport-cc if:
+			// - there is transport-wide-cc-01 RTP header extension, and
+			// - there is "transport-cc" in codecs RTCP feedback.
+			//
+			createTccServer = true
+			bweType = TRANSPORT_CC
+		} else if rtpHeaderExtensionIds.AbsSendTime != 0 && producer.RtpParameters.CheckRTCPFeedbackType("goog-remb") {
+			t.logger.Info().Str("producerId", id).Msgf("enabling TransportCongestionControlServer with REMB")
+			// Use REMB if:
+			// - there is abs-send-time RTP header extension, and
+			// - there is "remb" in codecs RTCP feedback.
+			//
+			createTccServer = true
+			bweType = REMB
+		}
+		// Use REMB if:
+		// - there is abs-send-time RTP header extension, and
+		// - there is "remb" in codecs RTCP feedback.
+		//
+
+		if createTccServer {
+			t.tccServer = newTransportCongestionControlServer(TransportCongestionControlServerParam{
+				bweType:          bweType,
+				maxRtcpPacketLen: MtuSize,
+				onTransportCongestionControlServerSendRtcpPacket: t.OnTransportCongestionControlServerSendRtcpPacket,
+			})
+			if t.maxIncomingBitrate != 0 {
+				t.tccServer.SetMaxIncomingBitrate(t.maxIncomingBitrate)
+			}
+			// todo
+		}
+	}
 
 	return &FBS__Transport.ProduceResponseT{
 		Type: producer.Type,
@@ -522,11 +575,13 @@ func (t *Transport) OnProducerSendRtcpPacket(packet rtcp.Packet) {
 func (t *Transport) OnConsumerSendRtpPacket(consumer IConsumer, packet *rtpparser.Packet) {
 	t.logger.Trace().Msgf("OnConsumerSendRtpPacket:%+v", packet.Header)
 	t.sendRtpPacketFunc(packet)
+	t.sendRtpTransmission.Update(packet)
 }
 
 func (t *Transport) OnConsumerRetransmitRtpPacket(packet *rtpparser.Packet) {
 	// todo: tcc
 	t.sendRtpPacketFunc(packet)
+	t.sendRtxTransmission.Update(packet)
 }
 
 func (t *Transport) ReceiveRtcpPacket(header *rtcp.Header, packets []rtcp.Packet) {
@@ -699,4 +754,8 @@ func (t *Transport) Connected() {
 
 func (t *Transport) NotifyClose() {
 	t.NotifyCloseFunc()
+}
+
+func (t *Transport) OnTransportCongestionControlServerSendRtcpPacket(packet rtcp.Packet) {
+	t.sendRtcpPacketFunc(packet)
 }

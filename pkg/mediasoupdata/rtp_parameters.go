@@ -408,6 +408,17 @@ func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) 
 	return nil
 }
 
+func (r *RtpParameters) CheckRTCPFeedbackType(name string) bool {
+	for _, codec := range r.Codecs {
+		for _, rtcpFeedback := range codec.RtpCodecParametersT.RtcpFeedback {
+			if rtcpFeedback.Type == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 /**
  * Provides information on codec settings within the RTP parameters. The list
  * of media codecs supported by mediasoup and their settings is defined in the
