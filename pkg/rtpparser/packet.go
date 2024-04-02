@@ -1,6 +1,10 @@
 package rtpparser
 
-import "github.com/pion/rtp"
+import (
+	"strconv"
+
+	"github.com/pion/rtp"
+)
 
 type Packet struct {
 	*rtp.Packet
@@ -108,6 +112,15 @@ func (p *Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) boo
 	frameMarking = Unmarshal(extenValue)
 	*length = uint8(extenLen)
 	return true
+}
+
+func (p *Packet) ReadTransportWideCc01() uint16 {
+	extenValue := p.GetExtension(p.transportWideCc01ExtensionId)
+	if extenValue == nil {
+		return 0
+	}
+	wideSeqNumber, _ := strconv.Atoi(string(extenValue))
+	return uint16(wideSeqNumber)
 }
 
 func (p *Packet) GetMid() string {

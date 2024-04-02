@@ -13,16 +13,17 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/pion/dtls/v2 v2.2.10
 	github.com/pion/ice/v2 v2.3.14
+	github.com/pion/interceptor v0.1.27
 	github.com/pion/logging v0.2.2
 	github.com/pion/randutil v0.1.0
-	github.com/pion/rtcp v1.2.10
-	github.com/pion/rtp v1.7.13
+	github.com/pion/rtcp v1.2.14
+	github.com/pion/rtp v1.8.4
 	github.com/pion/srtp/v2 v2.0.12
 	github.com/pion/stun v0.6.1
 	github.com/pion/transport/v2 v2.2.4
 	github.com/prometheus/client_golang v1.12.2
 	github.com/rs/zerolog v1.29.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.14.3
 	github.com/urfave/cli/v2 v2.3.0
 	go.uber.org/zap v1.24.0

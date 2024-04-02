@@ -145,7 +145,7 @@ func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
 		ProbationSendBitrate:     t.sendProbationTransmission.GetBitrate(nowMs),
 		AvailableOutgoingBitrate: nil,
 		AvailableIncomingBitrate: nil,
-		MaxIncomingBitrate:       nil,
+		MaxIncomingBitrate:       &t.maxIncomingBitrate,
 		MaxOutgoingBitrate:       nil,
 		MinOutgoingBitrate:       nil,
 		RtpPacketLossReceived:    nil,
@@ -490,6 +490,7 @@ func (t *Transport) Produce(id string, request *FBS__Transport.ProduceRequestT) 
 
 		if createTccServer {
 			t.tccServer = newTransportCongestionControlServer(TransportCongestionControlServerParam{
+				transportId:      t.id,
 				bweType:          bweType,
 				maxRtcpPacketLen: MtuSize,
 				onTransportCongestionControlServerSendRtcpPacket: t.OnTransportCongestionControlServerSendRtcpPacket,
@@ -542,7 +543,14 @@ func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	packet.SetRepairedRidExtensionId(t.recvRtpHeaderExtensionIds.RRid)
 	packet.SetAbsSendTimeExtensionId(t.recvRtpHeaderExtensionIds.AbsSendTime)
 	packet.SetTransportWideCc01ExtensionId(t.recvRtpHeaderExtensionIds.TransportWideCc01)
-	// get producer from ssrc, to producer
+
+	// Feed the TransportCongestionControlServer.
+	nowMs := rtctime.GetTimeMs()
+	if t.tccServer != nil {
+		t.tccServer.IncomingPacket(nowMs, packet)
+	}
+
+	// Get the associated Producer.
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
 		t.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("producer not found")
