@@ -45,7 +45,7 @@ type TransportCongestionControlServerParam struct {
 }
 
 func newTransportCongestionControlServer(param TransportCongestionControlServerParam) *TransportCongestionControlServer {
-	return &TransportCongestionControlServer{
+	transport := &TransportCongestionControlServer{
 		logger:  zerowrapper.NewScope("tcc-server", param.transportId),
 		bweType: param.bweType,
 		onTransportCongestionControlServerSendRtcpPacket: param.onTransportCongestionControlServerSendRtcpPacket,
@@ -54,6 +54,10 @@ func newTransportCongestionControlServer(param TransportCongestionControlServerP
 		startTime:    time.Now(),
 		interval:     100 * time.Millisecond,
 	}
+
+	go transport.OnTimer()
+
+	return transport
 }
 
 func (t *TransportCongestionControlServer) GetBweType() BweType {
@@ -67,6 +71,7 @@ func (t *TransportCongestionControlServer) SetMaxIncomingBitrate(bitrate uint32)
 func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *rtpparser.Packet) {
 	switch t.bweType {
 	case TRANSPORT_CC:
+		t.logger.Debug().Uint32("ssrc", packet.SSRC).Uint16("seq", packet.SequenceNumber).Msgf("IncomingPacket")
 		t.twccRecorder.Record(packet.SSRC, packet.SequenceNumber, time.Since(t.startTime).Microseconds())
 
 		//wideSeqNumber := packet.ReadTransportWideCc01()
@@ -147,5 +152,19 @@ func (t *TransportCongestionControlServer) MaySendLimitationRembFeedback(nowMs i
 	t.limitationRembSentAtMs = nowMs
 	if t.unlimitedRembCounter > 0 {
 		t.unlimitedRembCounter--
+	}
+}
+
+func (t *TransportCongestionControlServer) OnTimer() {
+	for {
+		time.Sleep(t.interval)
+		// build and send twcc
+		pkts := t.twccRecorder.BuildFeedbackPacket()
+		if len(pkts) == 0 {
+			continue
+		}
+		for _, pkt := range pkts {
+			t.onTransportCongestionControlServerSendRtcpPacket(pkt)
+		}
 	}
 }
