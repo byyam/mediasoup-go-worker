@@ -590,14 +590,14 @@ func (p *Producer) OnKeyFrameNeeded(ssrc uint32) {
 	rtpStream.RequestKeyFrame()
 }
 
-func (p *Producer) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {
+func (p *Producer) ReceiveRtcpSenderReport(sr *rtcp.SenderReport, report *rtcp.ReceptionReport) {
 	v, ok := p.mapSsrcRtpStream.Load(report.SSRC)
 	if !ok {
 		p.logger.Warn().Msgf("RtpStream not found [ssrc:%d]", report.SSRC)
 		return
 	}
 	rtpStream := v.(*RtpStreamRecv)
-	rtpStream.ReceiveRtcpSenderReport(report)
+	rtpStream.ReceiveRtcpSenderReport(sr, report)
 }
 
 func (p *Producer) GetRtcp(now time.Time) []rtcp.Packet {

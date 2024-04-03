@@ -611,7 +611,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 				t.logger.Warn().Msgf("no Producer found for received Sender Report [ssrc:%d]", sr.SSRC)
 				continue
 			}
-			producer.ReceiveRtcpSenderReport(&sr)
+			producer.ReceiveRtcpSenderReport(pkg, &sr)
 		}
 	case *rtcp.ReceiverReport:
 		pkg := packet.(*rtcp.ReceiverReport)

@@ -1,10 +1,12 @@
 package rtpparser
 
 import (
-	"strconv"
+	"errors"
 
 	"github.com/pion/rtp"
 )
+
+var ErrParseHeaderExtension error = errors.New("parse header extension failed")
 
 type Packet struct {
 	*rtp.Packet
@@ -114,13 +116,15 @@ func (p *Packet) ReadFrameMarking(frameMarking *FrameMarking, length *uint8) boo
 	return true
 }
 
-func (p *Packet) ReadTransportWideCc01() uint16 {
-	extenValue := p.GetExtension(p.transportWideCc01ExtensionId)
-	if extenValue == nil {
-		return 0
+func (p *Packet) ReadTransportWideCc01() (*rtp.TransportCCExtension, error) {
+	var tccExt rtp.TransportCCExtension
+	if ext := p.GetExtension(p.transportWideCc01ExtensionId); ext != nil {
+		if err := tccExt.Unmarshal(ext); err != nil {
+			return nil, err
+		}
+		return &tccExt, nil
 	}
-	wideSeqNumber, _ := strconv.Atoi(string(extenValue))
-	return uint16(wideSeqNumber)
+	return nil, ErrParseHeaderExtension
 }
 
 func (p *Packet) GetMid() string {

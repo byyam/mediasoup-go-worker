@@ -19,14 +19,16 @@ import (
 
 type RtpStreamRecv struct {
 	*RtpStream
-	score              uint8
-	expectedPrior      uint32 // Packets expected at last interval.
-	expectedPriorScore uint32 // Packets expected at last interval for score calculation.
-	receivedPrior      uint32 // Packets received at last interval.
-	receivedPriorScore uint32 // Packets received at last interval for score calculation.
-	lastSrTimestamp    uint32 // The middle 32 bits out of 64 in the NTP timestamp received in the most recent sender report.
-	lastSrReceived     int64  // Wallclock time representing the most recent sender report arrival.
-	jitter             uint32
+	score                 uint8
+	expectedPrior         uint32 // Packets expected at last interval.
+	expectedPriorScore    uint32 // Packets expected at last interval for score calculation.
+	receivedPrior         uint32 // Packets received at last interval.
+	receivedPriorScore    uint32 // Packets received at last interval for score calculation.
+	lastSrTimestamp       uint32 // The middle 32 bits out of 64 in the NTP timestamp received in the most recent sender report.
+	lastSrReceived        int64  // Wallclock time representing the most recent sender report arrival.
+	lastSenderReportNtpMs uint64
+	lastSenderReportTs    uint32
+	jitter                uint32
 
 	nackGenerator                    *nack.NackQueue
 	transmissionCounter              *TransmissionCounter // Valid media + valid RTX.
@@ -143,8 +145,18 @@ func (r *RtpStreamRecv) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 
 }
 
-func (r *RtpStreamRecv) ReceiveRtcpSenderReport(report *rtcp.ReceptionReport) {
-	// todo
+func (r *RtpStreamRecv) ReceiveRtcpSenderReport(sr *rtcp.SenderReport, report *rtcp.ReceptionReport) {
+	r.lastSrReceived = rtctime.GetTimeMs()
+
+	// ?
+	ntp := rtctime.NtpTime(sr.NTPTime)
+	t := ntp.Time()
+	r.lastSrTimestamp = uint32(t.Nanosecond() / 1000)
+	// Update info about last Sender Report.
+	r.lastSenderReportNtpMs = sr.NTPTime
+	r.lastSenderReportTs = sr.RTPTime
+	// Update the score with the current RR.
+	r.UpdateScore()
 }
 
 func (r *RtpStreamRecv) GetRtcpReceiverReport(now time.Time, worstRemoteFractionLost uint8) *rtcp.ReceptionReport {
@@ -200,4 +212,8 @@ func (r *RtpStreamRecv) GetRtcpReceiverReport(now time.Time, worstRemoteFraction
 		report.LastSenderReport = 0
 	}
 	return report
+}
+
+func (r *RtpStreamRecv) UpdateScore() {
+
 }

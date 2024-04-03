@@ -263,6 +263,7 @@ func (t *WebrtcTransport) SendRtcpPacket(packet rtcp.Packet) {
 		return
 	}
 	t.logger.Info().Uints32("packet", packet.DestinationSSRC()).Msg("SendRtcpPacket")
+	t.logger.Debug().Msgf("SendRtcpPacket:\n%+v", packet)
 	decryptedRaw, err := packet.Marshal()
 	if err != nil {
 		t.logger.Error().Err(err).Msg("rtcpPacket.Marshal error")

@@ -1,7 +1,6 @@
 package rtc
 
 import (
-	"math/rand"
 	"sync"
 	"time"
 
@@ -50,7 +49,7 @@ func newTransportCongestionControlServer(param TransportCongestionControlServerP
 		bweType: param.bweType,
 		onTransportCongestionControlServerSendRtcpPacket: param.onTransportCongestionControlServerSendRtcpPacket,
 
-		twccRecorder: twcc.NewRecorder(rand.Uint32()),
+		twccRecorder: twcc.NewRecorder(0), // twcc.NewRecorder(rand.Uint32()),
 		startTime:    time.Now(),
 		interval:     100 * time.Millisecond,
 	}
@@ -65,14 +64,20 @@ func (t *TransportCongestionControlServer) GetBweType() BweType {
 }
 
 func (t *TransportCongestionControlServer) SetMaxIncomingBitrate(bitrate uint32) {
-
+	t.maxIncomingBitrate = bitrate
 }
 
 func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *rtpparser.Packet) {
 	switch t.bweType {
 	case TRANSPORT_CC:
-		t.logger.Debug().Uint32("ssrc", packet.SSRC).Uint16("seq", packet.SequenceNumber).Msgf("IncomingPacket")
-		t.twccRecorder.Record(packet.SSRC, packet.SequenceNumber, time.Since(t.startTime).Microseconds())
+		tccExt, err := packet.ReadTransportWideCc01()
+		if err != nil {
+			t.logger.Warn().Uint32("ssrc", packet.SSRC).Err(err).Msgf("tcc ext error")
+			break
+		}
+
+		t.logger.Debug().Uint32("ssrc", packet.SSRC).Uint16("seq", tccExt.TransportSequence).Msgf("IncomingPacket")
+		t.twccRecorder.Record(packet.SSRC, tccExt.TransportSequence, time.Since(t.startTime).Microseconds())
 
 		//wideSeqNumber := packet.ReadTransportWideCc01()
 		//if wideSeqNumber == 0 {
@@ -164,6 +169,7 @@ func (t *TransportCongestionControlServer) OnTimer() {
 			continue
 		}
 		for _, pkt := range pkts {
+			t.logger.Info().Msgf("send twcc-feedback rtcp")
 			t.onTransportCongestionControlServerSendRtcpPacket(pkt)
 		}
 	}
