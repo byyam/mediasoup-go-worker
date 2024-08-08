@@ -3,8 +3,8 @@ package iceutil
 import (
 	"net"
 
-	"github.com/pion/ice/v2"
-	"github.com/pion/stun"
+	"github.com/pion/ice/v3"
+	"github.com/pion/stun/v2"
 )
 
 func AssertInboundUsername(m *stun.Message, expectedUsername string) error {

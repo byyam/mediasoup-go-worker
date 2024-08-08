@@ -554,7 +554,7 @@ func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
 		t.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("producer not found")
-		monitor.RtpRecvCount(monitor.TraceSsrcNotFound)
+		monitor.RtpRecvCount(monitor.TraceSsrcNotFound, packet.GetLen())
 		return
 	}
 
@@ -604,6 +604,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	switch packet.(type) {
 	case *rtcp.SenderReport:
 		pkg := packet.(*rtcp.SenderReport)
+		monitor.RtcpCountBySSRC(pkg.SSRC, monitor.RtcpSenderReport)
 		for _, sr := range pkg.Reports {
 			t.logger.Debug().Msgf("handle SR:%s,report:%+v", pkg.String(), sr)
 			producer := t.rtpListener.GetProducerBySSRC(sr.SSRC)
@@ -615,6 +616,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 		}
 	case *rtcp.ReceiverReport:
 		pkg := packet.(*rtcp.ReceiverReport)
+		monitor.RtcpCountBySSRC(pkg.SSRC, monitor.RtcpReceiverReport)
 		for _, rr := range pkg.Reports {
 			t.logger.Debug().Msgf("handle RR:%s,report:%+v", pkg.String(), rr)
 			// Special case for the RTP probator.
@@ -639,25 +641,29 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 			// todo
 		}
 	case *rtcp.SourceDescription:
+		monitor.RtcpRecvCount(monitor.TraceRtcpSourceDescription)
 		pkg := packet.(*rtcp.SourceDescription)
 		t.logger.Debug().Msgf("%s", pkg.String())
 	case *rtcp.Goodbye:
+		monitor.RtcpRecvCount(monitor.TraceRtcpGoodbye)
 		pkg := packet.(*rtcp.Goodbye)
 		t.logger.Debug().Msgf("ignoring received RTCP BYE %s", pkg.String())
 	case *rtcp.FullIntraRequest:
 		pkg := packet.(*rtcp.FullIntraRequest)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
-		monitor.KeyframeCount(pkg.MediaSSRC, monitor.KeyframeRecvFIR)
+		monitor.RtcpCountBySSRC(pkg.MediaSSRC, monitor.KeyframeRecvFIR)
 	case *rtcp.PictureLossIndication:
 		pkg := packet.(*rtcp.PictureLossIndication)
 		t.ReceiveKeyFrameRequest(header.Count, pkg.MediaSSRC)
-		monitor.KeyframeCount(pkg.MediaSSRC, monitor.KeyframeRecvPLI)
+		monitor.RtcpCountBySSRC(pkg.MediaSSRC, monitor.KeyframeRecvPLI)
 	case *rtcp.ReceiverEstimatedMaximumBitrate:
 		pkg := packet.(*rtcp.ReceiverEstimatedMaximumBitrate)
 		t.logger.Debug().Msgf("%s", pkg.String())
+		monitor.RtcpCountBySSRC(pkg.SenderSSRC, monitor.RtcpRecvRemb)
 	case *rtcp.TransportLayerNack:
 		pkg := packet.(*rtcp.TransportLayerNack)
 		t.logger.Debug().Msgf("TransportLayerNack:%+v", pkg)
+		monitor.RtcpCountBySSRC(pkg.MediaSSRC, monitor.RtcpRecvNack)
 		consumer, ok := t.mapSsrcConsumer.Load(pkg.MediaSSRC)
 		if !ok {
 			t.logger.Warn().Msgf("no Consumer found for received NACK Feedback packet [sender ssrc:%d, media ssrc:%d]", pkg.SenderSSRC, pkg.MediaSSRC)
@@ -668,6 +674,7 @@ func (t *Transport) HandleRtcpPacket(header *rtcp.Header, packet rtcp.Packet) {
 	case *rtcp.TransportLayerCC:
 		pkg := packet.(*rtcp.TransportLayerCC)
 		t.logger.Info().Msgf("TransportLayerCC:%+v", pkg)
+		monitor.RtcpCountBySSRC(pkg.MediaSSRC, monitor.RtcpReceiverTransportLayerCC)
 	default:
 		monitor.RtcpRecvCount(monitor.TraceUnknownRtcpType)
 		t.logger.Warn().Msgf("unhandled RTCP type received %+v", header)

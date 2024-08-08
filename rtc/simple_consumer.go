@@ -90,9 +90,9 @@ func (c *SimpleConsumer) CreateRtpStream() {
 
 func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	if c.GetKind() == FBS__RtpParameters.MediaKindVIDEO {
-		monitor.RtpSendCount(monitor.TraceVideo)
+		monitor.RtpSendCount(monitor.TraceVideo, packet.GetLen())
 	} else if c.GetKind() == FBS__RtpParameters.MediaKindAUDIO {
-		monitor.RtpSendCount(monitor.TraceAudio)
+		monitor.RtpSendCount(monitor.TraceAudio, packet.GetLen())
 	}
 	packet.SSRC = *c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType

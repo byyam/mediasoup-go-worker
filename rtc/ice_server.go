@@ -16,9 +16,9 @@ import (
 	"github.com/byyam/mediasoup-go-worker/pkg/muxpkg"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
-	"github.com/pion/ice/v2"
-	"github.com/pion/stun"
-	"github.com/pion/transport/v2/packetio"
+	"github.com/pion/ice/v3"
+	"github.com/pion/stun/v2"
+	"github.com/pion/transport/v3/packetio"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/internal/global"

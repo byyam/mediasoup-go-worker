@@ -187,7 +187,7 @@ func (t *WebrtcTransport) OnPacketReceived(data []byte) {
 	t.ITransport.DataReceived(len(data)) // transport stats
 	if muxpkg.MatchSRTPOrSRTCP(data) {
 		if !muxpkg.IsRTCP(data) {
-			monitor.RtpRecvCount(monitor.TraceReceive)
+			monitor.RtpRecvCount(monitor.TraceReceive, len(data))
 			t.OnRtpDataReceived(data) // RTP
 		} else {
 			monitor.RtcpRecvCount(monitor.TraceReceive)
@@ -214,7 +214,6 @@ func (t *WebrtcTransport) OnRtcpDataReceived(rawData []byte) {
 		t.logger.Error().Err(err).Msg("rtcp.Unmarshal failed")
 		return
 	}
-	monitor.RtcpRecvCount(monitor.TraceReceive)
 	t.ITransport.ReceiveRtcpPacket(decryptHeader, packets)
 }
 
@@ -223,13 +222,13 @@ func (t *WebrtcTransport) OnRtpDataReceived(rawData []byte) {
 	decryptInput := make([]byte, len(rawData))
 	actualDecrypted, err := t.decryptCtx.DecryptRTP(decryptInput, rawData, decryptHeader)
 	if err != nil {
-		monitor.RtpRecvCount(monitor.TraceDecryptFailed)
+		monitor.RtpRecvCount(monitor.TraceDecryptFailed, len(rawData))
 		t.logger.Error().Err(err).Msg("DecryptRTP failed")
 		return
 	}
 	rtpPacket, err := rtpparser.Parse(actualDecrypted)
 	if err != nil {
-		monitor.RtpRecvCount(monitor.TraceUnmarshalFailed)
+		monitor.RtpRecvCount(monitor.TraceUnmarshalFailed, len(rawData))
 		t.logger.Error().Err(err).Msg("rtpPacket.Unmarshal error")
 		return
 	}

@@ -132,20 +132,20 @@ func (p *Producer) init(param producerParam) error {
 
 func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtpPacketResult) {
 	if p.Kind == FBS__RtpParameters.MediaKindVIDEO && packet.IsKeyFrame() {
-		monitor.KeyframeCount(packet.SSRC, monitor.KeyframePkgRecv)
+		monitor.RtcpCountBySSRC(packet.SSRC, monitor.KeyframePkgRecv)
 		p.logger.Debug().Msg("isKeyFrame")
 	}
 	if p.Kind == FBS__RtpParameters.MediaKindVIDEO {
-		monitor.RtpRecvCount(monitor.TraceVideo)
+		monitor.RtpRecvCount(monitor.TraceVideo, packet.GetLen())
 	} else if p.Kind == FBS__RtpParameters.MediaKindAUDIO {
-		monitor.RtpRecvCount(monitor.TraceAudio)
+		monitor.RtpRecvCount(monitor.TraceAudio, packet.GetLen())
 	}
 
 	rtpStream := p.GetRtpStream(packet)
 	if rtpStream == nil {
 		p.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rrid", packet.GetRrid()).
 			Str("rid", packet.GetRid()).Msg("no stream found for received packet")
-		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound)
+		monitor.RtpRecvCount(monitor.TraceRtpStreamNotFound, packet.GetLen())
 		return ReceiveRtpPacketResultDISCARDED
 	}
 	// Pre-process the packet.
@@ -153,15 +153,17 @@ func (p *Producer) ReceiveRtpPacket(packet *rtpparser.Packet) (result ReceiveRtp
 
 	if rtpStream.GetSsrc() == packet.SSRC { // Media packet.
 		result = ReceiveRtpPacketResultMEDIA
+		monitor.RtpRecvCount(monitor.TraceRtpStream, packet.GetLen())
 		if !rtpStream.ReceivePacket(packet) { // Process the packet.
 			// todo
-			monitor.RtpRecvCount(monitor.TraceRtpStreamRecvFailed)
+			monitor.RtpRecvCount(monitor.TraceRtpStreamRecvFailed, packet.GetLen())
 			return
 		}
 	} else if rtpStream.GetRtxSsrc() == packet.SSRC { // RTX packet.
 		result = ReceiveRtpPacketResultRETRANSMISSION
+		monitor.RtpRecvCount(monitor.TraceRtpRtxStream, packet.GetLen())
 		if !rtpStream.ReceiveRtxPacket(packet) {
-			monitor.RtpRecvCount(monitor.TraceRtpRtxStreamRecvFailed)
+			monitor.RtpRecvCount(monitor.TraceRtpRtxStreamRecvFailed, packet.GetLen())
 			return
 		}
 	} else { // Should not happen.

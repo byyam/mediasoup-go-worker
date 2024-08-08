@@ -3,11 +3,12 @@ package monitor
 import "github.com/prometheus/client_golang/prometheus"
 
 func register() {
-	prometheus.MustRegister(rtpRecvCount)
+	prometheus.MustRegister(rtpCount)
+	prometheus.MustRegister(rtpTraffic)
 	prometheus.MustRegister(rtcpCount)
 	prometheus.MustRegister(iceCount)
 	prometheus.MustRegister(mediasoupCount)
-	prometheus.MustRegister(keyframeCount)
+	prometheus.MustRegister(rtcpSSRCCount)
 }
 
 type DirectionType string
@@ -41,6 +42,11 @@ const (
 	TraceUnknownRtcpType        TraceType = "unknown_rtcp_type"
 	TraceAudio                  TraceType = "audio"
 	TraceVideo                  TraceType = "video"
+	TraceRtpStream              TraceType = "rtp_stream"
+	TraceRtpRtxStream           TraceType = "rtp_rtx_stream"
+	// rtcp type
+	TraceRtcpSourceDescription TraceType = "rtcp_source_description"
+	TraceRtcpGoodbye           TraceType = "rtcp_goodbye"
 )
 
 type EventType string

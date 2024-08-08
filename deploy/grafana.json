@@ -39,6 +39,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -50,6 +53,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -79,7 +83,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "cps"
         },
         "overrides": []
       },
@@ -92,9 +97,17 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
+          "calcs": [
+            "mean",
+            "min",
+            "max",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "single",
@@ -107,11 +120,13 @@
             "type": "prometheus",
             "uid": "fnG6dbrnz"
           },
-          "expr": "increase(ice_count[1m])",
+          "editorMode": "code",
+          "expr": "sum(rate(ice_count[1m])) by (direction, packet)",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "ice",
+      "title": "ICE count",
       "type": "timeseries"
     },
     {
@@ -125,6 +140,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -136,6 +154,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -165,7 +184,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "cps"
         },
         "overrides": []
       },
@@ -178,9 +198,17 @@
       "id": 3,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
+          "calcs": [
+            "mean",
+            "min",
+            "max",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "single",
@@ -193,11 +221,13 @@
             "type": "prometheus",
             "uid": "fnG6dbrnz"
           },
-          "expr": "increase(rtp_count[1m])",
+          "editorMode": "code",
+          "expr": "sum(rate(rtp_pkg_count[1m])) by (action, direction)",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "rtp",
+      "title": "RTP count",
       "type": "timeseries"
     },
     {
@@ -211,6 +241,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -222,6 +255,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -251,7 +285,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "cps"
         },
         "overrides": []
       },
@@ -264,9 +299,17 @@
       "id": 4,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
+          "calcs": [
+            "mean",
+            "min",
+            "max",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
         },
         "tooltip": {
           "mode": "single",
@@ -279,11 +322,13 @@
             "type": "prometheus",
             "uid": "fnG6dbrnz"
           },
-          "expr": "increase(rtcp_count[1m])",
+          "editorMode": "code",
+          "expr": "sum(rate(rtcp_pkg_count[1m])) by (action, direction)",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "rtcp",
+      "title": "RTCP count",
       "type": "timeseries"
     },
     {
@@ -297,6 +342,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -308,6 +356,209 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min",
+            "max",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fnG6dbrnz"
+          },
+          "editorMode": "code",
+          "expr": "8*sum(rate(rtp_traffic_count[1m])) by (action, direction)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "RTP traffic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fnG6dbrnz"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "cps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "min",
+            "max",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fnG6dbrnz"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(rtcp_ssrc_count[1m])) by (ssrc, event)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "RTCP SSRC",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fnG6dbrnz"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -345,14 +596,15 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 18
       },
       "id": 5,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -371,108 +623,22 @@
       ],
       "title": "mediasoup",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fnG6dbrnz"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 18
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "fnG6dbrnz"
-          },
-          "expr": "increase(keyframe_count[1m])",
-          "refId": "A"
-        }
-      ],
-      "title": "keyframe",
-      "type": "timeseries"
     }
   ],
-  "schemaVersion": 36,
-  "style": "dark",
+  "refresh": "",
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "mediasoup",
   "uid": "NUGJoB97k",
-  "version": 4,
+  "version": 11,
   "weekStart": ""
 }

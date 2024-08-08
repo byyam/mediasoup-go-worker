@@ -10,15 +10,15 @@ import (
 	"net"
 	"time"
 
+	"github.com/pion/dtls/v2"
 	"github.com/rs/zerolog"
 
 	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
-	"github.com/pion/dtls/v2"
-	"github.com/pion/dtls/v2/pkg/crypto/fingerprint"
-	"github.com/pion/dtls/v2/pkg/crypto/selfsign"
+	"github.com/pion/dtls/v3/pkg/crypto/fingerprint"
+	"github.com/pion/dtls/v3/pkg/crypto/selfsign"
 	"github.com/pion/srtp/v2"
 
 	"github.com/byyam/mediasoup-go-worker/mserror"
@@ -64,6 +64,7 @@ type dtlsTransportParam struct {
 	connTimeout *time.Duration
 }
 
+// todo: upgrade dtls to v3 https://github.com/pion/dtls/issues/279
 func newDtlsTransport(param dtlsTransportParam) (*dtlsTransport, error) {
 	d := &dtlsTransport{
 		state:                  FBS__WebRtcTransport.DtlsStateNEW,

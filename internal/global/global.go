@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pion/ice/v3"
+
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/udpmux"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
-	"github.com/pion/ice/v2"
 	"github.com/pion/logging"
 )
 
