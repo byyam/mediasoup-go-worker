@@ -79,31 +79,31 @@ func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *r
 		t.logger.Debug().Uint32("ssrc", packet.SSRC).Uint16("seq", tccExt.TransportSequence).Msgf("IncomingPacket")
 		t.twccRecorder.Record(packet.SSRC, tccExt.TransportSequence, time.Since(t.startTime).Microseconds())
 
-		//wideSeqNumber := packet.ReadTransportWideCc01()
-		//if wideSeqNumber == 0 {
-		//	break
-		//}
-		//// Only insert the packet when receiving it for the first time.
-		//if _, ok := t.mapPacketArrivalTimes.Load(wideSeqNumber); ok {
-		//	break
-		//}
-		//t.mapPacketArrivalTimes.Store(wideSeqNumber, nowMs)
-		//// We may receive packets with sequence number lower than the one in
-		//// previous tcc feedback, these packets may have been reported as lost
-		//// previously, therefore we need to reset the start sequence num for the
-		//// next tcc feedback.
-		//if !t.transportWideSeqNumberReceived || seqmgr.IsSeqLowerThanUint16(wideSeqNumber, t.transportCcFeedbackWideSeqNumStart) {
-		//	t.transportCcFeedbackWideSeqNumStart = wideSeqNumber
-		//}
-		//t.transportWideSeqNumberReceived = true
-		//
-		//t.MayDropOldPacketArrivalTimes(wideSeqNumber, nowMs)
-		//
-		//// Update the RTCP media SSRC of the ongoing Transport-CC Feedback packet.
-		//t.transportCcFeedbackSenderSsrc = 0
-		//t.transportCcFeedbackMediaSsrc = packet.SSRC
-		//
-		//t.MaySendLimitationRembFeedback(nowMs)
+		wideSeqNumber := tccExt.TransportSequence
+		if wideSeqNumber == 0 {
+			break
+		}
+		// Only insert the packet when receiving it for the first time.
+		if _, ok := t.mapPacketArrivalTimes.Load(wideSeqNumber); ok {
+			break
+		}
+		t.mapPacketArrivalTimes.Store(wideSeqNumber, nowMs)
+		// We may receive packets with sequence number lower than the one in
+		// previous tcc feedback, these packets may have been reported as lost
+		// previously, therefore we need to reset the start sequence num for the
+		// next tcc feedback.
+		if !t.transportWideSeqNumberReceived || seqmgr.IsSeqLowerThanUint16(wideSeqNumber, t.transportCcFeedbackWideSeqNumStart) {
+			t.transportCcFeedbackWideSeqNumStart = wideSeqNumber
+		}
+		t.transportWideSeqNumberReceived = true
+
+		t.MayDropOldPacketArrivalTimes(wideSeqNumber, nowMs)
+
+		// Update the RTCP media SSRC of the ongoing Transport-CC Feedback packet.
+		t.transportCcFeedbackSenderSsrc = 0
+		t.transportCcFeedbackMediaSsrc = packet.SSRC
+
+		t.MaySendLimitationRembFeedback(nowMs)
 
 	case REMB:
 		t.logger.Warn().Uint32("ssrc", packet.SSRC).Msg("incoming remb not handled")
