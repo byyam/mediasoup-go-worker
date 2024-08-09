@@ -8,6 +8,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
 	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -16,6 +17,7 @@ import (
 const (
 	PacketArrivalTimestampWindow = 500
 	LimitationRembInterval       = 1500
+	UnlimitedRembNumPackets      = 4
 )
 
 type TransportCongestionControlServer struct {
@@ -64,7 +66,16 @@ func (t *TransportCongestionControlServer) GetBweType() BweType {
 }
 
 func (t *TransportCongestionControlServer) SetMaxIncomingBitrate(bitrate uint32) {
+	previousMaxIncomingBitrate := t.maxIncomingBitrate
 	t.maxIncomingBitrate = bitrate
+	t.logger.Debug().Uint32("maxIncomingBitrate", t.maxIncomingBitrate).Uint32("previousMaxIncomingBitrate", previousMaxIncomingBitrate).Msg("SetMaxIncomingBitrate")
+
+	if previousMaxIncomingBitrate != 0 && t.maxIncomingBitrate == 0 {
+		// This is to ensure that we send N REMB packets with bitrate 0 (unlimited).
+		t.unlimitedRembCounter = UnlimitedRembNumPackets
+		nowMs := rtctime.GetTimeMs()
+		t.MaySendLimitationRembFeedback(nowMs)
+	}
 }
 
 func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *rtpparser.Packet) {
@@ -141,22 +152,23 @@ func (t *TransportCongestionControlServer) MaySendLimitationRembFeedback(nowMs i
 		t.unlimitedRembCounter = 0
 	}
 	// In case this is the first unlimited REMB packet, send it fast.
-	if ((t.bweType != TRANSPORT_CC && t.maxIncomingBitrate != 0) || t.unlimitedRembCounter > 0) &&
+	if ((t.bweType != REMB && t.maxIncomingBitrate != 0) || t.unlimitedRembCounter > 0) &&
 		(nowMs-t.limitationRembSentAtMs > LimitationRembInterval) {
 		t.logger.Debug().Msgf("sending limitation RTCP REMB packet [bitrate:%d]", t.maxIncomingBitrate)
-	}
-	// No need sender and media SSRCs.
-	packet := &rtcp.ReceiverEstimatedMaximumBitrate{
-		SenderSSRC: 0,
-		Bitrate:    float32(t.maxIncomingBitrate),
-		SSRCs:      nil,
-	}
-	// Notify the listener.
-	t.onTransportCongestionControlServerSendRtcpPacket(packet)
 
-	t.limitationRembSentAtMs = nowMs
-	if t.unlimitedRembCounter > 0 {
-		t.unlimitedRembCounter--
+		// No need sender and media SSRCs.
+		packet := &rtcp.ReceiverEstimatedMaximumBitrate{
+			SenderSSRC: 0,
+			Bitrate:    float32(t.maxIncomingBitrate),
+			SSRCs:      nil,
+		}
+		// Notify the listener.
+		t.onTransportCongestionControlServerSendRtcpPacket(packet)
+
+		t.limitationRembSentAtMs = nowMs
+		if t.unlimitedRembCounter > 0 {
+			t.unlimitedRembCounter--
+		}
 	}
 }
 
