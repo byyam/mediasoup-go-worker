@@ -2,14 +2,14 @@ package rtctime
 
 import "time"
 
-func GetTimeMs() int64 {
-	return time.Now().UnixNano() / 1000000
+func GetTimeMs() uint64 {
+	return uint64(time.Now().UnixNano() / 1000000)
 }
 
-func GetTimeUs() int64 {
-	return time.Now().UnixNano() / 1000
+func GetTimeUs() uint64 {
+	return uint64(time.Now().UnixNano() / 1000)
 }
 
-func GetTimeNs() int64 {
-	return time.Now().UnixNano()
+func GetTimeNs() uint64 {
+	return uint64(time.Now().UnixNano())
 }

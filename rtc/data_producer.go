@@ -46,7 +46,7 @@ func (p *DataProducer) FillJson() *FBS__DataProducer.DumpResponseT {
 
 func (p *DataProducer) FillJsonStats() *FBS__DataProducer.GetStatsResponseT {
 	dumpData := &FBS__DataProducer.GetStatsResponseT{
-		Timestamp:        uint64(rtctime.GetTimeMs()),
+		Timestamp:        rtctime.GetTimeMs(),
 		Label:            p.opt.Label,
 		Protocol:         p.opt.Protocol,
 		MessagesReceived: 0,

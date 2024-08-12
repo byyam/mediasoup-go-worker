@@ -7,7 +7,7 @@ import (
 type StorageItem struct {
 	packet     *rtpparser.Packet
 	store      [MtuSize + 100]uint8
-	resentAtMs int64
+	resentAtMs uint64
 	sentTimes  uint8
 	rtxEncoded bool
 }

@@ -25,7 +25,7 @@ type RtpStreamRecv struct {
 	receivedPrior         uint32 // Packets received at last interval.
 	receivedPriorScore    uint32 // Packets received at last interval for score calculation.
 	lastSrTimestamp       uint32 // The middle 32 bits out of 64 in the NTP timestamp received in the most recent sender report.
-	lastSrReceived        int64  // Wallclock time representing the most recent sender report arrival.
+	lastSrReceived        uint64 // Wallclock time representing the most recent sender report arrival.
 	lastSenderReportNtpMs uint64
 	lastSenderReportTs    uint32
 	jitter                uint32
@@ -132,7 +132,7 @@ func (r *RtpStreamRecv) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 	stat.Data = new(FBS__RtpStream.StatsDataT)
 	stat.Data.Type = FBS__RtpStream.StatsDataRecvStats
 	baseStat := &FBS__RtpStream.StatsT{}
-	r.RtpStream.FillJsonStats(baseStat, uint64(nowMs))
+	r.RtpStream.FillJsonStats(baseStat, nowMs)
 	recvStat := &FBS__RtpStream.RecvStatsT{
 		Base:           baseStat,
 		Jitter:         0,

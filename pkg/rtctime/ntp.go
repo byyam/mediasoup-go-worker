@@ -1,12 +1,13 @@
 package rtctime
 
 import (
+	"fmt"
 	"math"
 	"time"
 )
 
 const (
-	UnixNtpOffset     = 0x83AA7E80
+	UnixNtpOffset     = 0x83AA7E80 // Seconds from Jan 1, 1900 to Jan 1, 1970.
 	NtpFractionalUnit = uint64(1) << 32
 )
 
@@ -15,15 +16,27 @@ type Ntp struct {
 	Fractions uint32
 }
 
-func TimeMs2Ntp(ms int64) *Ntp {
+func TimeMs2Ntp(ms uint64) *Ntp {
 	return &Ntp{
 		Seconds:   uint32(ms / 1000),
 		Fractions: uint32((float64(ms%1000) / 1000) * float64(NtpFractionalUnit)),
 	}
 }
 
-func Ntp2TimeMs(ntp Ntp) int64 {
-	return int64(ntp.Seconds*1000) + int64(math.Round(float64(ntp.Fractions)*1000)/float64(NtpFractionalUnit))
+func Ntp2TimeMs(ntp Ntp) uint64 {
+	return uint64(ntp.Seconds*1000) + uint64(math.Round(float64(ntp.Fractions)*1000)/float64(NtpFractionalUnit))
+}
+
+func NtpTime32(t time.Time) uint32 {
+	// seconds since 1st January 1900
+	s := (float64(t.UnixNano()) / 1000000000.0) + 2208988800
+
+	integerPart := uint32(s)
+	fractionalPart := uint32((s - float64(integerPart)) * 0xFFFFFFFF)
+	fmt.Printf("intergerPart:%d, fractionPart:%d\n", integerPart, fractionalPart)
+
+	// higher 32 bits are the integer part, lower 32 bits are the fractional part
+	return uint32(((uint64(integerPart)<<32 | uint64(fractionalPart)) >> 16) & 0xFFFFFFFF)
 }
 
 // -------------------------------------

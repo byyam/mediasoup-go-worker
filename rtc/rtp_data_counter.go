@@ -30,7 +30,7 @@ func (p RtpDataCounter) GetPacketCount() int64 {
 	return p.packets
 }
 
-func (p RtpDataCounter) GetBitrate(nowMs int64) uint32 {
+func (p RtpDataCounter) GetBitrate(nowMs uint64) uint32 {
 	return p.rate.GetRate(nowMs)
 }
 

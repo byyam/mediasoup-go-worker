@@ -154,7 +154,7 @@ func (p *RtpStreamSend) FillRetransmissionContainer(nackPair rtcp.NackPair) {
 		if rtt == 0 {
 			rtt = DefaultRtt
 		}
-		if storageItem.resentAtMs != 0 && nowMs-storageItem.resentAtMs <= int64(rtt) {
+		if storageItem.resentAtMs != 0 && nowMs-storageItem.resentAtMs <= uint64(rtt) {
 			p.logger.Warn("ignoring retransmission for a packet already resent in the last RTT ms")
 			continue
 		}

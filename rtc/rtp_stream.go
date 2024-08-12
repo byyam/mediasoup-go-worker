@@ -56,7 +56,7 @@ type RtpStream struct {
 	nackCount            uint32
 	nackPacketCount      uint32
 	maxPacketTs          uint32
-	maxPacketMS          int64
+	maxPacketMS          uint64
 	packetsRetransmitted uint32
 	packetsRepaired      uint32
 	packetsDiscarded     uint32

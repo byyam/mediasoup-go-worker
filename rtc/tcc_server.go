@@ -1,7 +1,6 @@
 package rtc
 
 import (
-	"sync"
 	"time"
 
 	"github.com/pion/interceptor/pkg/twcc"
@@ -10,12 +9,11 @@ import (
 
 	"github.com/byyam/mediasoup-go-worker/pkg/rtctime"
 	"github.com/byyam/mediasoup-go-worker/pkg/rtpparser"
-	"github.com/byyam/mediasoup-go-worker/pkg/seqmgr"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 )
 
 const (
-	PacketArrivalTimestampWindow = 500
+	PacketArrivalTimestampWindow = 500 // twcc
 	LimitationRembInterval       = 1500
 	UnlimitedRembNumPackets      = 4
 )
@@ -25,13 +23,15 @@ type TransportCongestionControlServer struct {
 	bweType                                          BweType
 	maxIncomingBitrate                               uint32
 	unlimitedRembCounter                             uint8
-	limitationRembSentAtMs                           int64
+	limitationRembSentAtMs                           uint64
 	onTransportCongestionControlServerSendRtcpPacket func(packet rtcp.Packet)
-	mapPacketArrivalTimes                            sync.Map
-	transportWideSeqNumberReceived                   bool
-	transportCcFeedbackWideSeqNumStart               uint16
-	transportCcFeedbackSenderSsrc                    uint32
-	transportCcFeedbackMediaSsrc                     uint32
+
+	// twcc
+	//mapPacketArrivalTimes                            sync.Map
+	//transportWideSeqNumberReceived                   bool
+	//transportCcFeedbackWideSeqNumStart               uint16
+	//transportCcFeedbackSenderSsrc                    uint32
+	//transportCcFeedbackMediaSsrc                     uint32
 
 	twccRecorder *twcc.Recorder
 	startTime    time.Time
@@ -78,7 +78,7 @@ func (t *TransportCongestionControlServer) SetMaxIncomingBitrate(bitrate uint32)
 	}
 }
 
-func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *rtpparser.Packet) {
+func (t *TransportCongestionControlServer) IncomingPacket(nowMs uint64, packet *rtpparser.Packet) {
 	switch t.bweType {
 	case TRANSPORT_CC:
 		tccExt, err := packet.ReadTransportWideCc01()
@@ -90,30 +90,6 @@ func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *r
 		t.logger.Debug().Uint32("ssrc", packet.SSRC).Uint16("seq", tccExt.TransportSequence).Msgf("IncomingPacket")
 		t.twccRecorder.Record(packet.SSRC, tccExt.TransportSequence, time.Since(t.startTime).Microseconds())
 
-		wideSeqNumber := tccExt.TransportSequence
-		if wideSeqNumber == 0 {
-			break
-		}
-		// Only insert the packet when receiving it for the first time.
-		if _, ok := t.mapPacketArrivalTimes.Load(wideSeqNumber); ok {
-			break
-		}
-		t.mapPacketArrivalTimes.Store(wideSeqNumber, nowMs)
-		// We may receive packets with sequence number lower than the one in
-		// previous tcc feedback, these packets may have been reported as lost
-		// previously, therefore we need to reset the start sequence num for the
-		// next tcc feedback.
-		if !t.transportWideSeqNumberReceived || seqmgr.IsSeqLowerThanUint16(wideSeqNumber, t.transportCcFeedbackWideSeqNumStart) {
-			t.transportCcFeedbackWideSeqNumStart = wideSeqNumber
-		}
-		t.transportWideSeqNumberReceived = true
-
-		t.MayDropOldPacketArrivalTimes(wideSeqNumber, nowMs)
-
-		// Update the RTCP media SSRC of the ongoing Transport-CC Feedback packet.
-		t.transportCcFeedbackSenderSsrc = 0
-		t.transportCcFeedbackMediaSsrc = packet.SSRC
-
 		t.MaySendLimitationRembFeedback(nowMs)
 
 	case REMB:
@@ -124,29 +100,7 @@ func (t *TransportCongestionControlServer) IncomingPacket(nowMs int64, packet *r
 	}
 }
 
-func (t *TransportCongestionControlServer) MayDropOldPacketArrivalTimes(seqNum uint16, nowMs int64) {
-	// Ignore nowMs value if it's smaller than PacketArrivalTimestampWindow in
-	// order to avoid negative values (should never happen) and return early if
-	// the condition is met.
-	if nowMs >= PacketArrivalTimestampWindow {
-		var seqList []uint16
-		expiryTimestamp := nowMs - PacketArrivalTimestampWindow
-		t.mapPacketArrivalTimes.Range(func(key, value any) bool {
-			seq := key.(uint16)
-			arrivalTime := value.(int64)
-			if seq != t.transportCcFeedbackWideSeqNumStart && seqmgr.IsSeqLowerThanUint16(seq, seqNum) && arrivalTime <= expiryTimestamp {
-				seqList = append(seqList, seq)
-			}
-			return false
-		})
-		// clear
-		for _, seq := range seqList {
-			t.mapPacketArrivalTimes.Delete(seq)
-		}
-	}
-}
-
-func (t *TransportCongestionControlServer) MaySendLimitationRembFeedback(nowMs int64) {
+func (t *TransportCongestionControlServer) MaySendLimitationRembFeedback(nowMs uint64) {
 	// May fix unlimitedRembCounter.
 	if t.unlimitedRembCounter > 0 && t.maxIncomingBitrate != 0 {
 		t.unlimitedRembCounter = 0

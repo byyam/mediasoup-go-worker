@@ -50,7 +50,7 @@ func (p *TransmissionCounter) Update(packet *rtpparser.Packet) {
 	counter.Update(packet)
 }
 
-func (p *TransmissionCounter) GetBitrate(nowMs int64) (rate uint32) {
+func (p *TransmissionCounter) GetBitrate(nowMs uint64) (rate uint32) {
 	for _, spatialLayers := range p.spatialLayerCounters {
 		for _, temporalLayer := range spatialLayers {
 			rate += temporalLayer.GetBitrate(nowMs)

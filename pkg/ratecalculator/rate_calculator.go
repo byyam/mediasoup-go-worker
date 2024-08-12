@@ -16,7 +16,7 @@ const (
 
 type bufferItem struct {
 	count int
-	time  int64
+	time  uint64
 }
 
 func (p *bufferItem) reset() {
@@ -28,16 +28,16 @@ type RateCalculator struct {
 	windowSizeMs        int          // Window Size (in milliseconds).
 	scale               float64      // Scale in which the rate is represented.
 	windowItems         int32        // Window Size (number of items).
-	itemSizeMs          int64        // Item Size (in milliseconds), calculated as: windowSizeMs / windowItems.
+	itemSizeMs          uint64       // Item Size (in milliseconds), calculated as: windowSizeMs / windowItems.
 	buffer              []bufferItem // Buffer to keep data.
-	newestItemStartTime int64        // Time (in milliseconds) for last item in the time window.
+	newestItemStartTime uint64       // Time (in milliseconds) for last item in the time window.
 	newestItemIndex     int32        // Index for the last item in the time window.
-	oldestItemStartTime int64        // Time (in milliseconds) for oldest item in the time window.
+	oldestItemStartTime uint64       // Time (in milliseconds) for oldest item in the time window.
 	oldestItemIndex     int32        // Index for the oldest item in the time window.
 	totalCount          int          // Total count in the time window.
 	bytes               int64        // Total bytes transmitted.
 	lastRate            uint32       // Last value calculated by GetRate().
-	lastTime            int64        // Last time GetRate() was called.
+	lastTime            uint64       // Last time GetRate() was called.
 
 	logger *zap.Logger
 }
@@ -46,7 +46,7 @@ func (p RateCalculator) GetBytes() int64 {
 	return p.bytes
 }
 
-func (p *RateCalculator) GetRate(nowMs int64) uint32 {
+func (p *RateCalculator) GetRate(nowMs uint64) uint32 {
 	if nowMs == p.lastTime {
 		return p.lastRate
 	}
@@ -59,8 +59,8 @@ func (p *RateCalculator) GetRate(nowMs int64) uint32 {
 	return p.lastRate
 }
 
-func (p *RateCalculator) Update(size int, nowMs int64) {
-	p.logger.Debug("update", zap.Int("size", size), zap.Int64("nowMs", nowMs))
+func (p *RateCalculator) Update(size int, nowMs uint64) {
+	p.logger.Debug("update", zap.Int("size", size), zap.Uint64("nowMs", nowMs))
 	// Ignore too old data. Should never happen.
 	if nowMs < p.oldestItemStartTime {
 		return
@@ -112,13 +112,13 @@ func (p *RateCalculator) Update(size int, nowMs int64) {
 	p.lastTime = 0
 }
 
-func (p *RateCalculator) removeOldData(nowMs int64) {
+func (p *RateCalculator) removeOldData(nowMs uint64) {
 
 	// No item set.
 	if p.newestItemIndex < 0 || p.oldestItemIndex < 0 {
 		return
 	}
-	newOldestTime := nowMs - int64(p.windowSizeMs)
+	newOldestTime := nowMs - uint64(p.windowSizeMs)
 	// Oldest item already removed.
 	if newOldestTime <= p.oldestItemStartTime {
 		p.logger.Debug("oldest item already removed")
@@ -131,7 +131,7 @@ func (p *RateCalculator) removeOldData(nowMs int64) {
 	}
 
 	for p.oldestItemStartTime < newOldestTime {
-		p.logger.Debug("oldestItemStartTime<newOldestTime", zap.Int64("oldestItemStartTime", p.oldestItemStartTime), zap.Int64("newOldestTime", newOldestTime))
+		p.logger.Debug("oldestItemStartTime<newOldestTime", zap.Uint64("oldestItemStartTime", p.oldestItemStartTime), zap.Uint64("newOldestTime", newOldestTime))
 		oldestItem := p.buffer[p.oldestItemIndex]
 		p.totalCount -= oldestItem.count
 		oldestItem.reset()
@@ -144,7 +144,7 @@ func (p *RateCalculator) removeOldData(nowMs int64) {
 
 		newOldestItem := p.buffer[p.oldestItemIndex]
 		p.oldestItemStartTime = newOldestItem.time
-		p.logger.Debug("update", zap.Int64("oldestItemStartTime", p.oldestItemStartTime))
+		p.logger.Debug("update", zap.Uint64("oldestItemStartTime", p.oldestItemStartTime))
 	}
 }
 
@@ -180,7 +180,7 @@ func NewRateCalculator(windowSizeMs int, scale float64, windowItems int32, logge
 		windowSizeMs:    windowSizeMs,
 		scale:           scale,
 		windowItems:     windowItems,
-		itemSizeMs:      int64(math.Max(float64(windowSizeMs)/float64(windowItems), 1)),
+		itemSizeMs:      uint64(math.Max(float64(windowSizeMs)/float64(windowItems), 1)),
 		buffer:          make([]bufferItem, windowItems),
 		newestItemIndex: -1,
 		oldestItemIndex: -1,
