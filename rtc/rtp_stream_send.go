@@ -47,10 +47,10 @@ func (p *RtpStreamSend) ReceiveRtcpReceiverReport(report *rtcp.ReceptionReport) 
 	ntp := rtctime.TimeMs2Ntp(nowMs)
 	compactNtp := (ntp.Seconds & 0x0000FFFF) << 16
 	compactNtp |= (ntp.Fractions & 0xFFFF0000) >> 16
-	lastSr := report.LastSenderReport
-	dlsr := report.Delay
+	lastSr := uint64(report.LastSenderReport)
+	dlsr := uint64(report.Delay)
 
-	var rtt uint32
+	var rtt uint64
 	if lastSr != 0 && dlsr != 0 && (compactNtp > dlsr+lastSr) {
 		rtt = compactNtp - dlsr - lastSr
 	}

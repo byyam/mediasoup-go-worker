@@ -2,7 +2,9 @@ package rtc
 
 import (
 	"errors"
+	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/rs/zerolog"
 
 	FBS__Consumer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Consumer"
@@ -121,4 +123,25 @@ func (c *SimulcastConsumer) OnRtpStreamRetransmitRtpPacket(packet *rtpparser.Pac
 
 func (c *SimulcastConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	// todo
+}
+
+func (c *SimulcastConsumer) GetRtpStreams() []*RtpStreamSend {
+	return c.rtpStreams
+}
+
+func (c *SimulcastConsumer) GetRtcp(rtpStream *RtpStreamSend, now time.Time) []rtcp.Packet {
+	if now.Sub(c.GetLastRtcpSentTime()) < c.GetMaxRtcpInterval() {
+		return nil
+	}
+	c.SetLastRtcpSentTime(now)
+	var packets []rtcp.Packet
+	report := rtpStream.GetRtcpSenderReport(now)
+	if report == nil {
+		return nil
+	}
+	packets = append(packets, report)
+	// Build SDES chunk for this sender.
+	sdes := rtpStream.GetRtcpSdesChunk()
+	packets = append(packets, sdes)
+	return packets
 }

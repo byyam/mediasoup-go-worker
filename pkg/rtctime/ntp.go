@@ -11,20 +11,21 @@ const (
 	NtpFractionalUnit = uint64(1) << 32
 )
 
+// need uint64 to avoid overflow
 type Ntp struct {
-	Seconds   uint32
-	Fractions uint32
+	Seconds   uint64
+	Fractions uint64
 }
 
 func TimeMs2Ntp(ms uint64) *Ntp {
 	return &Ntp{
-		Seconds:   uint32(ms / 1000),
-		Fractions: uint32((float64(ms%1000) / 1000) * float64(NtpFractionalUnit)),
+		Seconds:   ms / 1000,
+		Fractions: uint64((float64(ms%1000) / 1000) * float64(NtpFractionalUnit)),
 	}
 }
 
-func Ntp2TimeMs(ntp Ntp) uint64 {
-	return uint64(ntp.Seconds*1000) + uint64(math.Round(float64(ntp.Fractions)*1000)/float64(NtpFractionalUnit))
+func Ntp2TimeMs(ntp *Ntp) uint64 {
+	return ntp.Seconds*1000 + uint64(math.Round(float64(ntp.Fractions)*1000/float64(NtpFractionalUnit)))
 }
 
 func NtpTime32(t time.Time) uint32 {
