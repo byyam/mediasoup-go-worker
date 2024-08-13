@@ -222,7 +222,7 @@
             "uid": "fnG6dbrnz"
           },
           "editorMode": "code",
-          "expr": "sum(rate(rtp_pkg_count[1m])) by (action, direction)",
+          "expr": "sum(rate(rtp_pkg_count[1m])) by (ssrc, action, direction)",
           "range": true,
           "refId": "A"
         }
@@ -424,7 +424,7 @@
             "uid": "fnG6dbrnz"
           },
           "editorMode": "code",
-          "expr": "8*sum(rate(rtp_traffic_count[1m])) by (action, direction)",
+          "expr": "8*sum(rate(rtp_traffic_count[1m])) by (ssrc, action, direction)",
           "range": true,
           "refId": "A"
         }
@@ -617,7 +617,9 @@
             "type": "prometheus",
             "uid": "fnG6dbrnz"
           },
-          "expr": "increase(mediasoup_count[1m])",
+          "editorMode": "code",
+          "expr": "sum(rate(mediasoup_count[1m])) by (event, name)",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -639,6 +641,6 @@
   "timezone": "",
   "title": "mediasoup",
   "uid": "NUGJoB97k",
-  "version": 11,
+  "version": 12,
   "weekStart": ""
 }

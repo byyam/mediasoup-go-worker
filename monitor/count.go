@@ -69,22 +69,22 @@ var (
 	rtpCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "rtp_pkg",
 		Name:      "count",
-	}, []string{"direction", "action"})
+	}, []string{"ssrc", "direction", "action"})
 
 	rtpTraffic = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "rtp_traffic",
 		Name:      "count",
-	}, []string{"direction", "action"})
+	}, []string{"ssrc", "direction", "action"})
 )
 
-func RtpRecvCount(action TraceType, len int) {
-	rtpTraffic.WithLabelValues(string(DirectionTypeRecv), string(action)).Add(float64(len))
-	rtpCount.WithLabelValues(string(DirectionTypeRecv), string(action)).Inc()
+func RtpRecvCount(ssrc uint32, action TraceType, len int) {
+	rtpTraffic.WithLabelValues(fmt.Sprintf("%d", ssrc), string(DirectionTypeRecv), string(action)).Add(float64(len))
+	rtpCount.WithLabelValues(fmt.Sprintf("%d", ssrc), string(DirectionTypeRecv), string(action)).Inc()
 }
 
-func RtpSendCount(action TraceType, len int) {
-	rtpTraffic.WithLabelValues(string(DirectionTypeSend), string(action)).Add(float64(len))
-	rtpCount.WithLabelValues(string(DirectionTypeSend), string(action)).Inc()
+func RtpSendCount(ssrc uint32, action TraceType, len int) {
+	rtpTraffic.WithLabelValues(fmt.Sprintf("%d", ssrc), string(DirectionTypeSend), string(action)).Add(float64(len))
+	rtpCount.WithLabelValues(fmt.Sprintf("%d", ssrc), string(DirectionTypeSend), string(action)).Inc()
 }
 
 // RTCP count

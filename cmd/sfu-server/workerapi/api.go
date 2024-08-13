@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
+	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
@@ -14,7 +16,16 @@ var (
 )
 
 func CreateRouter(w *mediasoup_go_worker.SimpleWorker, routerId string) error {
-	_, err := request(w, mediasoupdata.MethodWorkerCreateRouter, workerchannel.InternalData{RouterId: routerId})
+	_, err := requestFbs(w, workerchannel.InternalData{RouterId: routerId},
+		&FBS__Request.RequestT{
+			Method:    FBS__Request.MethodWORKER_CREATE_ROUTER,
+			HandlerId: routerId,
+			Body: &FBS__Request.BodyT{
+				Type:  FBS__Request.BodyWorker_CreateRouterRequest,
+				Value: &FBS__Worker.CreateRouterRequestT{RouterId: routerId},
+			},
+		},
+	)
 	if err != nil {
 		return err
 	}

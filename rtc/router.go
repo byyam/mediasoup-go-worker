@@ -85,7 +85,8 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 	case FBS__Request.MethodROUTER_CREATE_PLAINTRANSPORT:
 
 	case FBS__Request.MethodROUTER_CREATE_PIPETRANSPORT:
-		var options mediasoupdata.PipeTransportOptions
+		requestT := request.Request.Body.Value.(*FBS__Router.CreatePipeTransportRequestT)
+		var options mediasoupdata.PipeTransportOptions // todo
 		_ = json.Unmarshal(request.Data, &options)
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
 			options: options,
@@ -93,7 +94,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 				Options: mediasoupdata.TransportOptions{
 					SctpOptions: options.SctpOptions,
 				},
-				Id:                                     request.Internal.TransportId,
+				Id:                                     requestT.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,
 				OnTransportProducerRtpPacketReceived:   r.OnTransportProducerRtpPacketReceived,
@@ -108,7 +109,7 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 			response.Err = mserror.ErrCreatePipeTransport
 			return
 		}
-		r.mapTransports.Store(request.Internal.TransportId, pipeTransport)
+		r.mapTransports.Store(requestT.TransportId, pipeTransport)
 		response.Data = pipeTransport.FillJson()
 
 	case FBS__Request.MethodROUTER_CREATE_DIRECTTRANSPORT:

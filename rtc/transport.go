@@ -127,7 +127,7 @@ func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
 	nowMs := rtctime.GetTimeMs()
 	stats := &FBS__Transport.StatsT{
 		TransportId:              t.id,
-		Timestamp:                uint64(nowMs),
+		Timestamp:                nowMs,
 		SctpState:                nil,
 		BytesReceived:            uint64(t.recvTransmission.GetBytes()),
 		RecvBitrate:              t.recvTransmission.GetRate(nowMs),
@@ -554,7 +554,7 @@ func (t *Transport) ReceiveRtpPacket(packet *rtpparser.Packet) {
 	producer := t.rtpListener.GetProducer(packet)
 	if producer == nil {
 		t.logger.Warn().Str("packet", packet.String()).Str("mid", packet.GetMid()).Str("rid", packet.GetRid()).Msg("producer not found")
-		monitor.RtpRecvCount(monitor.TraceSsrcNotFound, packet.GetLen())
+		monitor.RtpRecvCount(packet.SSRC, monitor.TraceSsrcNotFound, packet.GetLen())
 		return
 	}
 

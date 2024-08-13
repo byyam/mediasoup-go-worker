@@ -175,7 +175,7 @@ func (p *RtpStreamSend) FillJsonStats(stat *FBS__RtpStream.StatsT) {
 	stat.Data = new(FBS__RtpStream.StatsDataT)
 	stat.Data.Type = FBS__RtpStream.StatsDataSendStats
 	baseStat := &FBS__RtpStream.StatsT{}
-	p.RtpStream.FillJsonStats(baseStat, uint64(nowMs))
+	p.RtpStream.FillJsonStats(baseStat, nowMs)
 	recvStat := &FBS__RtpStream.SendStatsT{
 		Base:        baseStat,
 		PacketCount: uint64(p.transmissionCounter.GetPacketCount()),
