@@ -156,7 +156,6 @@ func (t *Transport) GetBaseStats() *FBS__Transport.StatsT {
 
 type transportParam struct {
 	Id                                     string
-	Options                                mediasoupdata.TransportOptions
 	OptionsFBS                             *FBS__Transport.OptionsT
 	OnTransportNewProducer                 func(producer *Producer) error
 	OnTransportProducerClosed              func(producerId string)

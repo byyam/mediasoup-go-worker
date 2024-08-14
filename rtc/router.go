@@ -86,14 +86,10 @@ func (r *Router) HandleRequest(request workerchannel.RequestData, response *work
 
 	case FBS__Request.MethodROUTER_CREATE_PIPETRANSPORT:
 		requestT := request.Request.Body.Value.(*FBS__Router.CreatePipeTransportRequestT)
-		var options mediasoupdata.PipeTransportOptions // todo
-		_ = json.Unmarshal(request.Data, &options)
 		pipeTransport, err := newPipeTransport(pipeTransportParam{
-			options: options,
+			optionsFBS: requestT.Options,
 			transportParam: transportParam{
-				Options: mediasoupdata.TransportOptions{
-					SctpOptions: options.SctpOptions,
-				},
+				OptionsFBS:                             requestT.Options.Base,
 				Id:                                     requestT.TransportId,
 				OnTransportNewProducer:                 r.OnTransportNewProducer,
 				OnTransportProducerClosed:              r.OnTransportProducerClosed,

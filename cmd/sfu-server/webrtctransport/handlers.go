@@ -27,7 +27,8 @@ func NewHandler(worker *mediasoup_go_worker.SimpleWorker) *Handler {
 	}
 }
 
-func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
+// SFU2SFU self-defined proto
+func (h *Handler) HandleProtooMessageSFU(req protoo.Message) *protoo.Message {
 	var data interface{}
 	var err *protoo.Error
 	switch req.Method {
@@ -40,6 +41,34 @@ func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
 	case signaldefine.MethodUnSubscribe:
 		data, err = h.unSubscribeHandler(req)
 	default:
+		h.logger.Warn().Msgf("unknown signal method: %s", req.Method)
+		err = demoutils.ErrUnknownMethod
+	}
+	// create response protoo message
+	if err != nil {
+		rsp := protoo.CreateErrorResponse(req, err)
+		return &rsp
+	} else {
+		rsp := protoo.CreateSuccessResponse(req, data)
+		return &rsp
+	}
+}
+
+// mediasoup defined proto
+func (h *Handler) HandleProtooMessage(req protoo.Message) *protoo.Message {
+	var data interface{}
+	var err *protoo.Error
+	switch req.Method {
+	case signaldefine.MethodGetRouterRtpCapabilities:
+		data, err = h.GetRouterRtpCapabilities(req)
+	case signaldefine.MethodCreateWebRtcTransport:
+		data, err = h.CreateWebRtcTransport(req)
+	case signaldefine.MethodJoin:
+		data, err = h.Join(req)
+	case signaldefine.MethodConnectWebRtcTransport:
+		data, err = h.ConnectWebRtcTransport(req)
+	default:
+		h.logger.Warn().Msgf("unknown signal method: %s", req.Method)
 		err = demoutils.ErrUnknownMethod
 	}
 	// create response protoo message

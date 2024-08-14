@@ -5,6 +5,7 @@ import (
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
 	FBS__Worker "github.com/byyam/mediasoup-go-worker/fbs/FBS/Worker"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
@@ -32,17 +33,18 @@ func CreateRouter(w *mediasoup_go_worker.SimpleWorker, routerId string) error {
 	return nil
 }
 
-type ParamCreateWebRtcTransport struct {
-	RouterId    string
-	TransportId string
-	Options     mediasoupdata.WebRtcTransportOptions
-}
-
-func CreateWebRtcTransport(w *mediasoup_go_worker.SimpleWorker, param ParamCreateWebRtcTransport) (*mediasoupdata.WebrtcTransportData, error) {
-	rsp, err := request(w, mediasoupdata.MethodRouterCreateWebRtcTransport, workerchannel.InternalData{
-		RouterId:    param.RouterId,
+func CreateWebRtcTransport(w *mediasoup_go_worker.SimpleWorker, routerId string, param *FBS__Router.CreateWebRtcTransportRequestT) (*mediasoupdata.WebrtcTransportData, error) {
+	rsp, err := requestFbs(w, workerchannel.InternalData{
+		RouterId:    routerId,
 		TransportId: param.TransportId,
-	}, param.Options)
+	}, &FBS__Request.RequestT{
+		Method:    FBS__Request.MethodROUTER_CREATE_WEBRTCTRANSPORT,
+		HandlerId: routerId,
+		Body: &FBS__Request.BodyT{
+			Type:  FBS__Request.BodyRouter_CreateWebRtcTransportRequest,
+			Value: param,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}

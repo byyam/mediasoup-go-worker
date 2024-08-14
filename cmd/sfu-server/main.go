@@ -48,9 +48,14 @@ var (
 )
 
 const (
-	localWsAddr                       = ":12001"
+	// wss
+	localWsAddr         = ":4443"
+	pathWebrtcTransport = "/"
+	// tls key
+	HTTPS_CERT_FULLCHAIN = "fullchain.pem"
+	HTTPS_CERT_PRIVKEY   = "privkey.pem"
+	// http
 	localHttpAddr                     = ":12002"
-	pathWebrtcTransport               = "/webrtc_transport"
 	pathPipeTransportCreateAndConnect = "/pipe_transport/create_and_connect"
 )
 
@@ -68,7 +73,7 @@ func printVersion() {
 	log.Printf("%11s %s", "GO_VERSION:", goversion)
 }
 
-//Define a map to implement routing table.
+// Define a map to implement routing table.
 var mux map[string]func(http.ResponseWriter, *http.Request)
 
 type myHandler struct{}
@@ -112,7 +117,8 @@ func main() {
 
 	go func() {
 		http.HandleFunc(pathWebrtcTransport, handleWebrtcTransport)
-		log.Fatal(http.ListenAndServe(localWsAddr, nil))
+		//log.Fatal(http.ListenAndServe(localWsAddr, nil))
+		log.Fatal(http.ListenAndServeTLS(localWsAddr, HTTPS_CERT_FULLCHAIN, HTTPS_CERT_PRIVKEY, nil)) // tls
 	}()
 
 	go func() {
@@ -137,7 +143,9 @@ func main() {
 }
 
 func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
-	var upgrader = websocket.Upgrader{} // use default options
+	var upgrader = websocket.Upgrader{
+		Subprotocols: []string{"protoo"},
+	}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error().Msgf("upgrade:%v", err)
@@ -152,7 +160,7 @@ func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
 		PingInterval:   10 * time.Second,
 		PongWait:       1 * time.Minute,
 		Conn:           c,
-		RequestHandler: h.HandleProtooMessage,
+		RequestHandler: h.HandleProtooMessage, // mediasoup proto
 	})
 	if err != nil {
 		panic(err)

@@ -16,7 +16,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/byyam/mediasoup-go-worker/conf"
+	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	"github.com/byyam/mediasoup-go-worker/internal/global"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/atomicbool"
@@ -44,7 +46,7 @@ type PipeTransport struct {
 	id     string
 	logger zerolog.Logger
 
-	listen mediasoupdata2.TransportListenIp
+	listen *FBS__Transport.ListenInfoT
 	rtx    bool
 
 	endpoint   *udpmux.EndPoint
@@ -64,7 +66,7 @@ type PipeTransport struct {
 }
 
 type pipeTransportParam struct {
-	options mediasoupdata2.PipeTransportOptions
+	optionsFBS *FBS__PipeTransport.PipeTransportOptionsT
 	transportParam
 }
 
@@ -85,13 +87,13 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 		return nil, err
 	}
 	// init pipe-transport
-	t.logger.Info().Msgf("newPipeTransport options:%# v", pretty.Formatter(param.options))
-	if err = t.create(&param.options); err != nil {
+	t.logger.Info().Msgf("newPipeTransport options:%# v", pretty.Formatter(param.optionsFBS))
+	if err = t.create(param.optionsFBS); err != nil {
 		return nil, err
 	}
 	// other options
-	t.rtx = param.options.EnableRtx
-	if param.options.EnableSrtp {
+	t.rtx = param.optionsFBS.EnableRtx
+	if param.optionsFBS.EnableSrtp {
 		t.srtpKey, err = randutil.GenerateCryptoRandomString(srtpMasterLength, iceutil.RunesAlpha)
 		if err != nil {
 			return nil, err
@@ -108,17 +110,17 @@ func newPipeTransport(param pipeTransportParam) (ITransport, error) {
 	return t, nil
 }
 
-func (t *PipeTransport) create(options *mediasoupdata2.PipeTransportOptions) error {
+func (t *PipeTransport) create(options *FBS__PipeTransport.PipeTransportOptionsT) error {
 	if global.UdpMuxConn == nil {
-		if net.ParseIP(options.ListenIp.Ip) == nil {
-			return fmt.Errorf("create pipetransport error: invalid listen ip:[%s]", options.ListenIp.Ip)
+		if net.ParseIP(options.ListenInfo.Ip) == nil {
+			return fmt.Errorf("create pipetransport error: invalid listen ip:[%s]", options.ListenInfo.Ip)
 		}
-		t.listen = options.ListenIp
+		t.listen = options.ListenInfo
 		var addr string
-		if options.Port == 0 {
-			addr = fmt.Sprintf("%s:", options.ListenIp.Ip)
+		if options.ListenInfo.Port == 0 {
+			addr = fmt.Sprintf("%s:", options.ListenInfo.Ip)
 		} else {
-			addr = fmt.Sprintf("%s:%d", options.ListenIp.Ip, options.Port)
+			addr = fmt.Sprintf("%s:%d", options.ListenInfo.Ip, options.ListenInfo.Port)
 		}
 		udpAddr, err := net.ResolveUDPAddr(PipeTransportProtocol, addr)
 		if err != nil {
@@ -139,7 +141,7 @@ func (t *PipeTransport) create(options *mediasoupdata2.PipeTransportOptions) err
 		t.logger.Info().Msgf("create pipe-transport addr:[%s]", t.udpSocket.LocalAddr())
 	} else {
 		t.udpMuxMode = true
-		t.listen = mediasoupdata2.TransportListenIp{
+		t.listen = &FBS__Transport.ListenInfoT{
 			Ip: global.UdpMuxConn.IP(),
 		}
 		t.tuple.LocalIp = global.UdpMuxConn.IP()

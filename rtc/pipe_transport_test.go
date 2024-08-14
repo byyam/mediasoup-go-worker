@@ -3,17 +3,18 @@ package rtc
 import (
 	"testing"
 
-	mediasoupdata2 "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
 func TestPipeTransport(t *testing.T) {
 	_, err := newPipeTransport(pipeTransportParam{
-		options: mediasoupdata2.PipeTransportOptions{
-			ListenIp: mediasoupdata2.TransportListenIp{
+		optionsFBS: &FBS__PipeTransport.PipeTransportOptionsT{
+			ListenInfo: &FBS__Transport.ListenInfoT{
 				Ip:          "127.0.0.1",
+				Port:        40001,
 				AnnouncedIp: "",
 			},
-			Port: 40001,
 		},
 		transportParam: transportParam{},
 	})

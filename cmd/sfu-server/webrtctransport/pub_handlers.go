@@ -5,6 +5,10 @@ import (
 
 	"github.com/jiyeyuran/go-protoo"
 
+	"github.com/byyam/mediasoup-go-worker/conf"
+	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/workerchannel"
 
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/basehandler"
@@ -12,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
@@ -23,16 +26,23 @@ import (
 
 func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, transportId string) (*mediasoupdata.WebrtcTransportData, error) {
 	// create transport
-	listenIp := mediasoupdata.TransportListenIp{
-		Ip:          conf.Settings.RtcListenIp,
-		AnnouncedIp: conf.Settings.RtcListenIp,
+	listenIp := &FBS__WebRtcTransport.ListenT{
+		Type: FBS__WebRtcTransport.ListenListenIndividual,
+		Value: &FBS__Transport.ListenInfoT{
+			Protocol:       FBS__Transport.ProtocolUDP,
+			Ip:             conf.Settings.RtcListenIp,
+			AnnouncedIp:    conf.Settings.RtcListenIp,
+			Port:           0,
+			Flags:          nil,
+			SendBufferSize: 0,
+			RecvBufferSize: 0,
+		},
 	}
-	webrtcTransportOptions := democonf.WebrtcTransportOptions
-	webrtcTransportOptions.ListenIps = append(webrtcTransportOptions.ListenIps, listenIp)
-	transportData, err := workerapi.CreateWebRtcTransport(h.Worker, workerapi.ParamCreateWebRtcTransport{
-		RouterId:    demoutils.GetRouterId(h.Worker),
+	options := democonf.WebrtcTransportOptionsFBS
+	options.Listen = listenIp
+	transportData, err := workerapi.CreateWebRtcTransport(h.Worker, demoutils.GetRouterId(h.Worker), &FBS__Router.CreateWebRtcTransportRequestT{
 		TransportId: transportId,
-		Options:     democonf.WebrtcTransportOptions,
+		Options:     &options,
 	})
 	if err != nil {
 		return nil, err
