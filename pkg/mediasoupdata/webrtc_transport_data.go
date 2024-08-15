@@ -1,5 +1,12 @@
 package mediasoupdata
 
+import (
+	FBS__SctpAssociation "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpAssociation"
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
+)
+
 type WebRtcTransportOptions struct {
 	/**
 	 * Listening IP address or addresses in order of preference (first one is the
@@ -41,16 +48,16 @@ type WebRtcTransportOptions struct {
 
 type WebrtcTransportData struct {
 	// always be 'controlled'
-	IceRole          string         `json:"iceRole,omitempty"`
-	IceParameters    IceParameters  `json:"iceParameters,omitempty"`
-	IceCandidates    []IceCandidate `json:"iceCandidates,omitempty"`
-	IceState         IceState       `json:"iceState,omitempty"`
-	IceSelectedTuple TransportTuple `json:"iceSelectedTuple,omitempty"`
-	DtlsParameters   DtlsParameters `json:"dtlsParameters,omitempty"`
-	DtlsState        DtlsState      `json:"dtlsState,omitempty"`
-	DtlsRemoteCert   string         `json:"dtlsRemoteCert,omitempty"`
-	SctpParameters   SctpParameters `json:"sctpParameters,omitempty"`
-	SctpState        SctpState      `json:"sctpState,omitempty"`
+	IceParameters    *FBS__WebRtcTransport.IceParametersT  `json:"iceParameters"`
+	IceCandidates    []*FBS__WebRtcTransport.IceCandidateT `json:"iceCandidates"`
+	DtlsParameters   *FBS__WebRtcTransport.DtlsParametersT `json:"dtlsParameters"`
+	SctpParameters   *FBS__SctpParameters.SctpParametersT  `json:"sctpParameters"`
+	IceRole          FBS__WebRtcTransport.IceRole          `json:"iceRole,omitempty"`
+	IceState         FBS__WebRtcTransport.IceState         `json:"iceState,omitempty"`
+	IceSelectedTuple *FBS__Transport.TupleT                `json:"iceSelectedTuple,omitempty"`
+	DtlsState        FBS__WebRtcTransport.DtlsState        `json:"dtlsState,omitempty"`
+	DtlsRemoteCert   string                                `json:"dtlsRemoteCert,omitempty"`
+	SctpState        *FBS__SctpAssociation.SctpState       `json:"sctpState,omitempty"`
 }
 
 type IceParameters struct {

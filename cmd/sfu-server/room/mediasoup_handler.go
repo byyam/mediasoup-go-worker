@@ -1,4 +1,4 @@
-package webrtctransport
+package room
 
 import (
 	"encoding/json"
@@ -11,13 +11,14 @@ import (
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 	"github.com/byyam/mediasoup-go-worker/conf"
 	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
 )
 
-func (h *Handler) GetRouterRtpCapabilities(message protoo.Message) (interface{}, *protoo.Error) {
+func (h *ProtooHandler) GetRouterRtpCapabilities(message protoo.Message) (interface{}, *protoo.Error) {
 	var req signaldefine.GetRouterRtpCapabilitiesRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
 		return nil, demoutils.ServerError(err)
@@ -33,7 +34,7 @@ func (h *Handler) GetRouterRtpCapabilities(message protoo.Message) (interface{},
 	}, nil
 }
 
-func (h *Handler) CreateWebRtcTransport(message protoo.Message) (interface{}, *protoo.Error) {
+func (h *ProtooHandler) CreateWebRtcTransport(message protoo.Message) (interface{}, *protoo.Error) {
 	var req signaldefine.CreateWebRtcTransportRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
 		return nil, demoutils.ServerError(err)
@@ -54,6 +55,10 @@ func (h *Handler) CreateWebRtcTransport(message protoo.Message) (interface{}, *p
 		},
 	}
 	options.Listen = listenIp
+	options.Base.NumSctpStreams = &FBS__SctpParameters.NumSctpStreamsT{
+		Os:  req.SctpCapabilities.NumStreams.OS,
+		Mis: req.SctpCapabilities.NumStreams.MIS,
+	}
 	transportData, err := workerapi.CreateWebRtcTransport(h.Worker, demoutils.GetRouterId(h.Worker), &FBS__Router.CreateWebRtcTransportRequestT{
 		TransportId: transportId,
 		Options:     &options,
@@ -67,11 +72,11 @@ func (h *Handler) CreateWebRtcTransport(message protoo.Message) (interface{}, *p
 		IceCandidates:  transportData.IceCandidates,
 		IceParameters:  transportData.IceParameters,
 		DtlsParameters: transportData.DtlsParameters,
-		SctpParameters: transportData.SctpParameters,
+		SctpParameters: transportData.Base.SctpParameters,
 	}, nil
 }
 
-func (h *Handler) Join(message protoo.Message) (interface{}, *protoo.Error) {
+func (h *ProtooHandler) Join(message protoo.Message) (interface{}, *protoo.Error) {
 	var req signaldefine.JoinRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
 		return nil, demoutils.ServerError(err)
@@ -80,7 +85,7 @@ func (h *Handler) Join(message protoo.Message) (interface{}, *protoo.Error) {
 	return signaldefine.JoinResponse{}, nil
 }
 
-func (h *Handler) ConnectWebRtcTransport(message protoo.Message) (interface{}, *protoo.Error) {
+func (h *ProtooHandler) ConnectWebRtcTransport(message protoo.Message) (interface{}, *protoo.Error) {
 	var req signaldefine.ConnectWebRtcTransportRequest
 	if err := json.Unmarshal(message.Data, &req); err != nil {
 		return nil, demoutils.ServerError(err)

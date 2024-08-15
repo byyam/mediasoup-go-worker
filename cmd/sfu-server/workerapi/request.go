@@ -38,6 +38,7 @@ func requestFbs(worker *mediasoup_go_worker.SimpleWorker, internal workerchannel
 	req := workerchannel.RequestData{
 		MethodType: fbsRequest.Method,
 		Method:     FBS__Request.EnumNamesMethod[fbsRequest.Method],
+		HandlerId:  fbsRequest.HandlerId, // set handlerID
 		Internal:   internal,
 		Request:    fbsRequest,
 	}

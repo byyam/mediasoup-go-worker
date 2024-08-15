@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/room"
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/monitor"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
@@ -25,8 +27,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
-
-	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/webrtctransport"
 
 	"github.com/byyam/mediasoup-go-worker/pkg/wsconn"
 )
@@ -52,8 +52,8 @@ const (
 	localWsAddr         = ":4443"
 	pathWebrtcTransport = "/"
 	// tls key
-	HTTPS_CERT_FULLCHAIN = "fullchain.pem"
-	HTTPS_CERT_PRIVKEY   = "privkey.pem"
+	HTTPS_CERT_FULLCHAIN = "./cert/fullchain.pem"
+	HTTPS_CERT_PRIVKEY   = "./cert/privkey.pem"
 	// http
 	localHttpAddr                     = ":12002"
 	pathPipeTransportCreateAndConnect = "/pipe_transport/create_and_connect"
@@ -111,6 +111,7 @@ func main() {
 
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
+	// default router, for pub/sub to get global router
 	if err := workerapi.CreateRouter(worker, demoutils.GetRouterId(worker)); err != nil {
 		panic(err)
 	}
@@ -143,8 +144,18 @@ func main() {
 }
 
 func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	roomId := query.Get("roomId")
+	peerId := query.Get("peerId")
+	if roomId == "" || peerId == "" {
+		http.Error(w, "Connection request without roomId and/or peerId", http.StatusBadRequest)
+	}
+
 	var upgrader = websocket.Upgrader{
-		Subprotocols: []string{"protoo"},
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		Subprotocols:    []string{"protoo"},
+		CheckOrigin:     func(r *http.Request) bool { return true },
 	}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -155,8 +166,12 @@ func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
 		_ = c.Close()
 	}()
 
-	h := webrtctransport.NewHandler(worker)
+	h := room.NewHandler(worker, &room.QueryParams{
+		RoomId: roomId,
+		PeerId: peerId,
+	})
 	s, err := wsconn.NewWsServer(wsconn.WsServerOpt{
+		TraceId:        fmt.Sprintf("%s-%s", roomId, peerId),
 		PingInterval:   10 * time.Second,
 		PongWait:       1 * time.Minute,
 		Conn:           c,

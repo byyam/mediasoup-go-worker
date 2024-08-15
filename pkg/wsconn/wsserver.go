@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jiyeyuran/go-protoo"
@@ -20,6 +21,7 @@ type WsServer struct {
 }
 
 type WsServerOpt struct {
+	TraceId        string
 	PingInterval   time.Duration
 	PongWait       time.Duration
 	Conn           *websocket.Conn
@@ -39,7 +41,7 @@ func NewWsServer(opt WsServerOpt) (*WsServer, error) {
 	}
 	w := &WsServer{
 		WsServerOpt: opt,
-		logger:      zerowrapper.NewScope("websocket-server"),
+		logger:      zerowrapper.NewScope(fmt.Sprintf("websocket-server[%s]", opt.TraceId)),
 	}
 	w.Conn.SetPongHandler(func(appData string) error {
 		_ = w.Conn.SetReadDeadline(time.Now().Add(w.PongWait))
@@ -53,6 +55,7 @@ func (w *WsServer) Start() {
 		w.logger.Info().Msg("disconnected")
 		_ = w.Conn.Close()
 	}()
+	w.logger.Info().Msg("connected")
 	for {
 		mt, message, err := w.Conn.ReadMessage()
 		if err != nil {

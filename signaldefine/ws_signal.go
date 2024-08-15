@@ -1,6 +1,9 @@
 package signaldefine
 
-import "github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+import (
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
+	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+)
 
 const (
 	MethodPublish     = "publish"
@@ -59,7 +62,7 @@ type WebRtcTransportOffer struct {
 }
 
 type WebRtcTransportAnswer struct {
-	IceParameters  mediasoupdata.IceParameters  `json:"iceParameters"`
-	IceCandidates  []mediasoupdata.IceCandidate `json:"iceCandidates"`
-	DtlsParameters mediasoupdata.DtlsParameters `json:"dtlsParameters"`
+	IceParameters  *FBS__WebRtcTransport.IceParametersT  `json:"iceParameters"`
+	IceCandidates  []*FBS__WebRtcTransport.IceCandidateT `json:"iceCandidates"`
+	DtlsParameters *FBS__WebRtcTransport.DtlsParametersT `json:"dtlsParameters"`
 }

@@ -1,6 +1,8 @@
 package signaldefine
 
 import (
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 )
 
@@ -59,11 +61,12 @@ type CreateWebRtcTransportRequest struct {
 }
 
 type CreateWebRtcTransportResponse struct {
-	Id             string                       `json:"id"`
-	IceParameters  mediasoupdata.IceParameters  `json:"iceParameters"`
-	IceCandidates  []mediasoupdata.IceCandidate `json:"iceCandidates"`
-	DtlsParameters mediasoupdata.DtlsParameters `json:"dtlsParameters"`
-	SctpParameters mediasoupdata.SctpParameters `json:"sctpParameters"`
+	Id string `json:"id"`
+
+	IceParameters  *FBS__WebRtcTransport.IceParametersT  `json:"iceParameters"`
+	IceCandidates  []*FBS__WebRtcTransport.IceCandidateT `json:"iceCandidates"`
+	DtlsParameters *FBS__WebRtcTransport.DtlsParametersT `json:"dtlsParameters"`
+	SctpParameters *FBS__SctpParameters.SctpParametersT  `json:"sctpParameters"`
 }
 
 type ConnectWebRtcTransportRequest struct {

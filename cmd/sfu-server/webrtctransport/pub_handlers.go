@@ -59,7 +59,18 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 	}); err != nil {
 		return nil, err
 	}
-	return transportData, nil
+	return &mediasoupdata.WebrtcTransportData{
+		IceRole:          transportData.IceRole,
+		IceParameters:    transportData.IceParameters,
+		IceCandidates:    transportData.IceCandidates,
+		IceState:         transportData.IceState,
+		IceSelectedTuple: transportData.IceSelectedTuple,
+		DtlsParameters:   transportData.DtlsParameters,
+		DtlsState:        transportData.DtlsState,
+		DtlsRemoteCert:   "", // todo
+		SctpParameters:   transportData.Base.SctpParameters,
+		SctpState:        transportData.Base.SctpState,
+	}, nil
 }
 
 func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.Error) {
