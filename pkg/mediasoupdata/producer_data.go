@@ -1,5 +1,12 @@
 package mediasoupdata
 
+import (
+	"strings"
+
+	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
+	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
+)
+
 type ProducerOptions struct {
 	/**
 	 * Producer id (just for Router.pipeToRouter() method).
@@ -33,6 +40,17 @@ type ProducerOptions struct {
 	AppData interface{} `json:"appData,omitempty"`
 
 	RtpMapping RtpMapping `json:"rtpMapping"`
+}
+
+func (o ProducerOptions) Convert() *FBS__Transport.ProduceRequestT {
+	p := &FBS__Transport.ProduceRequestT{
+		ProducerId:           o.Id,
+		Kind:                 FBS__RtpParameters.EnumValuesMediaKind[strings.ToUpper(string(o.Kind))],
+		KeyFrameRequestDelay: o.KeyFrameRequestDelay,
+		Paused:               o.Paused,
+		RtpParameters:        o.RtpParameters.Convert(),
+	}
+	return p
 }
 
 func (o ProducerOptions) Valid() bool {

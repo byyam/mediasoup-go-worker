@@ -19,6 +19,7 @@ func ServerError(err error) *protoo.Error {
 var (
 	ErrUnknownMethod = protoo.NewError(100, "unknown method")
 	ErrInvalidParam  = protoo.NewError(101, "invalid param")
+	ErrServerError   = protoo.NewError(102, "server error")
 )
 
 func GetProducerId(streamId uint64) string {

@@ -21,11 +21,11 @@ func (r *RtpListener) AddProducer(producer *Producer) error {
 	// Add entries into the ssrcTable.
 	for _, encoding := range producer.RtpParameters.Encodings {
 		// Check encoding.ssrc.
-		if encoding.Ssrc != nil {
-			if _, ok := r.ssrcTable.Load(*encoding.Ssrc); ok {
+		if encoding.Ssrc != 0 {
+			if _, ok := r.ssrcTable.Load(encoding.Ssrc); ok {
 				return fmt.Errorf("ssrc already exists in RTP listener [ssrc:%d]", encoding.Ssrc)
 			}
-			r.ssrcTable.Store(*encoding.Ssrc, producer)
+			r.ssrcTable.Store(encoding.Ssrc, producer)
 		}
 		// Check encoding.rtx.ssrc.
 		if encoding.Rtx != nil && encoding.Rtx.Ssrc != 0 {

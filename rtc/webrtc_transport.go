@@ -144,9 +144,11 @@ func (t *WebrtcTransport) FillJsonStats() *FBS__WebRtcTransport.GetStatsResponse
 
 func (t *WebrtcTransport) connect(options *FBS__WebRtcTransport.DtlsParametersT) (*FBS__WebRtcTransport.ConnectResponseT, error) {
 	if options == nil {
+		t.logger.Error().Msgf("connect failed because DtlsParametersT nil")
 		return nil, mserror.ErrInvalidParam
 	}
 	go func() {
+		t.logger.Info().Msgf("connecting")
 		iceConn, err := t.iceServer.GetConn()
 		if err != nil {
 			t.logger.Error().Err(err).Msg("iceConn get error")

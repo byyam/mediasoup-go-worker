@@ -2,7 +2,6 @@ package signaldefine
 
 import (
 	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
 )
 
 const (
@@ -57,8 +56,8 @@ type UnSubscribeRequest struct {
 type UnSubscribeResponse struct{}
 
 type WebRtcTransportOffer struct {
-	ForceTcp       bool                         `json:"forceTcp"`
-	DtlsParameters mediasoupdata.DtlsParameters `json:"dtlsParameters"`
+	ForceTcp       bool                                  `json:"forceTcp"`
+	DtlsParameters *FBS__WebRtcTransport.DtlsParametersT `json:"dtlsParameters"`
 }
 
 type WebRtcTransportAnswer struct {

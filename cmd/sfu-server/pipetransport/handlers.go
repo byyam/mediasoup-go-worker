@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
-	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
+	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
 	"github.com/byyam/mediasoup-go-worker/signaldefine"
@@ -53,15 +53,14 @@ func (h *Handler) HandlePipeTransportCreateAndConnect(w http.ResponseWriter, r *
 	}
 	h.logger.Debug().Msgf("create pipe-transport done, data:%+v", transportData)
 	// connect pipe transport
-	transportConnectOptions := mediasoupdata.TransportConnectOptions{
-		Ip:   req.EndPointIp,
-		Port: req.EndPointPort,
-	}
-	if err := workerapi.TransportConnect(h.Worker, workerapi.ParamTransportConnect{
-		RouterId:    demoutils.GetRouterId(h.Worker),
-		TransportId: transportId,
-		Options:     transportConnectOptions,
-	}); err != nil {
+	if err := workerapi.ConnectPipeTransport(h.Worker,
+		demoutils.GetRouterId(h.Worker),
+		transportId,
+		&FBS__PipeTransport.ConnectRequestT{
+			Ip:             req.EndPointIp,
+			Port:           &req.EndPointPort,
+			SrtpParameters: nil,
+		}); err != nil {
 		h.logger.Error().Msgf("connect pipe transport failed:%v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -87,12 +86,8 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if err := workerapi.TransportProduce(h.Worker, workerapi.ParamTransportProduce{
-		RouterId:    demoutils.GetRouterId(h.Worker),
-		TransportId: req.TransportId,
-		ProducerId:  produceOptions.Id,
-		Options:     *produceOptions,
-	}); err != nil {
+	param := produceOptions.Convert()
+	if _, err := workerapi.TransportProduce(h.Worker, demoutils.GetRouterId(h.Worker), req.TransportId, param); err != nil {
 		h.logger.Error().Msgf("publish on pipe transport failed:%v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

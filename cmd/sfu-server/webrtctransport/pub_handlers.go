@@ -24,7 +24,7 @@ import (
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/workerapi"
 )
 
-func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, transportId string) (*mediasoupdata.WebrtcTransportData, error) {
+func (h *Handler) newTransport(dtlsParameters *FBS__WebRtcTransport.DtlsParametersT, transportId string) (*mediasoupdata.WebrtcTransportData, error) {
 	// create transport
 	listenIp := &FBS__WebRtcTransport.ListenT{
 		Type: FBS__WebRtcTransport.ListenListenIndividual,
@@ -49,14 +49,10 @@ func (h *Handler) newTransport(dtlsParameters mediasoupdata.DtlsParameters, tran
 	}
 	h.logger.Debug().Msgf("transport data:%+v", transportData)
 	// connect transport
-	transportConnectOptions := mediasoupdata.TransportConnectOptions{
-		DtlsParameters: &dtlsParameters,
-	}
-	if err := workerapi.TransportConnect(h.Worker, workerapi.ParamTransportConnect{
-		RouterId:    demoutils.GetRouterId(h.Worker),
-		TransportId: transportId,
-		Options:     transportConnectOptions,
-	}); err != nil {
+	if _, err := workerapi.ConnectWebRtcTransport(h.Worker,
+		demoutils.GetRouterId(h.Worker),
+		transportId,
+		&FBS__WebRtcTransport.ConnectRequestT{DtlsParameters: dtlsParameters}); err != nil {
 		return nil, err
 	}
 	return &mediasoupdata.WebrtcTransportData{
@@ -89,12 +85,8 @@ func (h *Handler) publishHandler(message protoo.Message) (interface{}, *protoo.E
 	if err != nil {
 		return nil, demoutils.ServerError(err)
 	}
-	if err := workerapi.TransportProduce(h.Worker, workerapi.ParamTransportProduce{
-		RouterId:    demoutils.GetRouterId(h.Worker),
-		TransportId: transportId,
-		ProducerId:  produceOptions.Id,
-		Options:     *produceOptions,
-	}); err != nil {
+	param := produceOptions.Convert()
+	if _, err := workerapi.TransportProduce(h.Worker, demoutils.GetRouterId(h.Worker), transportId, param); err != nil {
 		return nil, demoutils.ServerError(err)
 	}
 

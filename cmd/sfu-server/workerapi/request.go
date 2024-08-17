@@ -42,8 +42,21 @@ func requestFbs(worker *mediasoup_go_worker.SimpleWorker, internal workerchannel
 		Internal:   internal,
 		Request:    fbsRequest,
 	}
+
+	// for logging
+	reqData, _ := json.Marshal(req.Request.Body)
+	logger.Info().Msgf("[requestFbs] request --> \n[%+v] \nreqData: \n[%s]",
+		req, string(reqData))
+
 	rsp := worker.OnChannelRequest(req)
-	logger.Info().Msgf("[requestFbs] request done, req:[%+v] rsp:[%+v]", req, rsp)
+
+	// for logging
+	if rsp.Data == nil {
+		rsp.Data, _ = json.Marshal(rsp.RspBody)
+	}
+	logger.Info().Msgf("[requestFbs] response <-- \n[%+v] \nrspData: \n[%s]",
+		rsp, string(rsp.Data))
+
 	if rsp.Err != nil {
 		return nil, rsp.Err
 	}

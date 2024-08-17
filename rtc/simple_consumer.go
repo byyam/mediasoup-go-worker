@@ -63,7 +63,7 @@ func (c *SimpleConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           *encoding.Ssrc,
+		Ssrc:           encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
 		ClockRate:      int(mediaCodec.ClockRate),
@@ -94,7 +94,7 @@ func (c *SimpleConsumer) SendRtpPacket(packet *rtpparser.Packet) {
 	} else if c.GetKind() == FBS__RtpParameters.MediaKindAUDIO {
 		monitor.RtpSendCount(packet.SSRC, monitor.TraceAudio, packet.GetLen())
 	}
-	packet.SSRC = *c.GetRtpParameters().Encodings[0].Ssrc
+	packet.SSRC = c.GetRtpParameters().Encodings[0].Ssrc
 	packet.PayloadType = c.GetRtpParameters().Codecs[0].PayloadType
 	if c.rtpStream.ReceivePacket(packet) { // todo
 		c.onConsumerSendRtpPacketHandler(c.IConsumer, packet)

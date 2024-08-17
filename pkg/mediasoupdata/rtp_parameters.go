@@ -1,6 +1,7 @@
 package mediasoupdata
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -75,7 +76,7 @@ type RtpCodecCapability struct {
 	/**
 	 * Codec clock rate expressed in Hertz.
 	 */
-	ClockRate int `json:"clockRate"`
+	ClockRate uint32 `json:"clockRate"`
 
 	/**
 	 * The int of channels supported (e.g. two for stereo). Just for audio.
@@ -213,12 +214,55 @@ type RtpParameters struct {
 	/**
 	 * Parameters used for RTCP.
 	 */
-	Rtcp *FBS__RtpParameters.RtcpParametersT `json:"rtcp,omitempty"`
+	Rtcp *RtcpParameters `json:"rtcp,omitempty"`
+}
+
+func (r *RtpParameters) Convert() *FBS__RtpParameters.RtpParametersT {
+	p := &FBS__RtpParameters.RtpParametersT{
+		Mid:              r.Mid,
+		Codecs:           make([]*FBS__RtpParameters.RtpCodecParametersT, 0),
+		HeaderExtensions: make([]*FBS__RtpParameters.RtpHeaderExtensionParametersT, 0),
+		Encodings:        make([]*FBS__RtpParameters.RtpEncodingParametersT, 0),
+		Rtcp:             r.Rtcp.Convert(),
+	}
+	for _, c := range r.Codecs {
+		p.Codecs = append(p.Codecs, c.Convert())
+	}
+	for _, h := range r.HeaderExtensions {
+		p.HeaderExtensions = append(p.HeaderExtensions, h.Convert())
+	}
+	for _, e := range r.Encodings {
+		p.Encodings = append(p.Encodings, e.Convert())
+	}
+	return p
+}
+
+func (r *RtpParameters) Set(fbs *FBS__RtpParameters.RtpParametersT) {
+	r.Mid = fbs.Mid
+	r.Rtcp.Set(fbs.Rtcp)
+	for _, f := range fbs.Codecs {
+		c := &RtpCodecParameters{}
+		c.Set(f)
+		r.Codecs = append(r.Codecs, c)
+	}
+	for _, f := range fbs.HeaderExtensions {
+		c := &RtpHeaderExtensionParameters{}
+		c.Set(f)
+		r.HeaderExtensions = append(r.HeaderExtensions, c)
+	}
+	for _, f := range fbs.Encodings {
+		c := &RtpEncodingParameters{}
+		c.Set(f)
+		r.Encodings = append(r.Encodings, c)
+	}
 }
 
 func NewRtpParameters(fbs *FBS__RtpParameters.RtpParametersT) *RtpParameters {
-	r := &RtpParameters{}
-	_ = Clone(fbs, r)
+	r := &RtpParameters{
+		Rtcp: &RtcpParameters{},
+	}
+	//_ = Clone(fbs, r)
+	r.Set(fbs)
 
 	return r
 }
@@ -233,10 +277,11 @@ func (r *RtpParameters) Init() error {
 		}
 	}
 
-	for _, encoding := range r.Encodings {
-		if err := encoding.Init(); err != nil {
-			return err
-		}
+	// Validate RTP parameters.
+	r.validateCodecs()
+
+	if err := r.validateEncodings(); err != nil {
+		return err
 	}
 
 	// Validate RTP parameters.
@@ -259,7 +304,7 @@ func (r *RtpParameters) validateCodecs() error {
 		switch codecParameters.SubType {
 		// A RTX codec must have 'apt' parameter pointing to a non RTX codec.
 		case MimeSubTypeRTX:
-			apt := GetIntegerByName(codec.Parameters, AptString)
+			apt := GetIntegerByName(codec.Parameters.Convert(), AptString)
 			for _, codec := range r.Codecs {
 				if apt == int32(codec.PayloadType) {
 					codecParameters := &RtpCodecMimeType{}
@@ -322,22 +367,22 @@ func (r *RtpParameters) validateEncodings() error {
 	// Also, don't allow multiple SVC spatial layers into an encoding if there
 	// are more than one encoding (simulcast).
 	for _, encoding := range r.Encodings {
-		if encoding.ParsedScalabilityMode.SpatialLayers == 0 {
-			encoding.ParsedScalabilityMode.SpatialLayers = 1
+		if encoding.SpatialLayers == 0 {
+			encoding.SpatialLayers = 1
 		}
-		if encoding.ParsedScalabilityMode.TemporalLayers == 0 {
-			encoding.ParsedScalabilityMode.TemporalLayers = 1
+		if encoding.TemporalLayers == 0 {
+			encoding.TemporalLayers = 1
 		}
-		if encoding.ParsedScalabilityMode.SpatialLayers > 1 && len(r.Encodings) > 1 {
+		if encoding.SpatialLayers > 1 && len(r.Encodings) > 1 {
 			return errors.New("cannot use both simulcast and encodings with multiple SVC spatial layers")
 		}
 
-		if encoding.CodecPayloadType == nil {
-			encoding.CodecPayloadType = &firstMediaPayloadType
+		if encoding.CodecPayloadType == 0 {
+			encoding.CodecPayloadType = firstMediaPayloadType
 		} else {
 			var exist bool
 			for _, codec := range r.Codecs {
-				if codec.PayloadType == *encoding.CodecPayloadType {
+				if codec.PayloadType == encoding.CodecPayloadType {
 					// Must be a media codec.
 					if codec.RtpCodecMimeType.IsMediaCodec() {
 						exist = true
@@ -378,7 +423,7 @@ func (r *RtpParameters) Valid() bool {
 
 func (r *RtpParameters) GetType() FBS__RtpParameters.Type {
 	if len(r.Encodings) == 1 {
-		if r.Encodings[0].ParsedScalabilityMode.SpatialLayers > 1 || r.Encodings[0].ParsedScalabilityMode.TemporalLayers > 1 {
+		if r.Encodings[0].SpatialLayers > 1 || r.Encodings[0].TemporalLayers > 1 {
 			return FBS__RtpParameters.TypeSVC
 		}
 		return FBS__RtpParameters.TypeSIMPLE
@@ -391,7 +436,7 @@ func (r *RtpParameters) GetType() FBS__RtpParameters.Type {
 func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
 	payloadType := encoding.CodecPayloadType
 	for _, codec := range r.Codecs {
-		if codec.PayloadType == *payloadType {
+		if codec.PayloadType == payloadType {
 			return codec
 		}
 	}
@@ -401,7 +446,7 @@ func (r *RtpParameters) GetCodecForEncoding(encoding *RtpEncodingParameters) *Rt
 func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) *RtpCodecParameters {
 	payloadType := encoding.CodecPayloadType
 	for _, codec := range r.Codecs {
-		if codec.RtpCodecMimeType.IsFeatureCodec() && codec.SpecificParameters.Apt == *payloadType {
+		if codec.RtpCodecMimeType.IsFeatureCodec() && codec.Parameters.Apt == payloadType {
 			return codec
 		}
 	}
@@ -410,7 +455,7 @@ func (r *RtpParameters) GetRtxCodecForEncoding(encoding *RtpEncodingParameters) 
 
 func (r *RtpParameters) CheckRTCPFeedbackType(name string) bool {
 	for _, codec := range r.Codecs {
-		for _, rtcpFeedback := range codec.RtpCodecParametersT.RtcpFeedback {
+		for _, rtcpFeedback := range codec.RtcpFeedback {
 			if rtcpFeedback.Type == name {
 				return true
 			}
@@ -425,15 +470,61 @@ func (r *RtpParameters) CheckRTCPFeedbackType(name string) bool {
  * supportedRtpCapabilities.ts file.
  */
 type RtpCodecParameters struct {
-	FBS__RtpParameters.RtpCodecParametersT
+	/**
+	 * The codec MIME media type/subtype (e.g. 'audio/opus', 'video/VP8').
+	 */
+	MimeType string `json:"mimeType"`
+
+	/**
+	 * The value that goes in the RTP Payload Type Field. Must be unique.
+	 */
+	PayloadType uint8 `json:"payloadType"`
+
+	/**
+	 * Codec clock rate expressed in Hertz.
+	 */
+	ClockRate uint32 `json:"clockRate"`
+
+	/**
+	 * The int of channels supported (e.g. two for stereo). Just for audio.
+	 * Default 1.
+	 */
+	Channels uint8 `json:"channels,omitempty"`
+
 	/**
 	 * Codec-specific parameters available for signaling. Some parameters (such
 	 * as 'packetization-mode' and 'profile-level-id' in H264 or 'profile-id' in
 	 * VP9) are critical for codec matching.
 	 */
-	SpecificParameters RtpCodecSpecificParameters `json:"specific_parameters,omitempty"`
+	Parameters RtpCodecSpecificParameters `json:"parameters,omitempty"`
+
+	/**
+	 * Transport layer and codec-specific feedback messages for this codec.
+	 */
+	RtcpFeedback []*FBS__RtpParameters.RtcpFeedbackT `json:"rtcpFeedback,omitempty"`
 
 	RtpCodecMimeType RtpCodecMimeType `json:"-"`
+}
+
+func (r *RtpCodecParameters) Convert() *FBS__RtpParameters.RtpCodecParametersT {
+	p := &FBS__RtpParameters.RtpCodecParametersT{
+		MimeType:     r.MimeType,
+		PayloadType:  r.PayloadType,
+		ClockRate:    r.ClockRate,
+		Channels:     &r.Channels,
+		Parameters:   r.Parameters.Convert(),
+		RtcpFeedback: r.RtcpFeedback,
+	}
+	return p
+}
+
+func (r *RtpCodecParameters) Set(fbs *FBS__RtpParameters.RtpCodecParametersT) {
+	r.MimeType = fbs.MimeType
+	r.PayloadType = fbs.PayloadType
+	r.ClockRate = fbs.ClockRate
+	r.Channels = *fbs.Channels
+	r.RtcpFeedback = fbs.RtcpFeedback
+	r.Parameters.Set(fbs.Parameters)
 }
 
 func (r *RtpCodecParameters) Init() error {
@@ -446,7 +537,7 @@ func (r *RtpCodecParameters) Init() error {
 	if r.ClockRate <= 0 {
 		return errors.New("missing clockRate")
 	}
-	r.setSpecificParameters()
+	//r.setSpecificParameters()
 
 	if err := r.CheckCodec(); err != nil {
 		return err
@@ -454,19 +545,18 @@ func (r *RtpCodecParameters) Init() error {
 	return nil
 }
 
-func (r *RtpCodecParameters) setSpecificParameters() {
-	for _, p := range r.Parameters {
-		switch p.Name {
-		case AptString:
-			r.SpecificParameters.Apt = byte(GetInteger(p))
-		}
-	}
-}
-
+//	func (r *RtpCodecParameters) setSpecificParameters() {
+//		for _, p := range r.Parameters {
+//			switch p.Name {
+//			case AptString:
+//				r.SpecificParameters.Apt = byte(GetInteger(p))
+//			}
+//		}
+//	}
 func (r *RtpCodecParameters) CheckCodec() error {
 	switch r.RtpCodecMimeType.SubType {
 	case MimeSubTypeRTX:
-		if r.SpecificParameters.Apt <= 0 {
+		if r.Parameters.Apt <= 0 {
 			return errors.New("missing apt parameter in RTX codec")
 		}
 	default:
@@ -500,47 +590,139 @@ type RtpCodecSpecificParameters struct {
 	CoupledStreams      uint8  `json:"coupled_streams,omitempty"`
 }
 
+func (r *RtpCodecSpecificParameters) Convert() []*FBS__RtpParameters.ParameterT {
+	p := make([]*FBS__RtpParameters.ParameterT, 0)
+	content, _ := json.Marshal(r)
+	_ = json.Unmarshal(content, &p)
+	return p
+}
+
+func (r *RtpCodecSpecificParameters) Set(fbs []*FBS__RtpParameters.ParameterT) {
+	content, _ := json.Marshal(fbs)
+	_ = json.Unmarshal(content, r)
+}
+
 /**
  * Provides information on RTCP feedback messages for a specific codec. Those
  * messages can be transport layer feedback messages or codec-specific feedback
  * messages. The list of RTCP feedbacks supported by mediasoup is defined in the
  * supportedRtpCapabilities.ts file.
  */
-type RtcpFeedback struct {
-	/**
-	 * RTCP feedback type.
-	 */
-	Type string `json:"type"`
-
-	/**
-	 * RTCP feedback parameter.
-	 */
-	Parameter string `json:"parameter,omitempty"`
-}
-
+//type RtcpFeedback struct {
+//	/**
+//	 * RTCP feedback type.
+//	 */
+//	Type string `json:"type"`
+//
+//	/**
+//	 * RTCP feedback parameter.
+//	 */
+//	Parameter string `json:"parameter,omitempty"`
+//}
+//
+//func (r *RtcpFeedback) Convert() *FBS__RtpParameters.RtcpFeedbackT {
+//	p := &FBS__RtpParameters.RtcpFeedbackT{
+//		Type:      r.Type,
+//		Parameter: r.Parameter,
+//	}
+//	return p
+//}
+//
 /**
  * Provides information relating to an encoding, which represents a media RTP
  * stream and its associated RTX stream (if any).
  */
 type RtpEncodingParameters struct {
-	FBS__RtpParameters.RtpEncodingParametersT
-	ParsedScalabilityMode ScalabilityMode `json:"parsed_scalability_mode"`
+	/**
+	 * The media SSRC.
+	 */
+	Ssrc uint32 `json:"ssrc,omitempty"`
+
+	/**
+	 * The RID RTP extension value. Must be unique.
+	 */
+	Rid string `json:"rid,omitempty"`
+
+	/**
+	 * Codec payload type this encoding affects. If unset, first media codec is
+	 * chosen.
+	 */
+	CodecPayloadType    byte `json:"codecPayloadType,omitempty"`
+	HasCodecPayloadType bool `json:"-"`
+
+	/**
+	 * RTX stream information. It must contain a numeric ssrc field indicating
+	 * the RTX SSRC.
+	 */
+	Rtx *FBS__RtpParameters.RtxT `json:"rtx,omitempty"`
+
+	/**
+	 * It indicates whether discontinuous RTP transmission will be used. Useful
+	 * for audio (if the codec supports it) and for video screen sharing (when
+	 * static content is being transmitted, this option disables the RTP
+	 * inactivity checks in mediasoup). Default false.
+	 */
+	Dtx bool `json:"dtx,omitempty"`
+
+	/**
+	 * int of spatial and temporal layers in the RTP stream (e.g. 'L1T3').
+	 * See webrtc-svc.
+	 */
+	ScalabilityMode string `json:"scalabilityMode,omitempty"`
+
+	/**
+	 * Others.
+	 */
+	ScaleResolutionDownBy int    `json:"scaleResolutionDownBy,omitempty"`
+	MaxBitrate            uint32 `json:"maxBitrate,omitempty"`
+
+	SpatialLayers  uint8 `json:"-"` // default 1
+	TemporalLayers uint8 `json:"-"` // default 1
 }
 
-func (r *RtpEncodingParameters) Init() error {
-
-	mode := ParseScalabilityMode(r.ScalabilityMode)
-	r.ParsedScalabilityMode.SpatialLayers = mode.SpatialLayers
-	r.ParsedScalabilityMode.TemporalLayers = mode.TemporalLayers
-	r.ParsedScalabilityMode.Ksvc = mode.Ksvc
-
-	return nil
+func (r *RtpEncodingParameters) Convert() *FBS__RtpParameters.RtpEncodingParametersT {
+	p := &FBS__RtpParameters.RtpEncodingParametersT{
+		Ssrc:             &r.Ssrc,
+		Rid:              r.Rid,
+		CodecPayloadType: &r.CodecPayloadType,
+		Rtx:              r.Rtx,
+		Dtx:              r.Dtx,
+		ScalabilityMode:  r.ScalabilityMode,
+		MaxBitrate:       &r.MaxBitrate,
+	}
+	return p
 }
 
-// RtpEncodingRtx represents the associated RTX stream for RTP stream.
-type RtpEncodingRtx struct {
-	Ssrc uint32 `json:"ssrc"`
+func (r *RtpEncodingParameters) Set(fbs *FBS__RtpParameters.RtpEncodingParametersT) {
+	if fbs.Ssrc != nil {
+		r.Ssrc = *fbs.Ssrc
+	}
+	r.Rid = fbs.Rid
+	if fbs.CodecPayloadType != nil {
+		r.CodecPayloadType = *fbs.CodecPayloadType
+	}
+	r.Rtx = fbs.Rtx
+	r.Dtx = fbs.Dtx
+	r.ScalabilityMode = fbs.ScalabilityMode
+	if fbs.MaxBitrate != nil {
+		r.MaxBitrate = *fbs.MaxBitrate
+	}
 }
+
+//func (r *RtpEncodingParameters) Init() error {
+//
+//	mode := ParseScalabilityMode(r.ScalabilityMode)
+//	r.ParsedScalabilityMode.SpatialLayers = mode.SpatialLayers
+//	r.ParsedScalabilityMode.TemporalLayers = mode.TemporalLayers
+//	r.ParsedScalabilityMode.Ksvc = mode.Ksvc
+//
+//	return nil
+//}
+
+//// RtpEncodingRtx represents the associated RTX stream for RTP stream.
+//type RtpEncodingRtx struct {
+//	Ssrc uint32 `json:"ssrc"`
+//}
 
 /**
  * Defines a RTP header extension within the RTP parameters. The list of RTP
@@ -557,6 +739,24 @@ type RtpHeaderExtensionParameters struct {
 	 * Configuration parameters for the header extension.
 	 */
 	SpecificParameters *RtpCodecSpecificParameters `json:"specific_parameters,omitempty"`
+}
+
+func (r *RtpHeaderExtensionParameters) Convert() *FBS__RtpParameters.RtpHeaderExtensionParametersT {
+	p := &FBS__RtpParameters.RtpHeaderExtensionParametersT{
+		Uri:        r.Uri,
+		Id:         r.Id,
+		Encrypt:    r.Encrypt,
+		Parameters: r.Parameters,
+	}
+	return p
+}
+
+func (r *RtpHeaderExtensionParameters) Set(fbs *FBS__RtpParameters.RtpHeaderExtensionParametersT) {
+	r.SpecificParameters.Set(fbs.Parameters)
+	r.Uri = fbs.Uri
+	r.Id = fbs.Id
+	r.Encrypt = fbs.Encrypt
+	r.Parameters = fbs.Parameters
 }
 
 /**
@@ -584,4 +784,17 @@ type RtcpParameters struct {
 	 * Whether RTCP-mux is used. Default true.
 	 */
 	Mux *bool `json:"mux,omitempty"`
+}
+
+func (r *RtcpParameters) Convert() *FBS__RtpParameters.RtcpParametersT {
+	p := &FBS__RtpParameters.RtcpParametersT{
+		Cname:       r.Cname,
+		ReducedSize: *r.ReducedSize,
+	}
+	return p
+}
+
+func (r *RtcpParameters) Set(fbs *FBS__RtpParameters.RtcpParametersT) {
+	r.Cname = fbs.Cname
+	r.ReducedSize = &fbs.ReducedSize
 }

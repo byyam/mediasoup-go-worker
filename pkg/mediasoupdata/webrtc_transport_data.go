@@ -1,6 +1,10 @@
 package mediasoupdata
 
 import (
+	"crypto"
+	"regexp"
+	"strings"
+
 	FBS__SctpAssociation "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpAssociation"
 	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
@@ -66,21 +70,85 @@ type IceParameters struct {
 	IceLite          bool   `json:"iceLite,omitempty"`
 }
 
+func (c *IceParameters) Set(fbs *FBS__WebRtcTransport.IceParametersT) {
+	c.UsernameFragment = fbs.UsernameFragment
+	c.Password = fbs.Password
+	c.IceLite = fbs.IceLite
+}
+
 type IceCandidate struct {
 	Foundation string            `json:"foundation"`
 	Priority   uint32            `json:"priority"`
 	Ip         string            `json:"ip"`
 	Protocol   TransportProtocol `json:"protocol"`
-	Port       uint32            `json:"port"`
+	Port       uint16            `json:"port"`
 	// always "host"
 	Type string `json:"type,omitempty"`
 	// "passive" | undefined
 	TcpType string `json:"tcpType,omitempty"`
 }
 
+func (c *IceCandidate) Set(fbs *FBS__WebRtcTransport.IceCandidateT) {
+	c.Foundation = fbs.Foundation
+	c.Priority = fbs.Priority
+	c.Ip = fbs.Ip
+	c.Protocol = TransportProtocol(strings.ToLower(FBS__Transport.EnumNamesProtocol[fbs.Protocol]))
+	c.Port = fbs.Port
+	c.Type = strings.ToLower(FBS__WebRtcTransport.EnumNamesIceCandidateType[fbs.Type])
+	if fbs.TcpType != nil {
+		c.TcpType = strings.ToLower(FBS__WebRtcTransport.EnumNamesIceCandidateTcpType[*fbs.TcpType])
+	}
+}
+
 type DtlsParameters struct {
-	Role         DtlsRole          `json:"role,omitempty"`
+	Role         string            `json:"role,omitempty"`
 	Fingerprints []DtlsFingerprint `json:"fingerprints"`
+}
+
+func (c *DtlsParameters) Convert() *FBS__WebRtcTransport.DtlsParametersT {
+	d := new(FBS__WebRtcTransport.DtlsParametersT)
+	switch strings.ToLower(c.Role) {
+	case DtlsRole_Client:
+		d.Role = FBS__WebRtcTransport.DtlsRoleCLIENT
+	case DtlsRole_Server:
+		d.Role = FBS__WebRtcTransport.DtlsRoleSERVER
+	case DtlsRole_Auto:
+		d.Role = FBS__WebRtcTransport.DtlsRoleAUTO
+	}
+	re := regexp.MustCompile("-")
+	d.Fingerprints = make([]*FBS__WebRtcTransport.FingerprintT, 0)
+	for _, f := range c.Fingerprints {
+		cleanedHash := re.ReplaceAllString(strings.ToUpper(f.Algorithm), "")
+		d.Fingerprints = append(d.Fingerprints, &FBS__WebRtcTransport.FingerprintT{
+			Algorithm: FBS__WebRtcTransport.EnumValuesFingerprintAlgorithm[cleanedHash],
+			Value:     f.Value,
+		})
+	}
+	return d
+}
+
+func (c *DtlsParameters) Set(fbs *FBS__WebRtcTransport.DtlsParametersT) {
+	c.Role = strings.ToLower(FBS__WebRtcTransport.EnumNamesDtlsRole[fbs.Role])
+	c.Fingerprints = make([]DtlsFingerprint, 0)
+	for _, f := range fbs.Fingerprints {
+		var hash crypto.Hash
+		switch f.Algorithm {
+		case FBS__WebRtcTransport.FingerprintAlgorithmSHA1:
+			hash = crypto.SHA1
+		case FBS__WebRtcTransport.FingerprintAlgorithmSHA224:
+			hash = crypto.SHA224
+		case FBS__WebRtcTransport.FingerprintAlgorithmSHA256:
+			hash = crypto.SHA256
+		case FBS__WebRtcTransport.FingerprintAlgorithmSHA384:
+			hash = crypto.SHA384
+		case FBS__WebRtcTransport.FingerprintAlgorithmSHA512:
+			hash = crypto.SHA512
+		}
+		c.Fingerprints = append(c.Fingerprints, DtlsFingerprint{
+			Algorithm: strings.ToLower(hash.String()),
+			Value:     f.Value,
+		})
+	}
 }
 
 /**
@@ -104,12 +172,10 @@ const (
 	IceState_Closed       IceState = "closed"
 )
 
-type DtlsRole string
-
 const (
-	DtlsRole_Auto   DtlsRole = "auto"
-	DtlsRole_Client DtlsRole = "client"
-	DtlsRole_Server DtlsRole = "server"
+	DtlsRole_Auto   string = "auto"
+	DtlsRole_Client string = "client"
+	DtlsRole_Server string = "server"
 )
 
 type DtlsState string
@@ -125,6 +191,6 @@ const (
 type WebRtcTransportSpecificStat struct {
 	IceRole          string          `json:"iceRole"`
 	IceState         IceState        `json:"iceState"`
-	DtlsState        DtlsRole        `json:"dtlsState"`
+	DtlsState        string          `json:"dtlsState"`
 	IceSelectedTuple *TransportTuple `json:"iceSelectedTuple,omitempty"`
 }

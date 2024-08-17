@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -12,9 +13,11 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/protoo"
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/room"
 	"github.com/byyam/mediasoup-go-worker/conf"
 	"github.com/byyam/mediasoup-go-worker/monitor"
+	"github.com/byyam/mediasoup-go-worker/pkg/taskloop"
 	"github.com/byyam/mediasoup-go-worker/pkg/zaplog"
 	"github.com/byyam/mediasoup-go-worker/pkg/zerowrapper"
 
@@ -104,6 +107,7 @@ func main() {
 		ErrorStackMarshaler:   false,
 	})
 
+	logger = zerowrapper.NewScope("main")
 	logger.Info().Msgf("argv:%+v", conf.Settings)
 	if conf.Settings.PrometheusPort > 0 {
 		monitor.InitPrometheus(monitor.WithPath(conf.Settings.PrometheusPath), monitor.WithPort(conf.Settings.PrometheusPort))
@@ -111,11 +115,16 @@ func main() {
 
 	worker = mediasoup_go_worker.NewSimpleWorker()
 	worker.Start()
-	// default router, for pub/sub to get global router
-	if err := workerapi.CreateRouter(worker, demoutils.GetRouterId(worker)); err != nil {
-		panic(err)
-	}
+	//// default router, for pub/sub to get global router
+	//if err := workerapi.CreateRouter(worker, demoutils.GetRouterId(worker)); err != nil {
+	//	panic(err)
+	//}
 
+	// protoo task loop to handle signal request
+	taskloop.InitTaskLoopSession()
+	room.InitSessionManager()
+
+	// protoo websocket listener
 	go func() {
 		http.HandleFunc(pathWebrtcTransport, handleWebrtcTransport)
 		//log.Fatal(http.ListenAndServe(localWsAddr, nil))
@@ -141,6 +150,7 @@ func main() {
 	// block here
 	listenSignal()
 	worker.Stop()
+	_ = taskloop.CloseTaskLoopSession()
 }
 
 func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
@@ -166,9 +176,11 @@ func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
 		_ = c.Close()
 	}()
 
-	h := room.NewHandler(worker, &room.QueryParams{
-		RoomId: roomId,
-		PeerId: peerId,
+	routerId := roomId // no need to map
+	h := protoo.NewHandler(worker, &protoo.QueryParams{
+		RoomId:   roomId,
+		PeerId:   peerId,
+		RouterId: routerId,
 	})
 	s, err := wsconn.NewWsServer(wsconn.WsServerOpt{
 		TraceId:        fmt.Sprintf("%s-%s", roomId, peerId),
@@ -180,6 +192,42 @@ func handleWebrtcTransport(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	s.OnConnect(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		taskErr := taskloop.RunTask(ctx, func() error {
+			if sessionErr := room.NewSession(roomId, peerId, func() {
+				if err := workerapi.CreateRouter(worker, routerId); err != nil {
+					logger.Error().Str("routerId", routerId).Msgf("new router failed")
+				}
+			}); sessionErr != nil {
+				logger.Error().Str("roomId", roomId).Str("peerId", peerId).Msgf("new session failed:%v", sessionErr)
+			}
+			return nil
+		})
+		if taskErr != nil {
+			logger.Error().Err(taskErr).Msgf("taskloop run failed")
+			err = demoutils.ErrServerError
+		}
+	})
+	s.OnDisconnect(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		taskErr := taskloop.RunTask(ctx, func() error {
+			if sessionErr := room.CloseSession(roomId, peerId, func() {
+				if err := workerapi.CloseRouter(worker, routerId); err != nil {
+					logger.Error().Str("routerId", routerId).Msgf("close router failed")
+				}
+			}); sessionErr != nil {
+				logger.Error().Str("roomId", roomId).Str("peerId", peerId).Msgf("close session failed:%v", sessionErr)
+			}
+			return nil
+		})
+		if taskErr != nil {
+			logger.Error().Err(taskErr).Msgf("taskloop run failed")
+			err = demoutils.ErrServerError
+		}
+	})
 	s.Start()
 }
 

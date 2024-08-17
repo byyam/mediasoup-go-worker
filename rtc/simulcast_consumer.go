@@ -66,7 +66,7 @@ func (c *SimulcastConsumer) initParam(param *consumerParam) error {
 	}
 	encodings := param.rtpParameters.Encodings[0]
 	// Ensure there are as many spatial layers as encodings.
-	if int(encodings.ParsedScalabilityMode.SpatialLayers) != len(param.consumableRtpEncodings) {
+	if int(encodings.SpatialLayers) != len(param.consumableRtpEncodings) {
 		return errors.New("encoding.spatialLayers does not match number of consumableRtpEncodings")
 	}
 
@@ -79,7 +79,7 @@ func (c *SimulcastConsumer) CreateRtpStream() {
 	mediaCodec := rtpParameters.GetCodecForEncoding(encoding)
 	param := &ParamRtpStream{
 		EncodingIdx:    0,
-		Ssrc:           *encoding.Ssrc,
+		Ssrc:           encoding.Ssrc,
 		PayloadType:    mediaCodec.PayloadType,
 		MimeType:       mediaCodec.RtpCodecMimeType,
 		ClockRate:      int(mediaCodec.ClockRate),

@@ -1,5 +1,9 @@
 package mediasoupdata
 
+import (
+	FBS__SctpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/SctpParameters"
+)
+
 type SctpCapabilities struct {
 	NumStreams NumSctpStreams `json:"numStreams"`
 }
@@ -62,9 +66,19 @@ type SctpParameters struct {
 	/**
 	 * Set by worker.
 	 */
-	IsDataChannel      bool `json:"isDataChannel,omitempty"`
-	SctpBufferedAmount int  `json:"sctpBufferedAmount,omitempty"`
-	SendBufferSize     int  `json:"sendBufferSize,omitempty"`
+	IsDataChannel      bool   `json:"isDataChannel,omitempty"`
+	SctpBufferedAmount uint32 `json:"sctpBufferedAmount,omitempty"`
+	SendBufferSize     uint32 `json:"sendBufferSize,omitempty"`
+}
+
+func (c *SctpParameters) Set(fbs *FBS__SctpParameters.SctpParametersT) {
+	c.Port = fbs.Port
+	c.OS = fbs.Os
+	c.MIS = fbs.Mis
+	c.MaxMessageSize = fbs.MaxMessageSize
+	c.IsDataChannel = fbs.IsDataChannel
+	c.SctpBufferedAmount = fbs.SctpBufferedAmount
+	c.SctpBufferedAmount = fbs.SendBufferSize
 }
 
 /**

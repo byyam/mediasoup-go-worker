@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/jiyeyuran/go-protoo"
@@ -18,6 +19,8 @@ import (
 type WsServer struct {
 	logger zerolog.Logger
 	WsServerOpt
+	onConnectedHandler    atomic.Value
+	onDisconnectedHandler atomic.Value
 }
 
 type WsServerOpt struct {
@@ -53,8 +56,10 @@ func NewWsServer(opt WsServerOpt) (*WsServer, error) {
 func (w *WsServer) Start() {
 	defer func() {
 		w.logger.Info().Msg("disconnected")
+		w.onDisconnect()
 		_ = w.Conn.Close()
 	}()
+	w.onConnect()
 	w.logger.Info().Msg("connected")
 	for {
 		mt, message, err := w.Conn.ReadMessage()
@@ -82,4 +87,24 @@ func (w *WsServer) Start() {
 			continue
 		}
 	}
+}
+
+func (w *WsServer) onConnect() {
+	if hdlr, ok := w.onConnectedHandler.Load().(func()); ok {
+		hdlr()
+	}
+}
+
+func (w *WsServer) onDisconnect() {
+	if hdlr, ok := w.onDisconnectedHandler.Load().(func()); ok {
+		hdlr()
+	}
+}
+
+func (w *WsServer) OnConnect(f func()) {
+	w.onConnectedHandler.Store(f)
+}
+
+func (w *WsServer) OnDisconnect(f func()) {
+	w.onDisconnectedHandler.Store(f)
 }

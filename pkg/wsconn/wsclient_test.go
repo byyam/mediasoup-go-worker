@@ -24,6 +24,9 @@ func TestWsClient_Request(t *testing.T) {
 	c, err := NewWsClient(WsClientOpt{
 		Path: "echo",
 	})
+	if err != nil {
+		t.Fatal("NewWsClient error", err)
+	}
 	rsp, err := c.Request(signaldefine.MethodUnPublish, req)
 	if err != nil {
 		t.Fatal("request unpublish error", err)

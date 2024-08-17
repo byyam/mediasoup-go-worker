@@ -40,6 +40,10 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 
 	w.logger.Info().Any("body", request.Data).Str("header", request.String()).Msg("[channelMsg]request")
 
+	// set from request
+	response.Id = request.Request.Id
+	response.MethodType = request.MethodType
+
 	switch request.MethodType {
 	case FBS__Request.MethodWORKER_CREATE_ROUTER:
 		requestT := request.Request.Body.Value.(*FBS__Worker.CreateRouterRequestT)
@@ -49,6 +53,7 @@ func (w *workerBase) OnChannelRequest(request workerchannel.RequestData) (respon
 			return
 		}
 		w.routerMap.Store(requestT.RouterId, router)
+		response.RspBody = &FBS__Response.BodyT{}
 	case FBS__Request.MethodWORKER_CLOSE:
 		w.Stop()
 	case FBS__Request.MethodWORKER_DUMP:

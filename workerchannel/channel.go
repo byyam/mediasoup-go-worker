@@ -332,9 +332,6 @@ func (c *Channel) handleMessageFBS(requestT *FBS__Request.RequestT) (*ResponseDa
 	} else {
 		responseData.Err = errors.New("[handleMessageFBS]OnRequestHandler not register")
 	}
-	// set from request
-	responseData.Id = requestT.Id
-	responseData.MethodType = requestT.Method
 	// print rsp data
 	if responseData.Data != nil {
 		data = responseData.Data

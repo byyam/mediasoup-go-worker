@@ -364,16 +364,16 @@ func (p *Producer) CreateRtpStream(packet *rtpparser.Packet, mediaCodec *mediaso
 		UseFir:         false,
 		UseInBandFec:   false,
 		UseDtx:         false,
-		SpatialLayers:  encoding.ParsedScalabilityMode.SpatialLayers,
-		TemporalLayers: encoding.ParsedScalabilityMode.TemporalLayers,
+		SpatialLayers:  encoding.SpatialLayers,
+		TemporalLayers: encoding.TemporalLayers,
 		Kind:           p.Kind,
 	}
 	// Check in band FEC in codec parameters.
-	if mediaCodec.SpecificParameters.Useinbandfec == 1 {
+	if mediaCodec.Parameters.Useinbandfec == 1 {
 		params.UseInBandFec = true
 	}
 	// Check DTX in codec parameters.
-	if mediaCodec.SpecificParameters.Usedtx == 1 {
+	if mediaCodec.Parameters.Usedtx == 1 {
 		params.UseDtx = true
 	}
 	// Check DTX in the encoding.
@@ -450,15 +450,15 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 			isRtxPacket = true
 		}
 
-		if isMediaPacket && encoding != nil && encoding.Ssrc != nil && *encoding.Ssrc == ssrc {
+		if isMediaPacket && encoding != nil && encoding.Ssrc != 0 && encoding.Ssrc == ssrc {
 			rtpStream := p.CreateRtpStream(packet, mediaCodec, idx)
 			p.logger.Info().Uint32("ssrc", ssrc).Uint8("pt", payloadType).Msg("[GetRtpStream]CreateRtpStream by SSRC")
 			return rtpStream
 		} else if isRtxPacket && encoding.Rtx != nil && encoding.Rtx.Ssrc == ssrc {
-			v, ok := p.mapSsrcRtpStream.Load(*encoding.Ssrc)
+			v, ok := p.mapSsrcRtpStream.Load(encoding.Ssrc)
 			// Ignore if no stream has been created yet for the corresponding encoding.
 			if !ok {
-				p.logger.Warn().Uint32("ssrc", *encoding.Ssrc).Msg("ignoring RTX packet for not yet created RtpStream (ssrc lookup)")
+				p.logger.Warn().Uint32("ssrc", encoding.Ssrc).Msg("ignoring RTX packet for not yet created RtpStream (ssrc lookup)")
 				return nil
 			}
 			rtpStream := v.(*RtpStreamRecv)
@@ -552,7 +552,7 @@ func (p *Producer) GetRtpStream(packet *rtpparser.Packet) *RtpStreamRecv {
 	}
 	// If not found, and there is a single encoding without ssrc and RID, this
 	// may be the media or RTX stream.
-	if len(p.RtpParameters.Encodings) == 1 && *p.RtpParameters.Encodings[0].Ssrc == 0 && p.RtpParameters.Encodings[0].Rid == "" {
+	if len(p.RtpParameters.Encodings) == 1 && p.RtpParameters.Encodings[0].Ssrc == 0 && p.RtpParameters.Encodings[0].Rid == "" {
 		// todo
 		p.logger.Warn().Msgf("[GetRtpStream]may be the media or RTX stream")
 	}

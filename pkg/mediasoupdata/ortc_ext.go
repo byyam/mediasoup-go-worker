@@ -155,9 +155,9 @@ func validateRtpCodecParameters(code *RtpCodecParameters) (err error) {
 	kind := MediaKind(strings.Split(mimeType, "/")[0])
 
 	// channels is optional. If unset, set it to 1 (just if audio).
-	if kind == MediaKind_Audio && *code.Channels == 0 {
+	if kind == MediaKind_Audio && code.Channels == 0 {
 		defaultChannels := byte(1)
-		code.Channels = &defaultChannels
+		code.Channels = defaultChannels
 	}
 
 	for _, fb := range code.RtcpFeedback {
@@ -409,7 +409,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 
 		// Search for the associated media codec.
 		for _, mediaCodec := range params.Codecs {
-			if mediaCodec.PayloadType == codec.SpecificParameters.Apt {
+			if mediaCodec.PayloadType == codec.Parameters.Apt {
 				associatedMediaCodec = mediaCodec
 				break
 			}
@@ -456,7 +456,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 	for _, encoding := range params.Encodings {
 		mappedEncoding := RtpMappingEncoding{
 			Rid:             encoding.Rid,
-			Ssrc:            *encoding.Ssrc,
+			Ssrc:            encoding.Ssrc,
 			MappedSsrc:      mappedSsrc,
 			ScalabilityMode: encoding.ScalabilityMode,
 		}
@@ -557,17 +557,18 @@ func GetConsumableRtpParameters(
 		// Remove useless fields.
 		encoding.Rid = ""
 		encoding.Rtx = nil
-		encoding.CodecPayloadType = nil
+		encoding.CodecPayloadType = 0
 
 		// Set the mapped ssrc.
-		encoding.Ssrc = &rtpMapping.Encodings[i].MappedSsrc
+		encoding.Ssrc = rtpMapping.Encodings[i].MappedSsrc
 
 		consumableParams.Encodings = append(consumableParams.Encodings, encoding)
 	}
 
-	consumableParams.Rtcp = &FBS__RtpParameters.RtcpParametersT{
+	reduceSize := true
+	consumableParams.Rtcp = &RtcpParameters{
 		Cname:       params.Rtcp.Cname,
-		ReducedSize: true,
+		ReducedSize: &reduceSize,
 	}
 
 	return
@@ -641,7 +642,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		if codec.isRtxCodec() {
 			// Search for the associated media codec.
 			for _, mediaCodec := range consumerParams.Codecs {
-				if mediaCodec.PayloadType == codec.SpecificParameters.Apt {
+				if mediaCodec.PayloadType == codec.Parameters.Apt {
 					rtxSupported = true
 					codecs = append(codecs, codec)
 					break
@@ -713,7 +714,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 			encoding := consumableEncodings[i]
 
 			ssrc := baseSsrc + uint32(i)
-			encoding.Ssrc = &ssrc
+			encoding.Ssrc = ssrc
 			if rtxSupported {
 				encoding.Rtx = &FBS__RtpParameters.RtxT{Ssrc: baseRtxSsrc + uint32(i)}
 			} else {
@@ -726,16 +727,8 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 		return
 	}
 
-	ssrc := generateRandomNumber()
 	consumerEncoding := RtpEncodingParameters{
-		RtpEncodingParametersT: FBS__RtpParameters.RtpEncodingParametersT{
-			Ssrc: &ssrc,
-		},
-		ParsedScalabilityMode: ScalabilityMode{
-			SpatialLayers:  0,
-			TemporalLayers: 0,
-			Ksvc:           false,
-		},
+		Ssrc: generateRandomNumber(),
 	}
 
 	if rtxSupported {
@@ -767,13 +760,13 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 
 	// Use the maximum maxBitrate in any encoding and honor it in the Consumer's encoding.
 	for _, encoding := range consumableParams.Encodings {
-		if *encoding.MaxBitrate > maxEncodingMaxBitrate {
-			maxEncodingMaxBitrate = *encoding.MaxBitrate
+		if encoding.MaxBitrate > maxEncodingMaxBitrate {
+			maxEncodingMaxBitrate = encoding.MaxBitrate
 		}
 	}
 
 	if maxEncodingMaxBitrate > 0 {
-		consumerEncoding.MaxBitrate = &maxEncodingMaxBitrate
+		consumerEncoding.MaxBitrate = maxEncodingMaxBitrate
 	}
 
 	// Set a single encoding for the Consumer.
@@ -827,7 +820,7 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 
 	for i, encoding := range consumableEncodings {
 		ssrc := baseSsrc + uint32(i)
-		encoding.Ssrc = &ssrc
+		encoding.Ssrc = ssrc
 
 		if enableRtx {
 			encoding.Rtx = &FBS__RtpParameters.RtxT{Ssrc: baseRtxSsrc + uint32(i)}
@@ -847,16 +840,10 @@ func findMatchedCodec(aCodec interface{}, bCodecs []*RtpCodecCapability, options
 	switch aCodec := aCodec.(type) {
 	case *RtpCodecCapability:
 		rtpCodecParameters = &RtpCodecParameters{
-			RtpCodecParametersT: FBS__RtpParameters.RtpCodecParametersT{
-				MimeType:    aCodec.MimeType,
-				PayloadType: 0,
-				ClockRate:   uint32(aCodec.ClockRate),
-				Channels:    &aCodec.Channels,
-				//Parameters:   aCodec.Parameters,
-				RtcpFeedback: nil,
-			},
-			SpecificParameters: RtpCodecSpecificParameters{},
-			RtpCodecMimeType:   RtpCodecMimeType{},
+			MimeType:   aCodec.MimeType,
+			ClockRate:  aCodec.ClockRate,
+			Channels:   aCodec.Channels,
+			Parameters: aCodec.Parameters,
 		}
 	case *RtpCodecParameters:
 		rtpCodecParameters = aCodec
@@ -878,27 +865,27 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 		return
 	}
 
-	if aCodec.ClockRate != uint32(bCodec.ClockRate) {
+	if aCodec.ClockRate != bCodec.ClockRate {
 		return
 	}
 
 	if strings.HasPrefix(aMimeType, "audio/") &&
-		*aCodec.Channels > 0 &&
+		aCodec.Channels > 0 &&
 		bCodec.Channels > 0 &&
-		*aCodec.Channels != bCodec.Channels {
+		aCodec.Channels != bCodec.Channels {
 		return
 	}
 
 	switch aMimeType {
 	case "audio/multiopus":
-		aNumStreams := aCodec.SpecificParameters.NumStreams
+		aNumStreams := aCodec.Parameters.NumStreams
 		bNumstreams := bCodec.Parameters.NumStreams
 
 		if aNumStreams != bNumstreams {
 			return false
 		}
 
-		aCoupledStreams := aCodec.SpecificParameters.CoupledStreams
+		aCoupledStreams := aCodec.Parameters.CoupledStreams
 		bCoupledStreams := bCodec.Parameters.CoupledStreams
 
 		if aCoupledStreams != bCoupledStreams {
@@ -906,7 +893,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 		}
 
 	case "video/h264":
-		aParameters, bParameters := aCodec.SpecificParameters, bCodec.Parameters
+		aParameters, bParameters := aCodec.Parameters, bCodec.Parameters
 
 		if aParameters.PacketizationMode != bParameters.PacketizationMode {
 			return
@@ -922,7 +909,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 
 			if options.modify {
 				aParameters.ProfileLevelId = selectedProfileLevelId
-				aCodec.SpecificParameters = aParameters
+				aCodec.Parameters = aParameters
 			}
 		}
 	}

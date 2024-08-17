@@ -54,7 +54,7 @@ func (d ResponseData) String() string {
 	if d.RspBody != nil {
 		bodyType = FBS__Response.EnumNamesBody[d.RspBody.Type]
 	}
-	return fmt.Sprintf("Id:%d,Method:%s,BodyType:%s,Err:%v",
+	return fmt.Sprintf("Id:[%d],Method:[%s],BodyType:[%s],Err:[%v]",
 		d.Id,
 		FBS__Request.EnumNamesMethod[d.MethodType],
 		bodyType,
