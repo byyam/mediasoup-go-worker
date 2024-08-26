@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	jsoniter "github.com/json-iterator/go"
+
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
 	"github.com/byyam/mediasoup-go-worker/pkg/h264"
 )
@@ -591,15 +593,54 @@ type RtpCodecSpecificParameters struct {
 }
 
 func (r *RtpCodecSpecificParameters) Convert() []*FBS__RtpParameters.ParameterT {
+
+	contentMap := make(map[string]interface{})
+	_ = Clone(r, &contentMap)
+
 	p := make([]*FBS__RtpParameters.ParameterT, 0)
-	content, _ := json.Marshal(r)
-	_ = json.Unmarshal(content, &p)
+	for key, value := range contentMap {
+		valueMap := map[string]interface{}{
+			"value": value,
+		}
+		fbsType := FBS__RtpParameters.ValueNONE
+		switch value.(type) {
+		case string:
+			fbsType = FBS__RtpParameters.ValueString
+		case int:
+			fbsType = FBS__RtpParameters.ValueInteger32
+		case bool:
+			fbsType = FBS__RtpParameters.ValueBoolean
+		case float64:
+			fbsType = FBS__RtpParameters.ValueDouble
+		}
+		fbsValue := &FBS__RtpParameters.ParameterT{
+			Name: key,
+			Value: &FBS__RtpParameters.ValueT{
+				Type:  fbsType,
+				Value: valueMap,
+			},
+		}
+		p = append(p, fbsValue)
+	}
+
 	return p
 }
 
 func (r *RtpCodecSpecificParameters) Set(fbs []*FBS__RtpParameters.ParameterT) {
-	content, _ := json.Marshal(fbs)
+	contentMap := make(map[string]interface{})
+	for _, fb := range fbs {
+		key, value := MarshalFbsParameterT(fb)
+		contentMap[key] = value
+	}
+	content, _ := json.Marshal(contentMap)
 	_ = json.Unmarshal(content, r)
+}
+
+func MarshalFbsParameterT(fbs *FBS__RtpParameters.ParameterT) (string, interface{}) {
+	content, _ := json.Marshal(fbs)
+	name := jsoniter.Get(content, "name").ToString()
+	value := jsoniter.Get(content, "value").Get("Value").Get("value").GetInterface()
+	return name, value
 }
 
 /**
@@ -733,30 +774,32 @@ func (r *RtpEncodingParameters) Set(fbs *FBS__RtpParameters.RtpEncodingParameter
  * parameters are currently considered.
  */
 type RtpHeaderExtensionParameters struct {
-	FBS__RtpParameters.RtpHeaderExtensionParametersT
+	Uri     string `json:"uri,omitempty"`
+	Id      uint8  `json:"id,omitempty"`
+	Encrypt bool   `json:"encrypt,omitempty"`
 
 	/**
 	 * Configuration parameters for the header extension.
 	 */
-	SpecificParameters *RtpCodecSpecificParameters `json:"specific_parameters,omitempty"`
+	SpecificParameters *RtpCodecSpecificParameters `json:"parameters,omitempty"`
 }
 
 func (r *RtpHeaderExtensionParameters) Convert() *FBS__RtpParameters.RtpHeaderExtensionParametersT {
 	p := &FBS__RtpParameters.RtpHeaderExtensionParametersT{
-		Uri:        r.Uri,
+		Uri:        GetFbsUri(r.Uri),
 		Id:         r.Id,
 		Encrypt:    r.Encrypt,
-		Parameters: r.Parameters,
+		Parameters: r.SpecificParameters.Convert(),
 	}
 	return p
 }
 
 func (r *RtpHeaderExtensionParameters) Set(fbs *FBS__RtpParameters.RtpHeaderExtensionParametersT) {
 	r.SpecificParameters.Set(fbs.Parameters)
-	r.Uri = fbs.Uri
+	r.Uri = GetUriFbs(fbs.Uri)
 	r.Id = fbs.Id
 	r.Encrypt = fbs.Encrypt
-	r.Parameters = fbs.Parameters
+	r.SpecificParameters.Set(fbs.Parameters)
 }
 
 /**

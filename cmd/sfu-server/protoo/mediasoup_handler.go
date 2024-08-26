@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jiyeyuran/go-protoo"
 
+	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/basehandler"
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/democonf"
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/demoutils"
 	"github.com/byyam/mediasoup-go-worker/cmd/sfu-server/room"
@@ -169,13 +170,20 @@ func (h *ProtooHandler) Produce(message protoo.Message) (interface{}, *protoo.Er
 		return nil, demoutils.ServerError(err)
 	}
 	produceId := uuid.New().String()
-	_, err := workerapi.TransportProduce(h.Worker,
+	produceOptions, err := basehandler.ProduceOptions(req.Kind, produceId, req.RtpParameters)
+	if err != nil {
+		return nil, demoutils.ServerError(err)
+	}
+	content, _ := json.Marshal(produceOptions)
+	h.logger.Debug().Msgf("[Produce] produceOptions:%s", string(content))
+	_, err = workerapi.TransportProduce(h.Worker,
 		h.queryParams.RouterId,
 		req.TransportId,
 		&FBS__Transport.ProduceRequestT{
 			ProducerId:    produceId,
 			Kind:          FBS__RtpParameters.EnumValuesMediaKind[strings.ToUpper(string(req.Kind))],
 			RtpParameters: req.RtpParameters.Convert(),
+			RtpMapping:    produceOptions.RtpMapping.Convert(),
 		},
 	)
 	if err != nil {

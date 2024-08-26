@@ -21,7 +21,7 @@ type ProducerOptions struct {
 	/**
 	 * RTP parameters defining what the endpoint is sending.
 	 */
-	RtpParameters RtpParameters `json:"rtpParameters,omitempty"`
+	RtpParameters *RtpParameters `json:"rtpParameters,omitempty"`
 
 	/**
 	 * Whether the producer must start in paused mode. Default false.
@@ -39,7 +39,7 @@ type ProducerOptions struct {
 	 */
 	AppData interface{} `json:"appData,omitempty"`
 
-	RtpMapping RtpMapping `json:"rtpMapping"`
+	RtpMapping *RtpMapping `json:"rtpMapping"`
 }
 
 func (o ProducerOptions) Convert() *FBS__Transport.ProduceRequestT {

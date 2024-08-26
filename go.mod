@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/go-version v1.4.0
 	github.com/imdario/mergo v0.3.12
 	github.com/jiyeyuran/go-protoo v1.0.7
+	github.com/json-iterator/go v1.1.12
 	github.com/kr/pretty v0.3.1
 	github.com/pion/dtls/v2 v2.2.12
 	github.com/pion/dtls/v3 v3.0.1
@@ -44,6 +45,8 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect
 	github.com/pion/turn/v3 v3.0.3 // indirect

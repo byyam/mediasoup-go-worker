@@ -8,6 +8,11 @@ import (
 )
 
 func ProducerOptions(kind mediasoupdata.MediaKind, streamId uint64, rtpParameters mediasoupdata.RtpParameters) (*mediasoupdata.ProducerOptions, error) {
+	produceId := demoutils.GetProducerId(streamId)
+	return ProduceOptions(kind, produceId, rtpParameters)
+}
+
+func ProduceOptions(kind mediasoupdata.MediaKind, produceId string, rtpParameters mediasoupdata.RtpParameters) (*mediasoupdata.ProducerOptions, error) {
 	routerRtpCapabilities, err := mediasoupdata.GenerateRouterRtpCapabilities(democonf.RouterOptions.MediaCodecs)
 	if err != nil {
 		logger.Error().Msgf("GenerateRouterRtpCapabilities failed:%+v", err)
@@ -24,9 +29,9 @@ func ProducerOptions(kind mediasoupdata.MediaKind, streamId uint64, rtpParameter
 	}
 
 	produceOptions := &mediasoupdata.ProducerOptions{
-		Id:                   demoutils.GetProducerId(streamId),
+		Id:                   produceId,
 		Kind:                 kind,
-		RtpParameters:        rtpParameters,
+		RtpParameters:        &rtpParameters,
 		Paused:               false,
 		KeyFrameRequestDelay: 0,
 		AppData:              nil,

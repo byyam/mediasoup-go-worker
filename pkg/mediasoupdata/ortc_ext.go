@@ -175,7 +175,7 @@ func validateRtpCodecParameters(code *RtpCodecParameters) (err error) {
  */
 func validateRtpHeaderExtensionParameters(ext *RtpHeaderExtensionParameters) (err error) {
 	// uri is mandatory.
-	if len(FBS__RtpParameters.EnumNamesRtpHeaderExtensionUri[ext.Uri]) == 0 {
+	if len(FBS__RtpParameters.EnumNamesRtpHeaderExtensionUri[GetFbsUri(ext.Uri)]) == 0 {
 		return NewTypeError("missing ext.uri")
 	}
 
@@ -383,7 +383,11 @@ func GenerateRouterRtpCapabilities(mediaCodecs []*RtpCodecCapability) (caps RtpC
  * the given Producer RTP parameters to the values expected by the Router.
  *
  */
-func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities) (rtpMapping RtpMapping, err error) {
+func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities) (rtpMapping *RtpMapping, err error) {
+	rtpMapping = &RtpMapping{
+		Codecs:    make([]*RtpMappingCodec, 0),
+		Encodings: make([]*RtpMappingEncoding, 0),
+	}
 	// Match parameters media codecs to capabilities media codecs.
 	codecToCapCodec := map[*RtpCodecParameters]*RtpCodecCapability{}
 
@@ -444,7 +448,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 
 	// Generate codecs mapping.
 	for codec, capCodec := range codecToCapCodec {
-		rtpMapping.Codecs = append(rtpMapping.Codecs, RtpMappingCodec{
+		rtpMapping.Codecs = append(rtpMapping.Codecs, &RtpMappingCodec{
 			PayloadType:       codec.PayloadType,
 			MappedPayloadType: capCodec.PreferredPayloadType,
 		})
@@ -454,7 +458,7 @@ func GetProducerRtpParametersMapping(params RtpParameters, caps RtpCapabilities)
 	mappedSsrc := generateRandomNumber()
 
 	for _, encoding := range params.Encodings {
-		mappedEncoding := RtpMappingEncoding{
+		mappedEncoding := &RtpMappingEncoding{
 			Rid:             encoding.Rid,
 			Ssrc:            encoding.Ssrc,
 			MappedSsrc:      mappedSsrc,
@@ -541,12 +545,9 @@ func GetConsumableRtpParameters(
 			continue
 		}
 		consumableExt := &RtpHeaderExtensionParameters{
-			RtpHeaderExtensionParametersT: FBS__RtpParameters.RtpHeaderExtensionParametersT{
-				Uri:        FBS__RtpParameters.EnumValuesRtpHeaderExtensionUri[capExt.Uri],
-				Id:         byte(capExt.PreferredId),
-				Encrypt:    capExt.PreferredEncrypt,
-				Parameters: nil,
-			},
+			Uri:                capExt.Uri,
+			Id:                 byte(capExt.PreferredId),
+			Encrypt:            capExt.PreferredEncrypt,
 			SpecificParameters: nil,
 		}
 
@@ -663,7 +664,7 @@ func GetConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 
 	for _, ext := range consumableParams.HeaderExtensions {
 		for _, capExt := range caps.HeaderExtensions {
-			if capExt.PreferredId == int(ext.Id) && capExt.Uri == FBS__RtpParameters.EnumNamesRtpHeaderExtensionUri[ext.Uri] {
+			if capExt.PreferredId == int(ext.Id) && capExt.Uri == ext.Uri {
 				consumerParams.HeaderExtensions = append(consumerParams.HeaderExtensions, ext)
 				break
 			}
@@ -805,9 +806,9 @@ func getPipeConsumerRtpParameters(consumableParams RtpParameters, enableRtx bool
 
 	// Reduce RTP extensions by disabling transport MID and BWE related ones.
 	for _, ext := range consumableParams.HeaderExtensions {
-		if ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriMid &&
-			ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriAbsSendTime &&
-			ext.Uri != FBS__RtpParameters.RtpHeaderExtensionUriTransportWideCcDraft01 {
+		if GetFbsUri(ext.Uri) != FBS__RtpParameters.RtpHeaderExtensionUriMid &&
+			GetFbsUri(ext.Uri) != FBS__RtpParameters.RtpHeaderExtensionUriAbsSendTime &&
+			GetFbsUri(ext.Uri) != FBS__RtpParameters.RtpHeaderExtensionUriTransportWideCcDraft01 {
 			consumerParams.HeaderExtensions = append(consumerParams.HeaderExtensions, ext)
 		}
 	}
@@ -919,7 +920,7 @@ func matchCodecs(aCodec *RtpCodecParameters, bCodec *RtpCodecCapability, options
 
 func matchHeaderExtensionUri(exts []*RtpHeaderExtensionParameters, uri FBS__RtpParameters.RtpHeaderExtensionUri) bool {
 	for _, ext := range exts {
-		if ext.Uri == uri {
+		if GetFbsUri(ext.Uri) == uri {
 			return true
 		}
 	}
