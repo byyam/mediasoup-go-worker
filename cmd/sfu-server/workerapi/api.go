@@ -5,6 +5,7 @@ import (
 
 	mediasoup_go_worker "github.com/byyam/mediasoup-go-worker"
 	FBS__PipeTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/PipeTransport"
+	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
 	FBS__Request "github.com/byyam/mediasoup-go-worker/fbs/FBS/Request"
 	FBS__Router "github.com/byyam/mediasoup-go-worker/fbs/FBS/Router"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
@@ -81,7 +82,7 @@ func ConnectWebRtcTransport(w *mediasoup_go_worker.SimpleWorker, routerId, trans
 	return rspData, nil
 }
 
-func GetTransportStats(w *mediasoup_go_worker.SimpleWorker, routerId, transportId string) (*signaldefine.GetTransportStatResponse, error) {
+func GetTransportStats(w *mediasoup_go_worker.SimpleWorker, routerId, transportId string) (signaldefine.GetTransportStatResponse, error) {
 	rsp, err := requestFbs(w, workerchannel.InternalData{
 		RouterId:    routerId,
 		TransportId: transportId,
@@ -95,15 +96,37 @@ func GetTransportStats(w *mediasoup_go_worker.SimpleWorker, routerId, transportI
 		return nil, err
 	}
 	logger.Info().Msgf("[GetTransportStats] rsp.Data:%s", rsp.Data)
-	ret := &signaldefine.GetTransportStatResponse{}
+	ret := make([]*signaldefine.TransportStatResponse, 0)
 	switch rsp.RspBody.Value.(type) {
 	case *FBS__WebRtcTransport.GetStatsResponseT:
 		rspData := rsp.RspBody.Value.(*FBS__WebRtcTransport.GetStatsResponseT)
 		logger.Info().Msgf("[GetTransportStats] rspData:%+v", rspData)
-		ret.Set("webrtc-transport", rspData)
+		stat := &signaldefine.TransportStatResponse{}
+		stat.Set("webrtc-transport", rspData)
+		ret = append(ret, stat)
 	}
 
 	return ret, nil
+}
+
+func GetProducerStats(w *mediasoup_go_worker.SimpleWorker, routerId, producerId string) (*FBS__Producer.GetStatsResponseT, error) {
+	rsp, err := requestFbs(w, workerchannel.InternalData{
+		RouterId:   routerId,
+		ProducerId: producerId,
+	}, &FBS__Request.RequestT{
+		Id:        GetRid(),
+		Method:    FBS__Request.MethodPRODUCER_GET_STATS,
+		HandlerId: producerId,
+		Body:      nil,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rspData := rsp.RspBody.Value.(*FBS__Producer.GetStatsResponseT)
+	logger.Info().Msgf("[GetProducerStats] rsp.Data:%s", rsp.Data)
+
+	return rspData, nil
 }
 
 func ConnectPipeTransport(w *mediasoup_go_worker.SimpleWorker, routerId, transportId string, param *FBS__PipeTransport.ConnectRequestT) error {

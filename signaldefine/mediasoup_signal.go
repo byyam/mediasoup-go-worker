@@ -3,6 +3,7 @@ package signaldefine
 import (
 	"strings"
 
+	FBS__Producer "github.com/byyam/mediasoup-go-worker/fbs/FBS/Producer"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 	FBS__WebRtcTransport "github.com/byyam/mediasoup-go-worker/fbs/FBS/WebRtcTransport"
 	"github.com/byyam/mediasoup-go-worker/pkg/mediasoupdata"
@@ -17,6 +18,7 @@ const (
 	MethodRestartIce               = "restartIce"
 	MethodCloseProducer            = "closeProducer"
 	MethodGetTransportStats        = "getTransportStats"
+	MethodGetProducerStats         = "getProducerStats"
 )
 
 type ClientDevice struct {
@@ -69,7 +71,7 @@ type CreateWebRtcTransportResponse struct {
 	IceParameters  *mediasoupdata.IceParameters  `json:"iceParameters"`
 	IceCandidates  []*mediasoupdata.IceCandidate `json:"iceCandidates"`
 	DtlsParameters *mediasoupdata.DtlsParameters `json:"dtlsParameters"`
-	SctpParameters *mediasoupdata.SctpParameters `json:"sctpParameters"`
+	SctpParameters *mediasoupdata.SctpParameters `json:"sctpParameters,omitempty"`
 }
 
 type ConnectWebRtcTransportRequest struct {
@@ -165,7 +167,7 @@ type GetTransportStatRequest struct {
 	TransportId string
 }
 
-type GetTransportStatResponse struct {
+type TransportStatResponse struct {
 	TransportStats
 	Type             string         `json:"type"`
 	IceRole          string         `json:"iceRole"`
@@ -174,11 +176,29 @@ type GetTransportStatResponse struct {
 	DtlsState        string         `json:"dtlsState"`
 }
 
-func (r *GetTransportStatResponse) Set(typ string, fbs *FBS__WebRtcTransport.GetStatsResponseT) {
+type GetTransportStatResponse []*TransportStatResponse
+
+func (r *TransportStatResponse) Set(typ string, fbs *FBS__WebRtcTransport.GetStatsResponseT) {
 	r.TransportStats.Set(fbs.Base)
 	r.Type = typ
 	r.IceRole = strings.ToLower(FBS__WebRtcTransport.EnumNamesIceRole[fbs.IceRole])
 	r.IceState = strings.ToLower(FBS__WebRtcTransport.EnumNamesIceState[fbs.IceState])
 	r.IceSelectedTuple.Set(fbs.IceSelectedTuple)
 	r.DtlsState = strings.ToLower(FBS__WebRtcTransport.EnumNamesDtlsState[fbs.DtlsState])
+}
+
+type GetProducerStatRequest struct {
+	ProducerId string
+}
+
+type GetProducerStatResponse []*mediasoupdata.ProducerStat
+
+func GetProducerStatResponseSet(fbs *FBS__Producer.GetStatsResponseT) []*mediasoupdata.ProducerStat {
+	stats := make([]*mediasoupdata.ProducerStat, 0)
+	for _, rtpStreamStat := range fbs.Stats {
+		producerStat := &mediasoupdata.ProducerStat{}
+		producerStat.Set(rtpStreamStat.Data)
+		stats = append(stats, producerStat)
+	}
+	return stats
 }

@@ -68,6 +68,8 @@ func (h *ProtooHandler) HandleProtooMessage(req protoo.Message) *protoo.Message 
 		protooFn = h.GetTransportStats
 	case signaldefine.MethodProduce:
 		protooFn = h.Produce
+	case signaldefine.MethodGetProducerStats:
+		protooFn = h.GetProducerStats
 	default:
 		h.logger.Warn().Msgf("[HandleProtooMessage] unknown signal method: %s", req.Method)
 		err = demoutils.ErrUnknownMethod

@@ -22,13 +22,18 @@ func newSctpAssociation(options *FBS__Transport.OptionsT) (*SctpAssociation, err
 }
 
 func (t *SctpAssociation) GetSctpAssociationParam() *FBS__SctpParameters.SctpParametersT {
-	return &FBS__SctpParameters.SctpParametersT{
+	p := &FBS__SctpParameters.SctpParametersT{
 		Port:               5000,
-		Os:                 t.options.NumSctpStreams.Os,
-		Mis:                t.options.NumSctpStreams.Mis,
+		Os:                 0,
+		Mis:                0,
 		MaxMessageSize:     t.options.MaxSctpMessageSize,
 		IsDataChannel:      t.options.IsDataChannel,
 		SctpBufferedAmount: t.options.SctpSendBufferSize,
 		SendBufferSize:     t.options.SctpSendBufferSize,
 	}
+	if t.options.NumSctpStreams != nil {
+		p.Os = t.options.NumSctpStreams.Os
+		p.Mis = t.options.NumSctpStreams.Mis
+	}
+	return p
 }

@@ -60,9 +60,13 @@ func (h *ProtooHandler) CreateWebRtcTransport(message protoo.Message) (interface
 		},
 	}
 	options.Listen = listenIp
-	options.Base.NumSctpStreams = &FBS__SctpParameters.NumSctpStreamsT{
-		Os:  req.SctpCapabilities.NumStreams.OS,
-		Mis: req.SctpCapabilities.NumStreams.MIS,
+	var enableSctp bool
+	if req.SctpCapabilities != nil {
+		enableSctp = true
+		options.Base.NumSctpStreams = &FBS__SctpParameters.NumSctpStreamsT{
+			Os:  req.SctpCapabilities.NumStreams.OS,
+			Mis: req.SctpCapabilities.NumStreams.MIS,
+		}
 	}
 	rspData, err := workerapi.CreateWebRtcTransport(h.Worker, h.queryParams.RouterId, &FBS__Router.CreateWebRtcTransportRequestT{
 		TransportId: transportId,
@@ -90,7 +94,7 @@ func (h *ProtooHandler) CreateWebRtcTransport(message protoo.Message) (interface
 		IceParameters:  &mediasoupdata.IceParameters{},
 		IceCandidates:  make([]*mediasoupdata.IceCandidate, 0),
 		DtlsParameters: &mediasoupdata.DtlsParameters{},
-		SctpParameters: &mediasoupdata.SctpParameters{},
+		SctpParameters: nil,
 	}
 	if rspData.DtlsParameters != nil {
 		rsp.DtlsParameters.Set(rspData.DtlsParameters)
@@ -98,7 +102,8 @@ func (h *ProtooHandler) CreateWebRtcTransport(message protoo.Message) (interface
 	if rspData.IceParameters != nil {
 		rsp.IceParameters.Set(rspData.IceParameters)
 	}
-	if rspData.Base != nil && rspData.Base.SctpParameters != nil {
+	if enableSctp && rspData.Base != nil && rspData.Base.SctpParameters != nil {
+		rsp.SctpParameters = &mediasoupdata.SctpParameters{}
 		rsp.SctpParameters.Set(rspData.Base.SctpParameters)
 	}
 	for _, iceCandidate := range rspData.IceCandidates {
@@ -212,4 +217,24 @@ func (h *ProtooHandler) GetTransportStats(message protoo.Message) (interface{}, 
 	}
 
 	return rsp, nil
+}
+
+func (h *ProtooHandler) GetProducerStats(message protoo.Message) (interface{}, *protoo.Error) {
+	var req signaldefine.GetProducerStatRequest
+	if err := json.Unmarshal(message.Data, &req); err != nil {
+		return nil, demoutils.ServerError(err)
+	}
+
+	rsp, err := workerapi.GetProducerStats(h.Worker,
+		h.queryParams.RouterId,
+		req.ProducerId,
+	)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("GetProducerStats failed")
+		return nil, demoutils.ServerError(err)
+	}
+
+	stats := signaldefine.GetProducerStatResponseSet(rsp)
+
+	return stats, nil
 }

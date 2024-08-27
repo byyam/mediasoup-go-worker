@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	FBS__RtpParameters "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpParameters"
+	FBS__RtpStream "github.com/byyam/mediasoup-go-worker/fbs/FBS/RtpStream"
 	FBS__Transport "github.com/byyam/mediasoup-go-worker/fbs/FBS/Transport"
 )
 
@@ -89,29 +90,87 @@ type ProducerData struct {
 type ProducerStat struct {
 	// Common to all RtpStreams.
 	Type                 string  `json:"type,omitempty"`
-	Timestamp            int64   `json:"timestamp,omitempty"`
+	Timestamp            uint64  `json:"timestamp,omitempty"`
 	Ssrc                 uint32  `json:"ssrc,omitempty"`
 	RtxSsrc              uint32  `json:"rtxSsrc,omitempty"`
 	Rid                  string  `json:"rid,omitempty"`
 	Kind                 string  `json:"kind,omitempty"`
 	MimeType             string  `json:"mimeType,omitempty"`
-	PacketsLost          uint32  `json:"packetsLost,omitempty"`
+	PacketsLost          uint64  `json:"packetsLost,omitempty"`
 	FractionLost         uint8   `json:"fractionLost,omitempty"`
-	PacketsDiscarded     uint32  `json:"packetsDiscarded,omitempty"`
-	PacketsRetransmitted uint32  `json:"packetsRetransmitted,omitempty"`
-	PacketsRepaired      uint32  `json:"packetsRepaired,omitempty"`
-	NackCount            uint32  `json:"nackCount,omitempty"`
-	NackPacketCount      uint32  `json:"nackPacketCount,omitempty"`
-	PliCount             uint32  `json:"pliCount,omitempty"`
-	FirCount             uint32  `json:"firCount,omitempty"`
+	PacketsDiscarded     uint64  `json:"packetsDiscarded,omitempty"`
+	PacketsRetransmitted uint64  `json:"packetsRetransmitted,omitempty"`
+	PacketsRepaired      uint64  `json:"packetsRepaired,omitempty"`
+	NackCount            uint64  `json:"nackCount,omitempty"`
+	NackPacketCount      uint64  `json:"nackPacketCount,omitempty"`
+	PliCount             uint64  `json:"pliCount,omitempty"`
+	FirCount             uint64  `json:"firCount,omitempty"`
 	Score                uint32  `json:"score,omitempty"`
-	PacketCount          int64   `json:"packetCount,omitempty"`
-	ByteCount            int64   `json:"byteCount,omitempty"`
+	PacketCount          uint64  `json:"packetCount,omitempty"`
+	ByteCount            uint64  `json:"byteCount,omitempty"`
 	Bitrate              uint32  `json:"bitrate,omitempty"`
 	RoundTripTime        float32 `json:"roundTripTime,omitempty"`
-	RtxPacketsDiscarded  uint32  `json:"rtxPacketsDiscarded,omitempty"`
+	RtxPacketsDiscarded  uint64  `json:"rtxPacketsDiscarded,omitempty"`
 
 	// RtpStreamRecv specific.
 	Jitter         uint32 `json:"jitter,omitempty"`
 	BitrateByLayer H      `json:"bitrateByLayer,omitempty"`
+}
+
+func (p *ProducerStat) Set(fbs *FBS__RtpStream.StatsDataT) {
+	switch fbs.Type {
+	case FBS__RtpStream.StatsDataBaseStats:
+		stat := &FBS__RtpStream.BaseStatsT{}
+		_ = Clone(fbs.Value, stat)
+		p.SetBase(stat)
+	case FBS__RtpStream.StatsDataRecvStats:
+		stat := &FBS__RtpStream.RecvStatsT{}
+		_ = Clone(fbs.Value, stat)
+		if stat.Base.Data.Type == FBS__RtpStream.StatsDataBaseStats {
+			baseStat := &FBS__RtpStream.BaseStatsT{}
+			_ = Clone(stat.Base.Data.Value, baseStat)
+			p.SetBase(baseStat)
+		}
+		p.Type = "inbound-rtp"
+		p.Jitter = stat.Jitter
+		p.Bitrate = stat.Bitrate
+		p.PacketCount = stat.PacketCount
+		p.ByteCount = stat.ByteCount
+		p.BitrateByLayer = make(H) // todo
+	case FBS__RtpStream.StatsDataSendStats:
+		stat := &FBS__RtpStream.SendStatsT{}
+		_ = Clone(fbs.Value, stat)
+		if stat.Base.Data.Type == FBS__RtpStream.StatsDataBaseStats {
+			baseStat := &FBS__RtpStream.BaseStatsT{}
+			_ = Clone(stat.Base.Data.Value, baseStat)
+			p.SetBase(baseStat)
+		}
+		p.Type = "outbound-rtp"
+		p.PacketCount = stat.PacketCount
+		p.ByteCount = stat.ByteCount
+		p.Bitrate = stat.Bitrate
+	}
+}
+
+func (p *ProducerStat) SetBase(stat *FBS__RtpStream.BaseStatsT) {
+	p.Rid = stat.Rid
+	p.Timestamp = stat.Timestamp
+	p.Ssrc = stat.Ssrc
+	if stat.RtxSsrc != nil {
+		p.RtxSsrc = *stat.RtxSsrc
+	}
+	p.MimeType = stat.MimeType
+	p.Kind = strings.ToLower(FBS__RtpParameters.EnumNamesMediaKind[stat.Kind])
+	p.PacketsLost = stat.PacketsLost
+	p.FractionLost = stat.FractionLost
+	p.PacketsDiscarded = stat.PacketsDiscarded
+	p.PacketsRetransmitted = stat.PacketsRetransmitted
+	p.PacketsRepaired = stat.PacketsRepaired
+	p.NackPacketCount = stat.NackPacketCount
+	p.NackCount = stat.NackCount
+	p.PliCount = stat.PliCount
+	p.FirCount = stat.FirCount
+	p.Score = uint32(stat.Score)
+	p.RtxPacketsDiscarded = stat.RtxPacketsDiscarded
+	p.RoundTripTime = stat.RoundTripTime
 }
